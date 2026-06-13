@@ -1,0 +1,14 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:player_head",
+    "image": "yet-another-minecraft-bingo:skull_cross"
+  },
+  "statType": "minecraft:custom",
+  "statName": "minecraft:deaths",
+  "min": {
+    "type": "random",
+    "min": 2,
+    "max": 8
+  }
+}

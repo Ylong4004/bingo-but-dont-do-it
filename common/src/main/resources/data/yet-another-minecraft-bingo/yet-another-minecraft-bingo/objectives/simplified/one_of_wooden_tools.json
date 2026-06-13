@@ -1,0 +1,18 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_wooden_tools",
+      "fallback": "Any Wooden Tool"
+    },
+    "item": "minecraft:wooden_pickaxe"
+  },
+  "objectives": [
+    "minecraft:wooden_axe",
+    "minecraft:wooden_hoe",
+    "minecraft:wooden_pickaxe",
+    "minecraft:wooden_shovel",
+    "minecraft:wooden_spear",
+    "minecraft:wooden_sword"
+  ]
+}

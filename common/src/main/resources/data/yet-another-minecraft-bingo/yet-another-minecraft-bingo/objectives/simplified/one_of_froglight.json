@@ -1,0 +1,15 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_froglight",
+      "fallback": "Any Froglight"
+    },
+    "item": "minecraft:ochre_froglight"
+  },
+  "objectives": [
+    "minecraft:ochre_froglight",
+    "minecraft:pearlescent_froglight",
+    "minecraft:verdant_froglight"
+  ]
+}

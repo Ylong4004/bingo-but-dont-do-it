@@ -1,0 +1,13 @@
+{
+  "type": "stats",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_iron_golem",
+      "fallback": "Kill an Iron Golem"
+    },
+    "item": "minecraft:iron_golem_spawn_egg",
+    "image": "yet-another-minecraft-bingo:iron_golem_head"
+  },
+  "statType": "minecraft:killed",
+  "statName": "minecraft:iron_golem"
+}

@@ -1,0 +1,13 @@
+upsert:
+INSERT OR REPLACE INTO GamePlayer VALUES ?;
+
+findById:
+SELECT * FROM GamePlayer WHERE minecraft_id = ? AND game_id = ?;
+
+findFavoriteTeam:
+SELECT p.team_id AS id, count(p.team_id) AS count, total
+FROM GamePlayer p, (SELECT count(*) AS total FROM GamePlayer p WHERE p.minecraft_id = :minecraft_id)
+WHERE p.minecraft_id = :minecraft_id
+GROUP BY p.team_id
+ORDER BY count DESC
+LIMIT 1;

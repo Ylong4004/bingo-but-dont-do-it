@@ -1,0 +1,13 @@
+{
+  "type": "stats",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_by_warden",
+      "fallback": "Killed by Warden"
+    },
+    "item": "minecraft:warden_spawn_egg",
+    "image": "yet-another-minecraft-bingo:warden_head"
+  },
+  "statType": "minecraft:killed_by",
+  "statName": "minecraft:warden"
+}

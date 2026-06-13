@@ -1,0 +1,31 @@
+plugins {
+    id "com.modrinth.minotaur"
+}
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = "yet-another-minecraft-bingo"
+    versionNumber = version
+    versionName = "[${project.minecraft_version}] Yet Another BINGO ${project.mod_version}"
+    if (project.mod_version.contains("alpha")) {
+        versionType = "alpha"
+    } else if (project.mod_version.contains("beta")) {
+        versionType = "beta"
+    } else {
+        versionType = "release"
+    }
+    changelog = rootProject.file("CHANGELOG.md").text
+    uploadFile = remapJar
+    gameVersions = project.minecraft_supported_versions.toString().split(',').toList()
+    loaders = ["fabric", "quilt"]
+    dependencies {
+        required.project "fabric-api"
+        optional.project "modmenu"
+        optional.project "yacl"
+        optional.project "jei"
+        optional.project "rei"
+        optional.project "emi"
+        optional.project "simple-voice-chat"
+    }
+    syncBodyFrom = rootProject.file("README.md").text
+}

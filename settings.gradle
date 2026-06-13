@@ -1,0 +1,40 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        libs
+    }
+}
+
+rootProject.name = "bingo"
+include 'api'
+include 'common'
+include 'integration-chunky'
+include 'integration-jei'
+include 'integration-permissions'
+include 'integration-placeholders'
+include 'integration-vanish'
+include 'integration-voicechat'
+include 'integration-waystones'
+include 'integration-ddi'
+//include 'mc1.20.1'
+//include 'mc1.20.2'
+//include 'mc1.20.4'
+//include 'mc1.20.6'
+//include 'mc1.21.1'
+//include 'mc1.21.3'
+//include 'mc1.21.4'
+//include 'mc1.21.5'
+//include 'mc1.21.7'
+//include 'mc1.21.9'
+include 'mc1.21.11'
+include 'platform'
+

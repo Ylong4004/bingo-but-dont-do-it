@@ -1,0 +1,43 @@
+{
+    "pack": {
+        "pack_format": 15,
+        "supported_formats": [15, 200],
+        "min_format": 15,
+        "max_format": 200,
+        "description": "Bingo Data"
+    },
+    "overlays": {
+        "entries": [
+            {
+                "formats": [41, 64],
+                "min_format": 41,
+                "max_format": 64,
+                "directory": "overlay-1-20-6"
+            },
+            {
+                "formats": [15, 64],
+                "min_format": 15,
+                "max_format": 64,
+                "directory": "overlay-until-1-21-5"
+            },
+            {
+                "formats": [65, 200],
+                "min_format": 65,
+                "max_format": 200,
+                "directory": "overlay-1-21-5"
+            },
+            {
+                "formats": [15, 79],
+                "min_format": 15,
+                "max_format": 79,
+                "directory": "overlay-until-1-21-6"
+            },
+            {
+                "formats": [80, 200],
+                "min_format": 80,
+                "max_format": 200,
+                "directory": "overlay-1-21-6"
+            }
+        ]
+    }
+}

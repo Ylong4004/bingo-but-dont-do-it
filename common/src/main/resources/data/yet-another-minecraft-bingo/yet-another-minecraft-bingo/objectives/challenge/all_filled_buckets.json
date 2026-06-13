@@ -1,0 +1,16 @@
+{
+  "type": "all_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.all_filled_buckets",
+      "fallback": "All Filled Buckets"
+    },
+    "item": "minecraft:lava_bucket"
+  },
+  "objectives": [
+    "minecraft:lava_bucket",
+    "minecraft:milk_bucket",
+    "minecraft:water_bucket",
+    "minecraft:powder_snow_bucket"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.jfenn.bingo.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "GameRuleOverrideMixin",
+    "HungerManagerAccessor",
+    "InteractionEntityMixin",
+    "LevelPropertiesAccessor",
+    "MapStateAccessor",
+    "MinecraftServerAccessor",
+    "MinecraftServerAfterSaveMixin",
+    "MinecraftServerSkipStartRegionMixin",
+    "MinecraftServerUnsafeSkipCloseMixin",
+    "PlayerAdvancementTrackerPreventSpectatorsMixin",
+    "PlayerEntityMixin",
+    "PlayerManagerMixin",
+    "RaidManagerAccessor",
+    "ServerBossBarMixin",
+    "ServerChunkManagerAccessor",
+    "ServerChunkManagerMixin",
+    "ServerEntityManagerMixin",
+    "ServerPlayNetworkHandlerMixin",
+    "ThreadedAnvilChunkStorageAccessor",
+    "ThreadExecutorAccessor"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

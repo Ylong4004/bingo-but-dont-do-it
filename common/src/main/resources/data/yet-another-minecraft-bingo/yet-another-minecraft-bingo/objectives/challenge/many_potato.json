@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:potato",
+  "count": {
+    "type": "random",
+    "min": 4,
+    "max": 16
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:slime_ball",
+  "count": {
+    "type": "random",
+    "min": 4,
+    "max": 8
+  }
+}

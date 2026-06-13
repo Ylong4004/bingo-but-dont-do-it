@@ -1,0 +1,25 @@
+{
+  "type": "item",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_enchanted_golden_shovel",
+      "fallback": "Enchanted Golden Shovel"
+    },
+    "item": "minecraft:golden_shovel",
+    "itemNbt": "{Enchantments:[{lvl:1,id:mending}]}",
+    "itemComponents": {
+      "minecraft:enchantments": {
+        "levels": {
+          "mending": 1
+        }
+      }
+    }
+  },
+  "item": "minecraft:golden_shovel",
+  "nbt": "{Enchantments:[{}]}",
+  "components": {
+    "minecraft:enchantments": {
+      "levels": {}
+    }
+  }
+}

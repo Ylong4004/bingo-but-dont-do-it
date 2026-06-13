@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:cod",
+  "count": {
+    "type": "random",
+    "min": 2,
+    "max": 8
+  }
+}

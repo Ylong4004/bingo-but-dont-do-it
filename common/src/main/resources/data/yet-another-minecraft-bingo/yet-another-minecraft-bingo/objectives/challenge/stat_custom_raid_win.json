@@ -1,0 +1,8 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:totem_of_undying"
+  },
+  "statType": "minecraft:custom",
+  "statName": "minecraft:raid_win"
+}

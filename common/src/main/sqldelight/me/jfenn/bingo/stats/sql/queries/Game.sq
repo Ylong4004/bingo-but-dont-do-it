@@ -1,0 +1,90 @@
+upsert:
+INSERT OR REPLACE INTO Game VALUES ?;
+
+checkIfIdsExist:
+SELECT g.id FROM Game g
+WHERE g.id IN ?
+AND EXISTS (SELECT * FROM GamePlayer p WHERE p.game_id = g.id AND p.minecraft_id = ?);
+
+findById:
+SELECT * FROM Game WHERE id = ?;
+
+allGamesByPlayer:
+SELECT g.id FROM Game g
+WHERE EXISTS (SELECT * FROM GamePlayer p WHERE p.game_id = g.id AND p.minecraft_id = ?)
+ORDER BY g.started_at DESC
+LIMIT :limit OFFSET :offset;
+
+totalStatsByPlayer:
+SELECT
+sum(g.duration) AS duration,
+sum(p.captured_items) AS items,
+count(IIF(g.is_forfeit = 0, 1, NULL)) AS games,
+count(IIF(t.is_winner = 1 AND g.is_forfeit = 0 AND g.is_draw = 0, 1, NULL)) AS wins,
+count(IIF(t.is_winner = 0 AND g.is_forfeit = 0 AND g.is_draw = 0, 1, NULL)) AS losses
+FROM Game g
+JOIN GamePlayer p ON p.game_id = g.id AND p.minecraft_id = ?
+JOIN GameTeam t ON t.id = p.team_id AND t.game_id = g.id;
+
+monthlyStatsByPlayer:
+SELECT
+sum(g.duration) AS duration,
+sum(p.captured_items) AS items,
+count(IIF(g.is_forfeit = 0, 1, NULL)) AS games,
+count(IIF(t.is_winner = 1 AND g.is_forfeit = 0 AND g.is_draw = 0, 1, NULL)) AS wins,
+count(IIF(t.is_winner = 0 AND g.is_forfeit = 0 AND g.is_draw = 0, 1, NULL)) AS losses
+FROM Game g
+JOIN GamePlayer p ON p.game_id = g.id AND p.minecraft_id = ?
+JOIN GameTeam t ON t.id = p.team_id AND t.game_id = g.id
+WHERE strftime("%Y %m", g.started_at) = strftime("%Y %m", ?);
+
+latestWinStreakByPlayer:
+SELECT count(*) FROM Game g
+FULL OUTER JOIN (
+    SELECT g.started_at AS recent_loss FROM Game g
+    JOIN GamePlayer p ON p.game_id = g.id AND p.minecraft_id = :minecraft_id
+    JOIN GameTeam t ON t.id = p.team_id AND t.game_id = g.id
+    WHERE g.is_forfeit = 0 AND t.is_winner = 0
+    ORDER BY g.started_at DESC
+    LIMIT 1
+)
+JOIN GamePlayer p ON p.game_id = g.id AND p.minecraft_id = :minecraft_id
+JOIN GameTeam t ON t.id = p.team_id AND t.game_id = g.id
+WHERE t.is_winner = 1 AND (g.started_at > recent_loss OR recent_loss IS NULL) AND g.host_id = ?;
+
+-- Look at what we could have if SQLDelight supported ROW_NUMBER()...
+--
+-- latestWinStreakByPlayer:
+-- SELECT is_winner, started_at, count(*) AS count FROM (
+-- 	SELECT
+--     t.is_winner,
+--   	g.started_at,
+--     ROW_NUMBER() OVER (ORDER BY g.started_at DESC) seqnum,
+--     ROW_NUMBER() OVER (PARTITION BY t.is_winner ORDER BY g.started_at DESC) seqnum_win
+--     FROM Game g
+--     JOIN GamePlayer p ON p.game_id = g.id AND p.minecraft_id = ?
+--     JOIN GameTeam t ON t.id = p.team_id AND t.game_id = g.id
+--     WHERE g.is_forfeit = 0
+--   	ORDER BY g.started_at DESC
+-- )
+-- GROUP BY is_winner, (seqnum - seqnum_win)
+-- ORDER BY started_at DESC
+-- LIMIT 1;
+--
+-- maxWinStreakByPlayer:
+-- SELECT max(count) FROM (
+--     SELECT is_winner, started_at, count(*) AS count FROM (
+--         SELECT
+--         t.is_winner,
+--         g.started_at,
+--         ROW_NUMBER() OVER(ORDER BY g.started_at DESC) seqnum,
+--         ROW_NUMBER() OVER(PARTITION BY t.is_winner ORDER BY g.started_at DESC) seqnum_win
+--         FROM Game g
+--         JOIN GamePlayer p ON p.game_id = g.id AND p.minecraft_id = ?
+--         JOIN GameTeam t ON t.id = p.team_id AND t.game_id = g.id
+--         WHERE g.is_forfeit = 0
+--         ORDER BY g.started_at DESC
+--     )
+--     GROUP BY is_winner, (seqnum - seqnum_win)
+--     ORDER BY started_at DESC
+-- );

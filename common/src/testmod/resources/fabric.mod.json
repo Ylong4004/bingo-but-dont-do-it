@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "yet-another-minecraft-bingo-test",
+  "name": "Yet Another Minecraft BINGO",
+  "version": "0.0.0",
+  "environment": "*",
+  "icon": "yet-another-minecraft-bingo/icon.png",
+  "entrypoints": {
+    "fabric-gametest": [
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integration.item.ItemStackFactoryTest"
+      },
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integration.item.PlayerCanUseItemTest"
+      },
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integration.AdvancementManagerTest"
+      },
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integration.BossBarManagerTest"
+      },
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integration.EntityManagerTest"
+      },
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integration.StatManagerTest"
+      }
+    ]
+  },
+  "depends": {},
+  "authors": [
+    "fennifith"
+  ],
+  "description": "Common cross-version functionality for the BINGO mod",
+  "mixins": []
+}

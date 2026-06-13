@@ -1,0 +1,31 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {"translate":"block.minecraft.ominous_banner"},
+    "lore": [],
+    "decoration": "ADVANCEMENT",
+    "item": "minecraft:white_banner",
+    "itemNbt": "{BlockEntityTag: {Patterns: [{Pattern: \"mr\", Color: 9}, {Pattern: \"bs\", Color: 8}, {Pattern: \"cs\", Color: 7}, {Pattern: \"bo\", Color: 8}, {Pattern: \"ms\", Color: 15}, {Pattern: \"hh\", Color: 8}, {Pattern: \"mc\", Color: 8}, {Pattern: \"bo\", Color: 15}]}}",
+    "itemComponents": {
+      "minecraft:banner_patterns": [{"pattern":{"asset_id":"minecraft:rhombus","translation_key":"block.minecraft.banner.rhombus"},"color":"cyan"},{"pattern":{"asset_id":"minecraft:stripe_bottom","translation_key":"block.minecraft.banner.stripe_bottom"},"color":"light_gray"},{"pattern":{"asset_id":"minecraft:stripe_center","translation_key":"block.minecraft.banner.stripe_center"},"color":"gray"},{"pattern":{"asset_id":"minecraft:border","translation_key":"block.minecraft.banner.border"},"color":"light_gray"},{"pattern":{"asset_id":"minecraft:stripe_middle","translation_key":"block.minecraft.banner.stripe_middle"},"color":"black"},{"pattern":{"asset_id":"minecraft:half_horizontal","translation_key":"block.minecraft.banner.half_horizontal"},"color":"light_gray"},{"pattern":{"asset_id":"minecraft:circle","translation_key":"block.minecraft.banner.circle"},"color":"light_gray"},{"pattern":{"asset_id":"minecraft:border","translation_key":"block.minecraft.banner.border"},"color":"black"}]
+    }
+  },
+  "objectives": [
+    {
+      "type": "item",
+      "item": "minecraft:white_banner",
+      "nbt": "{BlockEntityTag: {Patterns: [{Pattern: \"mr\", Color: 9}, {Pattern: \"bs\", Color: 8}, {Pattern: \"cs\", Color: 7}, {Pattern: \"bo\", Color: 8}, {Pattern: \"ms\", Color: 15}, {Pattern: \"hh\", Color: 8}, {Pattern: \"mc\", Color: 8}, {Pattern: \"bo\", Color: 15}]}}",
+      "components": {
+        "minecraft:item_name": {"color":"gold","translate":"block.minecraft.ominous_banner"}
+      }
+    },
+    {
+      "type": "item",
+      "item": "minecraft:white_banner",
+      "nbt": "{BlockEntityTag: {Patterns: [{Pattern: \"mr\", Color: 9}, {Pattern: \"bs\", Color: 8}, {Pattern: \"cs\", Color: 7}, {Pattern: \"bo\", Color: 8}, {Pattern: \"ms\", Color: 15}, {Pattern: \"hh\", Color: 8}, {Pattern: \"mc\", Color: 8}, {Pattern: \"bo\", Color: 15}]}}",
+      "components": {
+        "minecraft:item_name": {"translate":"block.minecraft.ominous_banner"}
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+    "type": "one_of",
+    "display": {
+        "name": {
+            "translate": "bingo.objective.simplified.one_of_horse_armor",
+            "fallback": "Any Horse Armor"
+        },
+        "item": "minecraft:copper_horse_armor"
+    },
+    "objectives": [
+        "minecraft:copper_horse_armor",
+        "minecraft:diamond_horse_armor",
+        "minecraft:golden_horse_armor",
+        "minecraft:iron_horse_armor",
+        "minecraft:netherite_horse_armor"
+    ]
+}

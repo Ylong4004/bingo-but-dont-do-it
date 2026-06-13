@@ -1,0 +1,9 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:bell"
+  },
+  "statType": "minecraft:custom",
+  "statName": "minecraft:bell_ring",
+  "min": 12
+}

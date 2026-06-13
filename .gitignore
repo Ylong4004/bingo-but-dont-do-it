@@ -1,0 +1,49 @@
+/download
+/eclipseBin
+
+## gradle
+/.gradle
+/*/.gradle
+/build
+/*/build
+
+## ForgeGradle
+/run
+/*/run
+/*.launch
+
+## eclipse
+/eclipse
+/.settings
+/.metadata
+/.classpath
+/.project
+/bin
+
+## intellij
+/out
+/.idea
+/*.iml
+/*.ipr
+/*.iws
+/atlassian-ide-plugin.xml
+/.kotlin
+
+## gedit
+*~
+
+# generated image files
+/common/src/main/resources/yet-another-minecraft-bingo/images/*.png
+/common/src/main/resources/yet-another-minecraft-bingo/datapack.zip
+/common/src/main/resources/assets/minecraft/lang
+
+# test run/config files
+/bingo
+logs/
+/*.sh
+crowdin.json
+.fabric/
+*.kra
+*.log
+/docs
+drawing.svg

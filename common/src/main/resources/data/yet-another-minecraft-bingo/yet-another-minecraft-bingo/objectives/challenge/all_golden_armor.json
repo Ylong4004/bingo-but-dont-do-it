@@ -1,0 +1,16 @@
+{
+  "type": "all_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.all_golden_armor",
+      "fallback": "All Golden Armor"
+    },
+    "item": "minecraft:golden_chestplate"
+  },
+  "objectives": [
+    "minecraft:golden_boots",
+    "minecraft:golden_chestplate",
+    "minecraft:golden_helmet",
+    "minecraft:golden_leggings"
+  ]
+}

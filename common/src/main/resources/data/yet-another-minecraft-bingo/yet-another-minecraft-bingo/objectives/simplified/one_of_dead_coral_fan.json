@@ -1,0 +1,17 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_dead_coral_fan",
+      "fallback": "Any Dead Coral Fan"
+    },
+    "item": "minecraft:dead_brain_coral_fan"
+  },
+  "objectives": [
+    "minecraft:dead_brain_coral_fan",
+    "minecraft:dead_bubble_coral_fan",
+    "minecraft:dead_fire_coral_fan",
+    "minecraft:dead_horn_coral_fan",
+    "minecraft:dead_tube_coral_fan"
+  ]
+}

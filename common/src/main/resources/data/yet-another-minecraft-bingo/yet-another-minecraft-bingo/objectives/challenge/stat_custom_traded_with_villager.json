@@ -1,0 +1,8 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:emerald"
+  },
+  "statType": "minecraft:custom",
+  "statName": "minecraft:traded_with_villager"
+}

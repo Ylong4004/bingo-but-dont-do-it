@@ -1,0 +1,13 @@
+{
+  "type": "stats",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_guardian",
+      "fallback": "Kill a Guardian"
+    },
+    "item": "minecraft:guardian_spawn_egg",
+    "image": "yet-another-minecraft-bingo:guardian_head"
+  },
+  "statType": "minecraft:killed",
+  "statName": "minecraft:guardian"
+}

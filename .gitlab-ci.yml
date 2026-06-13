@@ -1,0 +1,65 @@
+# You can copy and paste this template into a new `.gitlab-ci.yml` file.
+# You should not add this template to an existing `.gitlab-ci.yml` file by using the `include:` keyword.
+# To contribute improvements to CI/CD templates, please follow the Development guide at:
+# https://docs.gitlab.com/ee/development/cicd/templates.html
+# This specific template is located at:
+# https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Gradle.gitlab-ci.yml
+
+# This is the Gradle build system for JVM applications
+# https://gradle.org/
+# https://github.com/gradle/gradle
+
+Test:
+  image: gradle:9.2.1-jdk25
+  script:
+    - export GRADLE_USER_HOME="$(pwd)/.gradle"
+    - gradle --build-cache --no-parallel build
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    policy: pull-push
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+  rules:
+    - changes:
+        - '**/*.kt'
+        - '**/*.java'
+        - '**/*.gradle'
+        - '**/*.json'
+        - .gitlab-ci.yml
+  artifacts:
+    paths:
+      - mc*/build/libs/*.jar
+
+Sync README:
+  image: gradle:9.2.1-jdk25
+  script:
+    - export GRADLE_USER_HOME="$(pwd)/.gradle"
+    - gradle --build-cache -no-parallel :modrinthSyncBody
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    policy: pull-push
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - README.md
+
+Build and Deploy:
+  image: gradle:9.2.1-jdk25
+  script:
+    - export GRADLE_USER_HOME="$(pwd)/.gradle"
+    - gradle --build-cache -no-parallel publish modrinth -x test
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    policy: pull-push
+    paths:
+      - .gradle/wrapper
+      - .gradle/caches
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^release\/.*/
+  artifacts:
+    paths:
+      - mc*/build/libs/*.jar

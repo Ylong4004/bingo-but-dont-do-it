@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:leather",
+  "count": {
+    "type": "random",
+    "min": 4,
+    "max": 16
+  }
+}

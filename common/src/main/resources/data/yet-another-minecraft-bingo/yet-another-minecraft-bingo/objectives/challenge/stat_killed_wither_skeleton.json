@@ -1,0 +1,12 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:wither_skeleton_skull",
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_wither_skeleton",
+      "fallback": "Kill a Wither Skeleton"
+    }
+  },
+  "statType": "minecraft:killed",
+  "statName": "minecraft:wither_skeleton"
+}

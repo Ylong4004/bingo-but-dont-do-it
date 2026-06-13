@@ -1,0 +1,16 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_copper_armor",
+      "fallback": "Any Copper Armor"
+    },
+    "item": "minecraft:copper_chestplate"
+  },
+  "objectives": [
+    "minecraft:copper_boots",
+    "minecraft:copper_chestplate",
+    "minecraft:copper_helmet",
+    "minecraft:copper_leggings"
+  ]
+}

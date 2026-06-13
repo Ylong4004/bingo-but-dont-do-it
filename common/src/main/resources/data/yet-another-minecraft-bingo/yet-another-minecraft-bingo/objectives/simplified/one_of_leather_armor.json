@@ -1,0 +1,16 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_leather_armor",
+      "fallback": "Any Leather Armor"
+    },
+    "item": "minecraft:leather_chestplate"
+  },
+  "objectives": [
+    "minecraft:leather_boots",
+    "minecraft:leather_chestplate",
+    "minecraft:leather_helmet",
+    "minecraft:leather_leggings"
+  ]
+}

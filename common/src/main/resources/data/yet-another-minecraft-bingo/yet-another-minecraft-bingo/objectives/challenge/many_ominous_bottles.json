@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:ominous_bottle",
+  "count": {
+    "type": "random",
+    "min": 2,
+    "max": 6
+  }
+}

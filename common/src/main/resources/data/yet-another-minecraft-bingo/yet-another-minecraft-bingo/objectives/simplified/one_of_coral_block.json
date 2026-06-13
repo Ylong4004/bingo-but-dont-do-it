@@ -1,0 +1,17 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_coral_block",
+      "fallback": "Any Coral Block"
+    },
+    "item": "minecraft:brain_coral_block"
+  },
+  "objectives": [
+    "minecraft:brain_coral_block",
+    "minecraft:bubble_coral_block",
+    "minecraft:fire_coral_block",
+    "minecraft:horn_coral_block",
+    "minecraft:tube_coral_block"
+  ]
+}

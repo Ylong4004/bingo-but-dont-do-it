@@ -1,0 +1,5 @@
+findById:
+SELECT * FROM PlayerSettings WHERE minecraft_id = ?;
+
+putSetting:
+INSERT OR REPLACE INTO PlayerSettings (minecraft_id, setting_name, setting_value) VALUES ?;

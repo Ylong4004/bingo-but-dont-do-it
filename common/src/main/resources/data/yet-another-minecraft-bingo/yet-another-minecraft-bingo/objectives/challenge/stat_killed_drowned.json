@@ -1,0 +1,13 @@
+{
+  "type": "stats",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_drowned",
+      "fallback": "Kill a Drowned"
+    },
+    "item": "minecraft:drowned_spawn_egg",
+    "image": "yet-another-minecraft-bingo:drowned_head"
+  },
+  "statType": "minecraft:killed",
+  "statName": "minecraft:drowned"
+}

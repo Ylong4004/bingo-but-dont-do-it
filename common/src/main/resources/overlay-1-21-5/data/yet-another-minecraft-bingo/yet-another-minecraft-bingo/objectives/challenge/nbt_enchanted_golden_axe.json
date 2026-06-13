@@ -1,0 +1,21 @@
+{
+  "type": "item",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_enchanted_golden_axe",
+      "fallback": "Enchanted Golden Axe"
+    },
+    "item": "minecraft:golden_axe",
+    "itemNbt": "{Enchantments:[{lvl:1,id:mending}]}",
+    "itemComponents": {
+      "minecraft:enchantments": {
+        "minecraft:mending": 1
+      }
+    }
+  },
+  "item": "minecraft:golden_axe",
+  "nbt": "{Enchantments:[{}]}",
+  "components": {
+    "minecraft:enchantments": {}
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": {
+    "translate": "bingo.team.red",
+    "fallback": "Red"
+  },
+  "shouldFormatName": true,
+  "symbol": "\uD83D\uDD25",
+  "color": "RED",
+  "blockId": "minecraft:red_carpet"
+}

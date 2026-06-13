@@ -1,0 +1,50 @@
+{
+  "item_scored": {
+    "subtitle": "bingo.sound.item_scored",
+    "sounds": [
+      "yet-another-minecraft-bingo:item_scored"
+    ]
+  },
+  "item_lost": {
+    "subtitle": "bingo.sound.item_lost",
+    "sounds": [
+      "yet-another-minecraft-bingo:item_lost"
+    ]
+  },
+  "opponent_scored": {
+    "subtitle": "bingo.sound.opponent_scored",
+    "sounds": [
+      "yet-another-minecraft-bingo:opponent_scored"
+    ]
+  },
+  "game_won": {
+    "subtitle": "bingo.sound.game_won",
+    "sounds": [
+      "yet-another-minecraft-bingo:game_won"
+    ]
+  },
+  "game_lost": {
+    "subtitle": "bingo.sound.game_lost",
+    "sounds": [
+      "yet-another-minecraft-bingo:game_lost"
+    ]
+  },
+  "timer_tick": {
+    "subtitle": "bingo.sound.timer_tick",
+    "sounds": [
+      "yet-another-minecraft-bingo:timer_tick"
+    ]
+  },
+  "start_countdown": {
+    "subtitle": "bingo.sound.start_countdown",
+    "sounds": [
+      "yet-another-minecraft-bingo:start_countdown"
+    ]
+  },
+  "start_release": {
+    "subtitle": "bingo.sound.start_release",
+    "sounds": [
+      "yet-another-minecraft-bingo:start_release"
+    ]
+  }
+}

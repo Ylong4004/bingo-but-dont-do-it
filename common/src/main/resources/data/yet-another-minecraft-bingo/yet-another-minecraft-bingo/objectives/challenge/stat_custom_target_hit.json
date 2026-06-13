@@ -1,0 +1,8 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:target"
+  },
+  "statType": "minecraft:custom",
+  "statName": "minecraft:target_hit"
+}

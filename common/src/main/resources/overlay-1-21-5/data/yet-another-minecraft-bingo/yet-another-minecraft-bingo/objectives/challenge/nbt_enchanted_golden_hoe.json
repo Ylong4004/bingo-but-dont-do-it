@@ -1,0 +1,21 @@
+{
+  "type": "item",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_enchanted_golden_hoe",
+      "fallback": "Enchanted Golden Hoe"
+    },
+    "item": "minecraft:golden_hoe",
+    "itemNbt": "{Enchantments:[{lvl:1,id:mending}]}",
+    "itemComponents": {
+      "minecraft:enchantments": {
+        "minecraft:mending": 1
+      }
+    }
+  },
+  "item": "minecraft:golden_hoe",
+  "nbt": "{Enchantments:[{}]}",
+  "components": {
+    "minecraft:enchantments": {}
+  }
+}

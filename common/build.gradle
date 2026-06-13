@@ -1,0 +1,247 @@
+import groovy.json.JsonSlurper
+
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.util.zip.ZipInputStream
+
+plugins {
+    alias(libs.plugins.kotlin.plugin.serialization)
+    alias(libs.plugins.sqldelight)
+    id 'bingo.common'
+}
+
+base.archivesName.set("${project.archives_base_name}-common")
+
+def sqlMigrationsDir = layout.buildDirectory.dir("generated/sqldelight/migrations")
+
+sqldelight {
+    databases {
+        create("BingoDatabase") {
+            packageName.set("me.jfenn.bingo.sql")
+            dialect(libs.sqldelight.sqlite.get().toString())
+            deriveSchemaFromMigrations.set(true)
+            migrationOutputDirectory = sqlMigrationsDir
+        }
+    }
+}
+
+dependencies {
+    api libs.insert.koin.core
+    api libs.hikari
+    api libs.sqldelight.jdbc
+    api libs.sqlite
+
+    modCompileOnly(libs.modmenu) {
+        exclude(group: "net.fabricmc")
+        exclude(group: "net.fabricmc.fabric-api")
+    }
+    modCompileOnly(libs.yacl) {
+        exclude(group: "net.fabricmc")
+        exclude(group: "net.fabricmc.fabric-api")
+        exclude(group: "com.twelvemonkeys.common")
+        exclude(group: "com.twelvemonkeys.imageio")
+        exclude(group: "org.quiltmc.parsers")
+    }
+
+    api project(path: ":platform", configuration: "namedElements")
+    api project(path: ":api", configuration: "namedElements")
+}
+
+tasks.register('bingoImages', Copy) {
+    from zipTree(file("images.zip"))
+    into file("src/main/resources/yet-another-minecraft-bingo/images")
+}
+
+// This is a mess, but it generates safe enum entries for every key in /resources/.../lang/en_us.json
+// which ensures that I can't make typos on any of the thousands of string keys in there.
+sourceSets {
+    main {
+        java.srcDir "${buildDir}/generated/main/java"
+        resources.srcDir "${buildDir}/generated/main/resources"
+    }
+}
+
+tasks.register("bingoUpdateTranslations") {
+    outputs.upToDateWhen { false }
+
+    def crowdinFile = layout.buildDirectory.file("crowdin/download.zip")
+    def baseUrl = "https://api.crowdin.com/api/v2"
+    def langDir = "src/main/resources/assets/yet-another-minecraft-bingo/lang"
+
+    doLast {
+        def config = new JsonSlurper().parse(rootProject.file("crowdin.json"))
+        def client = HttpClient.newHttpClient()
+        def clientBodyHandler = HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8)
+
+        def projectId = new JsonSlurper().parseText(
+                client.send(
+                        HttpRequest.newBuilder(URI.create("$baseUrl/projects"))
+                                .GET()
+                                .header("Authorization", "Bearer ${config.apiKey}")
+                                .build(),
+                        clientBodyHandler
+                ).body()
+        )
+                .data
+                .find { it.data.identifier == config.project }
+                .data
+                .id
+
+        def buildId = new JsonSlurper().parseText(
+                client.send(
+                        HttpRequest.newBuilder(URI.create("$baseUrl/projects/$projectId/translations/builds"))
+                                .POST(HttpRequest.BodyPublishers.ofString("{\"skipUntranslatedStrings\": true,\"exportApprovedOnly\": false}"))
+                                .header("Authorization", "Bearer ${config.apiKey}")
+                                .header("Content-Type", "application/json")
+                                .build(),
+                        clientBodyHandler
+                ).body()
+        )
+                .data
+                .id
+
+        while (true) {
+            Thread.sleep(100)
+
+            def buildStatus = new JsonSlurper().parseText(
+                    client.send(
+                            HttpRequest.newBuilder(URI.create("$baseUrl/projects/$projectId/translations/builds/$buildId"))
+                                    .GET()
+                                    .header("Authorization", "Bearer ${config.apiKey}")
+                                    .build(),
+                            clientBodyHandler
+                    ).body()
+            )
+
+            println("Crowdin Build: ${buildStatus.data.status}")
+            if (buildStatus.data.status != "created" && buildStatus.data.status != "inProgress")
+                break
+        }
+
+        def downloadUrl = new JsonSlurper().parseText(
+                client.send(
+                        HttpRequest.newBuilder(URI.create("$baseUrl/projects/$projectId/translations/builds/$buildId/download"))
+                                .GET()
+                                .header("Authorization", "Bearer ${config.apiKey}")
+                                .build(),
+                        clientBodyHandler
+                ).body()
+        )
+                .data
+                .url
+
+        crowdinFile.get().asFile.parentFile.mkdirs()
+        URI.create(downloadUrl).toURL().withInputStream { i ->
+            crowdinFile.get().asFile.withOutputStream { it << i }
+        }
+
+        new ZipInputStream(
+                crowdinFile.get().asFile.newInputStream()
+        ).with { zipIn ->
+            while (true) {
+                def entry = zipIn.getNextEntry()
+                if (entry == null) break
+
+                if (entry.isDirectory()) continue
+                if (entry.size <= 3) continue
+
+                def buffer = zipIn.readAllBytes()
+
+                def name = new File(entry.name).name.toLowerCase()
+                def outFile = file("$projectDir/$langDir/$name")
+                outFile.withOutputStream { it << buffer }
+            }
+        }
+    }
+}
+
+tasks.register("bingoLangServerTranslations", Sync) {
+    // copy the lang files from assets to data to support https://github.com/NucleoidMC/Server-Translations
+    def langDir = "src/main/resources/assets/yet-another-minecraft-bingo/lang"
+    from langDir
+    include "*.json"
+    into layout.buildDirectory.file("generated/main/resources/data/yet-another-minecraft-bingo/lang")
+}
+
+tasks.register("bingoLangFiles") {
+    def langDir = file("src/main/resources/assets/yet-another-minecraft-bingo/lang")
+    def stringKeyFile = layout.buildDirectory.file("generated/main/java/me/jfenn/bingo/generated/StringKey.kt").get().asFile
+    inputs.files(fileTree(langDir))
+    outputs.file(stringKeyFile)
+    doLast {
+        var regex = "\"([\\W\\w]+)\":"
+        var nonEnumSafeRegex = "[^a-zA-Z0-9_]"
+
+        var langFile = new File("$langDir/en_us.json").text
+        var enumEntries = langFile.lines()
+                .map {
+                    var match = it.find(regex)
+                    if (match != null)
+                        return match.substring(1, match.length() - 2)
+                    else return null
+                }
+                .filter { it != null }
+                .map {
+                    var enumStr = it.replaceAll("^bingo\\.", "")
+                    var enumName = enumStr[0].toUpperCase() +
+                            enumStr.substring(1)
+                                    .replaceAll(nonEnumSafeRegex, "_")
+                                    .replaceAll("_[a-z]") { "${it.toString().substring(1).toUpperCase()}" }
+
+                    var enumValue = it
+
+                    return "    $enumName(\"$enumValue\"),"
+                }
+                .toList()
+                .join("\n")
+
+        var enumClass = "package me.jfenn.bingo.generated\n\nenum class StringKey(val key: String) {\n$enumEntries\n}\n"
+
+        Files.createDirectories(stringKeyFile.toPath().parent)
+        stringKeyFile.write(enumClass)
+    }
+}
+
+tasks.register("bingoConstants") {
+    def constantsKtFile = layout.buildDirectory.file("generated/main/java/me/jfenn/bingo/generated/Constants.kt").get().asFile
+    def modVersion = project.mod_version.toString()
+    inputs.property("version", modVersion)
+    outputs.file(constantsKtFile)
+    doLast {
+        var constantsText = "package me.jfenn.bingo.generated\n\n" +
+                "const val BINGO_VERSION = \"${modVersion}\"" +
+                "\n"
+
+        Files.createDirectories(constantsKtFile.toPath().parent)
+        constantsKtFile.write(constantsText)
+    }
+}
+
+tasks.processResources.configure {
+    dependsOn(tasks.bingoImages)
+    dependsOn(tasks.bingoLangServerTranslations)
+    dependsOn(tasks.bingoLangFiles)
+    dependsOn(tasks.bingoConstants)
+}
+tasks.sourcesJar.configure {
+    dependsOn(tasks.processResources)
+}
+tasks.compileClientKotlin.configure {
+    dependsOn(tasks.bingoLangServerTranslations)
+    dependsOn(tasks.bingoLangFiles)
+    dependsOn(tasks.bingoConstants)
+}
+tasks.compileKotlin.configure {
+    dependsOn(tasks.bingoLangServerTranslations)
+    dependsOn(tasks.bingoLangFiles)
+    dependsOn(tasks.bingoConstants)
+}
+
+tasks.compileKotlin {
+    compilerOptions {
+        freeCompilerArgs.add("-opt-in=me.jfenn.bingo.api.annotations.BingoInternalApi")
+    }
+}

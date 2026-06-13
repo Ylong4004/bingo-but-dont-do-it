@@ -1,0 +1,12 @@
+plugins {
+    id 'bingo.common'
+}
+
+base.archivesName.set("${project.archives_base_name}-integration-ddi")
+
+dependencies {
+    compileOnly project(path: ":platform", configuration: "namedElements")
+    compileOnly project(path: ":common", configuration: "namedElements")
+
+    modCompileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}

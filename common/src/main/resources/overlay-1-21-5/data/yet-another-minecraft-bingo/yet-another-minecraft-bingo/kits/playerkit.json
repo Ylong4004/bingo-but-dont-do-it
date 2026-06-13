@@ -1,0 +1,110 @@
+{
+  "items": [
+    {
+      "id": "minecraft:netherite_helmet",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:protection": 4,
+          "minecraft:aqua_affinity": 1,
+          "minecraft:respiration": 3
+        }
+      }
+    },
+    {
+      "id": "minecraft:netherite_chestplate",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:protection": 4
+        }
+      }
+    },
+    {
+      "id": "minecraft:netherite_leggings",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:protection": 4,
+          "minecraft:swift_sneak": 3
+        }
+      }
+    },
+    {
+      "id": "minecraft:netherite_boots",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:protection": 4,
+          "minecraft:feather_falling": 4,
+          "minecraft:depth_strider": 3
+        }
+      }
+    },
+    {
+      "id": "minecraft:netherite_pickaxe",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:fortune": 3,
+          "minecraft:efficiency": 5
+        }
+      }
+    },
+    {
+      "id": "minecraft:netherite_axe",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:sharpness": 5,
+          "minecraft:efficiency": 5
+        }
+      }
+    },
+    {
+      "id": "minecraft:netherite_shovel",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:efficiency": 5
+        }
+      }
+    },
+    {
+      "id": "minecraft:iron_pickaxe",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {},
+        "minecraft:enchantments": {
+          "minecraft:silk_touch": 1
+        }
+      }
+    },
+    {
+      "id": "minecraft:shield",
+      "count": 1,
+      "components": {
+        "minecraft:unbreakable": {}
+      }
+    },
+    {
+      "id": "minecraft:torch",
+      "count": 64
+    },
+    {
+      "id": "minecraft:golden_carrot",
+      "count": 64
+    },
+    {
+      "id": "minecraft:oak_log",
+      "count": 16
+    }
+  ]
+}

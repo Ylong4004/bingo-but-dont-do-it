@@ -1,0 +1,18 @@
+package me.jfenn.bingo.integrations.ddi
+
+import me.jfenn.bingo.common.scope.BingoScope
+import org.koin.core.module.dsl.scopedOf
+import org.koin.dsl.module
+
+/**
+ * DDI Koin 模块 — 定义 DDI 组件的依赖注入。
+ * 通过 DDIEntrypoint 的 loadModules 动态加载。
+ */
+val ddiModule = module {
+    scope<BingoScope> {
+        scopedOf(::DDIWordPool)
+        scopedOf(::DDITriggerDetector)
+        scopedOf(::DDIObjectiveManager)
+        scopedOf(::DDIGameController)
+    }
+}

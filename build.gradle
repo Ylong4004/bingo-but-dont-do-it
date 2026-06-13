@@ -1,0 +1,114 @@
+allprojects {
+	repositories {
+		mavenCentral()
+		maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
+		maven { url "https://api.modrinth.com/maven" }
+		maven {
+			name = "TerraformersMC"
+			url = "https://maven.terraformersmc.com/"
+			content {
+				includeGroup("com.terraformersmc")
+				includeGroup("dev.emi")
+			}
+		}
+		maven {
+			name = "shedaniel maven"
+			url = "https://maven.shedaniel.me"
+			content {
+				includeGroup("me.shedaniel")
+			}
+		}
+		maven {
+			// SquidDev host for lucko/fabric-permissions-api
+			name = "SquidDev maven"
+			url = "https://squiddev.cc/maven/"
+			content {
+				includeGroup("me.lucko")
+			}
+		}
+		maven {
+			name 'Xander Maven'
+			url 'https://maven.isxander.dev/releases'
+			content {
+				includeGroup("dev.isxander.yacl")
+			}
+		}
+		maven {
+			// location of the maven that hosts JEI files since January 2023
+			name = "Jared's maven"
+			url = "https://maven.blamejared.com/"
+			content {
+				includeGroup("mezz.jei")
+			}
+		}
+		maven {
+			// location of a maven mirror for JEI files, as a fallback
+			name = "ModMaven"
+			url = "https://modmaven.dev"
+			content {
+				includeGroup("mezz.jei")
+			}
+		}
+		maven {
+			// https://modrepo.de/minecraft/voicechat/api/getting_started
+			name = "Simple Voice Chat"
+			url = "https://maven.maxhenkel.de/repository/public"
+			content {
+				includeGroup("de.maxhenkel.voicechat")
+			}
+		}
+		maven {
+			// https://placeholders.pb4.eu/dev/getting-started/
+			name = "Nucleoid"
+			url = "https://maven.nucleoid.xyz/"
+			content {
+				includeGroup("eu.pb4")
+			}
+		}
+		maven {
+			name = "CurseMaven"
+			url = "https://www.cursemaven.com"
+			content {
+				includeGroup("curse.maven")
+			}
+		}
+		// maven {
+		// 	// https://plasmovoice.com/docs/api/
+		// 	name = "Plasmo Voice"
+		// 	url = "https://repo.plasmoverse.com/releases"
+		// 	content {
+		// 		includeGroup("su.plo.config")
+		// 		includeGroup("su.plo.voice.api")
+		// 		includeGroup("su.plo.voice")
+		// 		includeGroup("su.plo.slib")
+		// 	}
+		// }
+		// maven {
+		// 	// https://plasmovoice.com/docs/api/
+		// 	name = "Plasmo Voice"
+		// 	url = "https://repo.plasmoverse.com/snapshots"
+		// 	content {
+		// 		includeGroup("su.plo.config")
+		// 		includeGroup("su.plo.voice.api")
+		// 		includeGroup("su.plo.voice")
+		// 		includeGroup("su.plo.slib")
+		// 	}
+		// }
+	}
+}
+
+tasks.register("modrinth") {
+	dependsOn(
+			subprojects.collect {
+				it.tasks.find { it.name == "modrinth" }
+			}.findAll { it != null }
+	)
+}
+
+tasks.register("modrinthSyncBody") {
+	dependsOn(
+			subprojects.collect {
+				it.tasks.find { it.name == "modrinthSyncBody" }
+			}.find { it != null }
+	)
+}

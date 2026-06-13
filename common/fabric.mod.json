@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "id": "yet-another-minecraft-bingo",
+  "name": "Yet Another Minecraft BINGO",
+  "version": "$version",
+  "environment": "*",
+  "icon": "yet-another-minecraft-bingo/icon.png",
+  "entrypoints": {
+    "server": [
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.server.Main"
+      }
+    ],
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.client.Main"
+      }
+    ],
+    "modmenu": [
+      "me.jfenn.bingo.client.entrypoint.ModMenuEntrypoint"
+    ],
+    "voicechat": [
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integrations.voice.SimpleVoiceEntrypoint"
+      }
+    ],
+    "jei_mod_plugin": [
+      {
+        "adapter": "kotlin",
+        "value": "me.jfenn.bingo.integrations.jei.JeiEntrypoint"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.9",
+    "minecraft": ">=$minecraft_version",
+    "java": ">=17",
+    "fabric-api": ">=$fabric_api_version",
+    "fabric-language-kotlin": ">=$fabric_language_kotlin_version"
+  },
+  "contact": {
+    "homepage": "https://horrific.dev/bingo/",
+    "sources": "https://gitlab.com/horrificdev/bingo/",
+    "issues": "https://gitlab.com/horrificdev/bingo/-/issues/"
+  },
+  "authors": [
+    "fennifith"
+  ],
+  "description": "A multiplayer BINGO item hunt mod + lobby",
+  "mixins": [
+    {
+      "config": "mixins.bingo.json",
+      "environment": "*"
+    },
+    {
+      "config": "mixins-client.bingo.json",
+      "environment": "client"
+    }
+  ],
+  "custom": {
+    "modmenu": {
+      "links": {
+        "Discord": "https://discord.horrific.dev"
+      }
+    }
+  }
+}

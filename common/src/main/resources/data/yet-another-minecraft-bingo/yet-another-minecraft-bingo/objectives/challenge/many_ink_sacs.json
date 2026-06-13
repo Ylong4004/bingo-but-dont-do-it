@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:ink_sac",
+  "count": {
+    "type": "random",
+    "min": 4,
+    "max": 16
+  }
+}

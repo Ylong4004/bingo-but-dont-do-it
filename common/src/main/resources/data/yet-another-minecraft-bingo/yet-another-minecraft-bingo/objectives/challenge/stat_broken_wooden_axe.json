@@ -1,0 +1,16 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:wooden_axe",
+    "itemNbt": "{Damage:58}",
+    "itemComponents": {
+      "minecraft:damage": 58
+    },
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_damaged_wooden_axe",
+      "fallback": "Broken Wooden Axe"
+    }
+  },
+  "statType": "minecraft:broken",
+  "statName": "minecraft:wooden_axe"
+}

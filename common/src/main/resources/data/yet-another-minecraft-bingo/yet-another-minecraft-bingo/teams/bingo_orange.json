@@ -1,0 +1,10 @@
+{
+  "name": {
+    "translate": "bingo.team.orange",
+    "fallback": "Orange"
+  },
+  "shouldFormatName": true,
+  "symbol": "\uD83C\uDF44",
+  "color": "GOLD",
+  "blockId": "minecraft:orange_carpet"
+}

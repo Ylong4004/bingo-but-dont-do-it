@@ -1,0 +1,13 @@
+{
+  "type": "stats",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_zombified_piglin",
+      "fallback": "Kill a Zombified Piglin"
+    },
+    "item": "minecraft:zombified_piglin_spawn_egg",
+    "image": "yet-another-minecraft-bingo:zombified_piglin_head"
+  },
+  "statType": "minecraft:killed",
+  "statName": "minecraft:zombified_piglin"
+}

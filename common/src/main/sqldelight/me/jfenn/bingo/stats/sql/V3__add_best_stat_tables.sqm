@@ -1,0 +1,23 @@
+CREATE TABLE BestTime (
+    bingo_options_hash TEXT NOT NULL,
+    host_id TEXT NOT NULL,
+    game_id TEXT REFERENCES Game(id) ON DELETE SET NULL,
+    duration INTEGER NOT NULL,
+    PRIMARY KEY (bingo_options_hash, host_id)
+);
+
+CREATE TABLE BestCapturedItems (
+    player_id TEXT NOT NULL,
+    bingo_options_hash TEXT NOT NULL,
+    host_id TEXT NOT NULL,
+    game_id TEXT REFERENCES Game(id) ON DELETE SET NULL,
+    captured_items INTEGER NOT NULL,
+    PRIMARY KEY (player_id, bingo_options_hash, host_id)
+);
+
+CREATE TABLE BestWinStreak (
+    player_id TEXT NOT NULL,
+    host_id TEXT NOT NULL,
+    win_streak INTEGER NOT NULL,
+    PRIMARY KEY (player_id, host_id)
+);

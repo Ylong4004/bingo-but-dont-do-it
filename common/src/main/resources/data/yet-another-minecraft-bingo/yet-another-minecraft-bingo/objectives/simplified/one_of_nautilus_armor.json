@@ -1,0 +1,17 @@
+{
+    "type": "one_of",
+    "display": {
+        "name": {
+            "translate": "bingo.objective.simplified.one_of_nautilus_armor",
+            "fallback": "Any Nautilus Armor"
+        },
+        "item": "minecraft:copper_nautilus_armor"
+    },
+    "objectives": [
+        "minecraft:copper_nautilus_armor",
+        "minecraft:diamond_nautilus_armor",
+        "minecraft:golden_nautilus_armor",
+        "minecraft:iron_nautilus_armor",
+        "minecraft:netherite_nautilus_armor"
+    ]
+}

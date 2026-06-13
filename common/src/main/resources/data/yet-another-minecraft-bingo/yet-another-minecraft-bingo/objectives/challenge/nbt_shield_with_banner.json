@@ -1,0 +1,31 @@
+{
+  "type": "item",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_shield_with_banner",
+      "fallback": "Decorated Shield"
+    },
+    "lore": [
+      "Shield + Any Banner"
+    ],
+    "item": "minecraft:shield",
+    "itemNbt": "{BlockEntityTag: {Patterns: [{Pattern: \"cre\", Color: 15}], Base: 5, id: \"minecraft:banner\"}}",
+    "itemComponents": {
+      "minecraft:base_color": "lime",
+      "minecraft:banner_patterns": [
+        {
+          "color": "black",
+          "pattern": {
+            "asset_id": "minecraft:creeper",
+            "translation_key": "item.banner_pattern.creeper"
+          }
+        }
+      ]
+    }
+  },
+  "item": "minecraft:shield",
+  "nbt": "{BlockEntityTag: {id:\"minecraft:banner\"}}",
+  "components": {
+    "minecraft:base_color": null
+  }
+}

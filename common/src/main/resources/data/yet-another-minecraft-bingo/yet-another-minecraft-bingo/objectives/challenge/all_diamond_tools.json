@@ -1,0 +1,18 @@
+{
+  "type": "all_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.all_diamond_tools",
+      "fallback": "All Diamond Tools"
+    },
+    "item": "minecraft:diamond_pickaxe"
+  },
+  "objectives": [
+    "minecraft:diamond_axe",
+    "minecraft:diamond_hoe",
+    "minecraft:diamond_pickaxe",
+    "minecraft:diamond_shovel",
+    "minecraft:diamond_spear",
+    "minecraft:diamond_sword"
+  ]
+}

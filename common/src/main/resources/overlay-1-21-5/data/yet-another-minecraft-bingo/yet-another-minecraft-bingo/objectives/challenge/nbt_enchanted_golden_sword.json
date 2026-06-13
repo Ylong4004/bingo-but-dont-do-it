@@ -1,0 +1,21 @@
+{
+  "type": "item",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_enchanted_golden_sword",
+      "fallback": "Enchanted Golden Sword"
+    },
+    "item": "minecraft:golden_sword",
+    "itemNbt": "{Enchantments:[{lvl:1,id:mending}]}",
+    "itemComponents": {
+      "minecraft:enchantments": {
+        "minecraft:mending": 1
+      }
+    }
+  },
+  "item": "minecraft:golden_sword",
+  "nbt": "{Enchantments:[{}]}",
+  "components": {
+    "minecraft:enchantments": {}
+  }
+}

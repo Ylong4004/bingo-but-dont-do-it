@@ -1,0 +1,36 @@
+{
+  "filters": [
+    {
+      "id": "items",
+      "name": {
+        "translate": "bingo.list.items",
+        "fallback": "Items"
+      },
+      "value": "+type=item -tedious -uncategorized -unobtainable"
+    },
+    {
+      "id": "in_overworld",
+      "name": {
+        "translate": "bingo.list.in_overworld",
+        "fallback": "Overworld"
+      },
+      "value": "+in_overworld -tedious -uncategorized -unobtainable"
+    },
+    {
+      "id": "advancements",
+      "name": {
+        "translate": "bingo.list.advancements",
+        "fallback": "Advancements"
+      },
+      "value": "+type=advancement -tedious -unobtainable"
+    },
+    {
+      "id": "simplified",
+      "name": {
+        "translate": "bingo.list.simplified",
+        "fallback": "Simplified"
+      },
+      "value": "+simplified -tedious -unobtainable"
+    }
+  ]
+}

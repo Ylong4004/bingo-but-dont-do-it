@@ -1,0 +1,46 @@
+[versions]
+kotlin = "2.2.21"
+kotlinx-serialization = "1.9.0" # Note: must exactly match the versions in fabric-language-kotlin for each mod impl
+fabric-language-kotlin = "1.13.7+kotlin.2.2.21"
+insert-koin = "4.1.0"
+sqldelight = "2.0.2"
+mockk = "1.13.11"
+assertk = "0.28.1"
+junit = "6.0.1"
+
+[libraries]
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin" }
+kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+fabric-language-kotlin = { module = "net.fabricmc:fabric-language-kotlin", version.ref = "fabric-language-kotlin" }
+
+insert-koin-core = { module = "io.insert-koin:koin-core-jvm", version.ref = "insert-koin" }
+insert-koin-logger-slf4j = { module = "io.insert-koin:koin-logger-slf4j", version.ref = "insert-koin" }
+vanish = { module = "maven.modrinth:vanish", version = "1.5.1+1.20.4" }
+modmenu = { module = "com.terraformersmc:modmenu", version = "7.1.0" }
+yacl = { module = "dev.isxander.yacl:yet-another-config-lib-fabric", version = "3.2.1+1.20.2" }
+jei = { module = "mezz.jei:jei-1.21.1-fabric-api", version = "19.21.0.247" }
+roughlyenoughitems = { module = "me.shedaniel:RoughlyEnoughItems-api-fabric", version = "15.0.728" }
+emi = { module = "dev.emi:emi-fabric", version = "1.1.6+1.20.1" }
+voicechat = { module = "de.maxhenkel.voicechat:voicechat-api", version = "2.5.0" }
+# plasmovoice = { module = "su.plo.voice.api:server", version = "2.1.0-SNAPSHOT" }
+# https://github.com/lucko/fabric-permissions-api
+fabric-permissions-api-v2 = { module = "me.lucko:fabric-permissions-api", version = "0.3.20230723" }
+papi-mc1i20i1 = { module = "eu.pb4:placeholder-api", version = "2.1.2+1.20.1" }
+waystones = { module = "curse.maven:waystones-245755", version = "6225081" }
+
+hikari = { module = "com.zaxxer:HikariCP", version = "7.0.2" }
+sqldelight-jdbc = { module = "app.cash.sqldelight:jdbc-driver", version.ref = "sqldelight" }
+sqldelight-sqlite = { module = "app.cash.sqldelight:sqlite-3-38-dialect", version.ref = "sqldelight" }
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime-jvm", version.ref = "sqldelight" }
+sqlite = { module = "org.xerial:sqlite-jdbc", version = "3.50.3.0" }
+
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+assertk = { module = "com.willowtreeapps.assertk:assertk", version.ref = "assertk" }
+
+[plugins]
+kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqldelight" }

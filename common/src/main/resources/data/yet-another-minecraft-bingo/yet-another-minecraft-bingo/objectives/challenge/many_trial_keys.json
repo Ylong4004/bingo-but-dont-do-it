@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:trial_key",
+  "count": {
+    "type": "random",
+    "min": 4,
+    "max": 8
+  }
+}

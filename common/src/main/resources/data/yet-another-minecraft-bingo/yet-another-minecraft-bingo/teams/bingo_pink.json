@@ -1,0 +1,10 @@
+{
+  "name": {
+    "translate": "bingo.team.pink",
+    "fallback": "Pink"
+  },
+  "shouldFormatName": true,
+  "symbol": "\uD83C\uDF3A",
+  "color": "LIGHT_PURPLE",
+  "blockId": "minecraft:pink_carpet"
+}

@@ -1,0 +1,21 @@
+plugins {
+    alias(libs.plugins.kotlin.plugin.serialization)
+    id 'bingo.common'
+}
+
+base.archivesName.set("${project.archives_base_name}-integration-voicechat")
+
+dependencies {
+    modCompileOnly(libs.voicechat)
+    // modCompileOnly(libs.plasmovoice) {
+    //     exclude(group: "org.jetbrains.kotlin")
+    //     exclude(group: "org.jetbrains.kotlinx")
+    //     exclude(group: "org.jetbrains")
+    //     exclude(group: "org.projectlombok")
+    //     exclude(group: "com.google.guava")
+    //     exclude(group: "com.google.code.gson")
+    // }
+
+    compileOnly project(path: ":platform", configuration: "namedElements")
+    compileOnly project(path: ":api", configuration: "namedElements")
+}

@@ -1,0 +1,40 @@
+plugins {
+    id 'bingo.common'
+    id 'maven-publish'
+}
+
+base.archivesName.set("${project.archives_base_name}-api")
+
+// Configure the maven publication
+publishing {
+    // See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+    publications {
+        // Creates a Maven publication called "release".
+        create("release", MavenPublication) {
+            groupId = "me.jfenn.bingo"
+            artifactId = "api"
+            version = project.mod_version
+
+            artifact(remapJar) {
+                builtBy remapJar
+            }
+            artifact(sourcesJar) {
+                builtBy remapSourcesJar
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            url "https://gitlab.com/api/v4/projects/${System.getenv("CI_PROJECT_ID")}/packages/maven"
+            name "GitLab"
+            credentials(HttpHeaderCredentials) {
+                name = "Job-Token"
+                value = System.getenv("CI_JOB_TOKEN")
+            }
+            authentication {
+                create("header", HttpHeaderAuthentication)
+            }
+        }
+    }
+}

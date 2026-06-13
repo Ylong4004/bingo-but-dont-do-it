@@ -1,0 +1,12 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:skeleton_skull",
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_skeleton",
+      "fallback": "Kill a Skeleton"
+    }
+  },
+  "statType": "minecraft:killed",
+  "statName": "minecraft:skeleton"
+}

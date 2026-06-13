@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:shulker_shell",
+  "count": {
+    "type": "random",
+    "min": 4,
+    "max": 16
+  }
+}

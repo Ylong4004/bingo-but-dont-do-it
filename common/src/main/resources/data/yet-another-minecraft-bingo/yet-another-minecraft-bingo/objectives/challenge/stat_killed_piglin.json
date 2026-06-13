@@ -1,0 +1,12 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:piglin_head",
+    "name": {
+      "translate": "bingo.objective.challenge.stat_killed_piglin",
+      "fallback": "Kill a Piglin"
+    }
+  },
+  "statType": "minecraft:killed",
+  "statName": "minecraft:piglin"
+}

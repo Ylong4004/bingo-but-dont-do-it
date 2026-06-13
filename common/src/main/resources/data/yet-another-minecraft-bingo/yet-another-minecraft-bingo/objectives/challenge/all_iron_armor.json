@@ -1,0 +1,16 @@
+{
+  "type": "all_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.all_iron_armor",
+      "fallback": "All Iron Armor"
+    },
+    "item": "minecraft:iron_chestplate"
+  },
+  "objectives": [
+    "minecraft:iron_boots",
+    "minecraft:iron_chestplate",
+    "minecraft:iron_helmet",
+    "minecraft:iron_leggings"
+  ]
+}

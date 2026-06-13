@@ -1,0 +1,96 @@
+plugins {
+    id "bingo.common"
+    id 'com.gradleup.shadow'
+}
+
+configurations {
+    shade
+}
+
+dependencies {
+    implementation libs.insert.koin.core
+    shade libs.insert.koin.core
+    implementation libs.insert.koin.logger.slf4j
+    shade libs.insert.koin.logger.slf4j
+
+    include libs.hikari
+    shade libs.sqldelight.jdbc
+    shade libs.sqldelight.runtime
+    include libs.sqlite
+
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation libs.fabric.language.kotlin
+    include libs.fabric.language.kotlin
+
+    api project(path: ":platform", configuration: "namedElements")
+    shade project(path: ":platform")
+    api project(path: ":api", configuration: "namedElements")
+    include project(path: ":api")
+    api project(path: ":common", configuration: "namedElements")
+    shade project(path: ":common")
+    api project(path: ":integration-chunky", configuration: "namedElements")
+    shade project(path: ":integration-chunky")
+    api project(path: ":integration-jei", configuration: "namedElements")
+    shade project(path: ":integration-jei")
+    api project(path: ":integration-permissions", configuration: "namedElements")
+    shade project(path: ":integration-permissions")
+    api project(path: ":integration-placeholders", configuration: "namedElements")
+    shade project(path: ":integration-placeholders")
+    api project(path: ":integration-vanish", configuration: "namedElements")
+    shade project(path: ":integration-vanish")
+    api project(path: ":integration-voicechat", configuration: "namedElements")
+    shade project(path: ":integration-voicechat")
+    api project(path: ":integration-waystones", configuration: "namedElements")
+    shade project(path: ":integration-waystones")
+    api project(path: ":integration-ddi", configuration: "namedElements")
+    shade project(path: ":integration-ddi")
+}
+
+processResources {
+    dependsOn(project(":common").tasks.processResources)
+    from("../common/src/main/resources") {
+        exclude("bingo.accesswidener")
+    }
+    from("../common/fabric.mod.json")
+}
+
+shadowJar {
+    from sourceSets.main.output
+    from sourceSets.client.output
+
+    configurations = [project.configurations.shade]
+
+    dependencies {
+        include(project(":api"))
+        include(project(":common"))
+        include(project(":integration-chunky"))
+        include(project(":integration-jei"))
+        include(project(":integration-permissions"))
+        include(project(":integration-placeholders"))
+        include(project(":integration-vanish"))
+        include(project(":integration-voicechat"))
+        include(project(":integration-waystones"))
+        include(project(":integration-ddi"))
+        include(project(":platform"))
+        include { it.moduleGroup == "io.insert-koin" }
+        include { it.moduleGroup == "app.cash.sqldelight" }
+    }
+
+    // This should only affect usage of Kotlin features if someone tries to use the entire mod jar as a library
+    // ...which you really shouldn't be doing. Don't do that.
+    exclude("META-INF/*.kotlin_module")
+
+    relocate "org.koin", "me.jfenn.bingo.koin"
+    relocate "app.cash.sqldelight", "me.jfenn.bingo.sqldelight"
+
+    minimize {
+        include { it.moduleGroup == "io.insert-koin" }
+        include { it.moduleGroup == "app.cash.sqldelight" }
+    }
+}
+
+remapJar {
+    dependsOn(shadowJar)
+    inputFile.set(shadowJar.archiveFile)
+}

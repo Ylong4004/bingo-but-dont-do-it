@@ -1,0 +1,28 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_bed",
+      "fallback": "Any Bed"
+    },
+    "item": "minecraft:red_bed"
+  },
+  "objectives": [
+    "minecraft:black_bed",
+    "minecraft:blue_bed",
+    "minecraft:brown_bed",
+    "minecraft:cyan_bed",
+    "minecraft:gray_bed",
+    "minecraft:green_bed",
+    "minecraft:light_blue_bed",
+    "minecraft:light_gray_bed",
+    "minecraft:lime_bed",
+    "minecraft:magenta_bed",
+    "minecraft:orange_bed",
+    "minecraft:pink_bed",
+    "minecraft:purple_bed",
+    "minecraft:red_bed",
+    "minecraft:white_bed",
+    "minecraft:yellow_bed"
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_mending_book",
+      "fallback": "Mending Book"
+    },
+    "item": "minecraft:enchanted_book",
+    "decoration": "NONE"
+  },
+  "objectives": [
+    {
+      "type": "item",
+      "item": "minecraft:enchanted_book",
+      "nbt": "{Enchantments:[{id:mending}]}",
+      "components": {
+        "minecraft:enchantments": {
+          "levels": {
+            "mending": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "item",
+      "item": "minecraft:enchanted_book",
+      "nbt": "{Enchantments:[{id:mending}]}",
+      "components": {
+        "minecraft:enchantments": {
+          "levels": {
+            "minecraft:mending": 1
+          }
+        }
+      }
+    },
+    {
+      "type": "item",
+      "item": "minecraft:enchanted_book",
+      "nbt": "{Enchantments:[{id:mending}]}",
+      "components": {
+        "minecraft:enchantments": {
+          "minecraft:mending": 1
+        }
+      }
+    },
+    {
+      "type": "item",
+      "item": "minecraft:enchanted_book",
+      "nbt": "{Enchantments:[{id:mending}]}",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "minecraft:mending": 1
+        }
+      }
+    },
+    {
+      "type": "item",
+      "item": "minecraft:enchanted_book",
+      "nbt": "{Enchantments:[{id:mending}]}",
+      "components": {
+        "minecraft:stored_enchantments": {
+          "levels": {
+            "minecraft:mending": 1
+          }
+        }
+      }
+    }
+  ]
+}

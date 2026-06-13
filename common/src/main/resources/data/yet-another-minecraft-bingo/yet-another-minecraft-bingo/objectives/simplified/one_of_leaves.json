@@ -1,0 +1,13 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_leaves",
+      "fallback": "Any Leaves"
+    },
+    "item": "minecraft:oak_leaves"
+  },
+  "objectives": [
+    "#minecraft:leaves"
+  ]
+}

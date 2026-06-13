@@ -1,0 +1,37 @@
+bestTimeSingleplayer:
+SELECT * FROM BestTime WHERE bingo_options_hash = ? AND host_id = :host_id AND is_singleplayer = 1;
+
+bestTimeMultiplayer:
+SELECT * FROM BestTime WHERE bingo_options_hash = ? AND host_id = ?
+ORDER BY duration ASC LIMIT 1;
+
+updateTime:
+INSERT INTO BestTime VALUES (:hash, :host_id, :is_singleplayer, :game_id, :duration)
+ON CONFLICT DO UPDATE SET duration = min(duration, :duration);
+
+bestCapturedItems:
+SELECT * FROM BestCapturedItems WHERE player_id = ? AND bingo_options_hash = ? AND host_id = ?;
+
+updateCapturedItems:
+INSERT INTO BestCapturedItems VALUES (:player_id, :hash, :host_id, :game_id, :items)
+ON CONFLICT DO UPDATE SET captured_items = max(captured_items, :items);
+
+bestWinStreak:
+SELECT * FROM BestWinStreak WHERE player_id = ? AND host_id = ?;
+
+updateWinStreak:
+INSERT INTO BestWinStreak VALUES (:player_id, :host_id, :streak)
+ON CONFLICT DO UPDATE SET win_streak = max(win_streak, :streak);
+
+resetByPlayer:
+DELETE FROM BestCapturedItems WHERE player_id = :player_id AND host_id = :host_id;
+DELETE FROM BestWinStreak WHERE player_id = :player_id AND host_id = :host_id;
+
+resetByHash:
+DELETE FROM BestTime WHERE bingo_options_hash = :hash AND host_id = :host_id;
+DELETE FROM BestCapturedItems WHERE bingo_options_hash = :hash AND host_id = :host_id;
+
+resetAll:
+DELETE FROM BestTime;
+DELETE FROM BestCapturedItems;
+DELETE FROM BestWinStreak;

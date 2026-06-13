@@ -1,0 +1,17 @@
+CREATE TABLE BestTime2 (
+    bingo_options_hash TEXT NOT NULL,
+    host_id TEXT NOT NULL,
+    is_singleplayer INTEGER NOT NULL DEFAULT 0,
+    game_id TEXT REFERENCES Game(id) ON DELETE SET NULL,
+    duration INTEGER NOT NULL,
+    PRIMARY KEY (bingo_options_hash, host_id, is_singleplayer)
+);
+
+INSERT INTO BestTime2 (bingo_options_hash, host_id, is_singleplayer, game_id, duration)
+    SELECT b.bingo_options_hash, b.host_id, IIF(g.player_count = 1, 1, 0) AS is_singleplayer, b.game_id, b.duration
+    FROM BestTime b
+    INNER JOIN Game g ON g.id = b.game_id AND g.host_id = b.host_id;
+
+DROP TABLE BestTime;
+
+ALTER TABLE BestTime2 RENAME TO BestTime;

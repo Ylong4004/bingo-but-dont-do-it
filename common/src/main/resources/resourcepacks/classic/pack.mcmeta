@@ -1,0 +1,9 @@
+{
+  "pack": {
+    "pack_format": 15,
+    "description": "A 'vanilla' style for the Bingo HUD",
+    "supported_formats": [15, 200],
+    "min_format": 15,
+    "max_format": 200
+  }
+}

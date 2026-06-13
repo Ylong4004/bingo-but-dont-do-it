@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "redhat.java",
+    "vscjava.vscode-gradle",
+    "fwcd.kotlin",
+    "vscjava.vscode-java-debug",
+    "vscjava.vscode-java-test",
+    "naco-siren.gradle-language",
+    "editorconfig.editorconfig",
+    "usernamehw.errorlens"
+  ]
+}

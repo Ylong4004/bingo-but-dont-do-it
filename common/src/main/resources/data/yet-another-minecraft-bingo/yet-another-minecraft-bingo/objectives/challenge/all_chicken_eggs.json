@@ -1,0 +1,21 @@
+{
+  "type": "all_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.all_chicken_eggs",
+      "fallback": "All Chicken Eggs"
+    }
+  },
+  "objectives": [
+    "minecraft:brown_egg",
+    "minecraft:blue_egg",
+    "minecraft:egg"
+  ],
+  "validate": {
+    "objectives": [
+      "minecraft:brown_egg",
+      "minecraft:blue_egg",
+      "minecraft:egg"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:salmon",
+  "count": {
+    "type": "random",
+    "min": 2,
+    "max": 8
+  }
+}

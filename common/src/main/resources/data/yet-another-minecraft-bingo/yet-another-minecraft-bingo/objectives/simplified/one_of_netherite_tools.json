@@ -1,0 +1,18 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_netherite_tools",
+      "fallback": "Any Netherite Tool"
+    },
+    "item": "minecraft:netherite_pickaxe"
+  },
+  "objectives": [
+    "minecraft:netherite_axe",
+    "minecraft:netherite_hoe",
+    "minecraft:netherite_pickaxe",
+    "minecraft:netherite_shovel",
+    "minecraft:netherite_spear",
+    "minecraft:netherite_sword"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:cod"
+  },
+  "statType": "minecraft:custom",
+  "statName": "minecraft:fish_caught",
+  "min": {
+    "type": "random",
+    "min": 2,
+    "max": 8
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": "minecraft:iron_ingot",
+      "Count": 64
+    },
+    {
+      "id": "minecraft:oak_log",
+      "Count": 64
+    },
+    {
+      "id": "minecraft:torch",
+      "Count": 64
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_diamond_armor",
+      "fallback": "Any Diamond Armor"
+    },
+    "item": "minecraft:diamond_chestplate"
+  },
+  "objectives": [
+    "minecraft:diamond_boots",
+    "minecraft:diamond_chestplate",
+    "minecraft:diamond_helmet",
+    "minecraft:diamond_leggings"
+  ]
+}

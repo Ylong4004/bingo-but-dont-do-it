@@ -1,0 +1,18 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_iron_tools",
+      "fallback": "Any Iron Tool"
+    },
+    "item": "minecraft:iron_pickaxe"
+  },
+  "objectives": [
+    "minecraft:iron_axe",
+    "minecraft:iron_hoe",
+    "minecraft:iron_pickaxe",
+    "minecraft:iron_shovel",
+    "minecraft:iron_spear",
+    "minecraft:iron_sword"
+  ]
+}

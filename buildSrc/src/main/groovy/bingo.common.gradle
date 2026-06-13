@@ -1,0 +1,117 @@
+plugins {
+    id "org.jetbrains.kotlin.jvm"
+    id "fabric-loom"
+}
+
+if (project.name.startsWith("mc")) {
+    version = project.mod_version + "+" + project.name
+} else {
+    version = project.mod_version
+}
+group = project.maven_group + "-" + project.name
+
+base {
+    archivesName = project.archives_base_name
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+loom {
+    splitEnvironmentSourceSets()
+
+    mods {
+        "${group}" {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+
+    log4jConfigs.from file("../buildSrc/src/main/resources/log4j-debug.xml")
+}
+
+dependencies {
+    testImplementation libs.mockk
+    testImplementation libs.assertk
+    testImplementation platform(libs.junit.bom)
+    testImplementation libs.junit.jupiter
+    testRuntimeOnly libs.junit.platform.launcher
+
+    // To change the versions see the gradle.properties file
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+
+    compileOnly libs.kotlin.stdlib
+    compileOnly libs.kotlin.reflect
+    compileOnly libs.kotlinx.serialization
+    testImplementation libs.fabric.language.kotlin
+}
+
+def projectVersion = project.version.toString()
+def supportedMinecraftVersion = project.hasProperty("minecraft_supported_versions")
+    ? project.minecraft_supported_versions.toString().split(",").first()
+        : project.minecraft_version.toString();
+def fabricApiVersion = project.hasProperty("fabric_version_min")
+    ? project.fabric_version_min.toString()
+        : (project.hasProperty("fabric_version")
+        ? project.fabric_version.toString()
+        : "*")
+def fabricLanguageKotlinVersion = libs.fabric.language.kotlin.get().version
+
+processResources {
+    inputs.property "version", projectVersion
+    inputs.property "minecraft_version", supportedMinecraftVersion
+    inputs.property "fabric_api_version", fabricApiVersion
+    inputs.property "fabric_language_kotlin_version", fabricLanguageKotlinVersion
+
+    filesMatching("fabric.mod.json") {
+        expand(
+                "version": projectVersion,
+                "minecraft_version": supportedMinecraftVersion,
+                "fabric_api_version": fabricApiVersion,
+                "fabric_language_kotlin_version": fabricLanguageKotlinVersion
+        )
+    }
+}
+
+java {
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
+}
+
+int javaVersion = 21
+if (project.properties.containsKey("java_compat")) {
+    javaVersion = project.java_compat as Integer
+}
+println("Using Java version $javaVersion")
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = javaVersion
+}
+
+java {
+    // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+    // if it is present.
+    // If you remove this line, sources will not be generated.
+    withSourcesJar()
+
+    if (javaVersion == 17) {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    } else {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+}
+
+kotlin {
+    jvmToolchain(javaVersion)
+}
+
+test {
+    useJUnitPlatform()
+}

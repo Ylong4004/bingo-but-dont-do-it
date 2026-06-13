@@ -1,0 +1,10 @@
+{
+  "name": {
+    "translate": "bingo.team.gray",
+    "fallback": "Gray"
+  },
+  "shouldFormatName": true,
+  "symbol": "\uD83E\uDEA8",
+  "color": "GRAY",
+  "blockId": "minecraft:light_gray_carpet"
+}

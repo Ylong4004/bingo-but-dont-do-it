@@ -1,0 +1,18 @@
+{
+  "type": "all_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.challenge.all_copper_tools",
+      "fallback": "All Copper Tools"
+    },
+    "item": "minecraft:copper_pickaxe"
+  },
+  "objectives": [
+    "minecraft:copper_axe",
+    "minecraft:copper_hoe",
+    "minecraft:copper_pickaxe",
+    "minecraft:copper_shovel",
+    "minecraft:copper_spear",
+    "minecraft:copper_sword"
+  ]
+}

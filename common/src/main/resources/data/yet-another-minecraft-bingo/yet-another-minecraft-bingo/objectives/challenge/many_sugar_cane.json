@@ -1,0 +1,9 @@
+{
+  "type": "item",
+  "item": "minecraft:sugar_cane",
+  "count": {
+    "type": "random",
+    "min": 4,
+    "max": 32
+  }
+}

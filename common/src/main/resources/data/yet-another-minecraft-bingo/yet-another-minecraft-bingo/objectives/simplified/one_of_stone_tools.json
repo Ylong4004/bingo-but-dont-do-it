@@ -1,0 +1,18 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_stone_tools",
+      "fallback": "Any Stone Tool"
+    },
+    "item": "minecraft:stone_pickaxe"
+  },
+  "objectives": [
+    "minecraft:stone_axe",
+    "minecraft:stone_hoe",
+    "minecraft:stone_pickaxe",
+    "minecraft:stone_shovel",
+    "minecraft:stone_spear",
+    "minecraft:stone_sword"
+  ]
+}

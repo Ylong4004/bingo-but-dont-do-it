@@ -1,0 +1,16 @@
+{
+  "type": "stats",
+  "display": {
+    "item": "minecraft:golden_hoe",
+    "itemNbt": "{Damage:31}",
+    "itemComponents": {
+      "minecraft:damage": 31
+    },
+    "name": {
+      "translate": "bingo.objective.challenge.nbt_damaged_golden_hoe",
+      "fallback": "Broken Golden Hoe"
+    }
+  },
+  "statType": "minecraft:broken",
+  "statName": "minecraft:golden_hoe"
+}

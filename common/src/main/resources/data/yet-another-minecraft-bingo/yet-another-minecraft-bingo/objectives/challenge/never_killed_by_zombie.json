@@ -1,0 +1,15 @@
+{
+  "type": "inverse",
+  "display": {
+    "item": "minecraft:zombie_head",
+    "name": {
+      "translate": "bingo.objective.challenge.never_killed_by_zombie",
+      "fallback": "Never get Killed by a Zombie"
+    }
+  },
+  "objective": {
+    "type": "stats",
+    "statType": "minecraft:killed_by",
+    "statName": "minecraft:zombie"
+  }
+}

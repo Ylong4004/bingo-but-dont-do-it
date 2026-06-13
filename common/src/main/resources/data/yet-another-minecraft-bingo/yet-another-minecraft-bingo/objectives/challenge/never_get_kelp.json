@@ -1,0 +1,9 @@
+{
+  "type": "inverse",
+  "objective": "minecraft:kelp",
+  "conflictsWith": [
+    "minecraft:kelp",
+    "minecraft:dried_kelp",
+    "minecraft:dried_kelp_block"
+  ]
+}

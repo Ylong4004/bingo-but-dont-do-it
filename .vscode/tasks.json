@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "gradle",
+      "id": "build",
+      "label": "🔨 Build Mod",
+      "script": "build",
+      "description": "编译整个项目并打包 jar",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "type": "gradle",
+      "id": "runClient",
+      "label": "🎮 Run Minecraft Client",
+      "script": "runClient",
+      "description": "启动 Minecraft 客户端测试模组",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "type": "gradle",
+      "id": "runServer",
+      "label": "🖥 Run Dedicated Server",
+      "script": "runServer",
+      "description": "启动专用服务器测试模组",
+      "group": "test",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "type": "gradle",
+      "id": "clean",
+      "label": "🧹 Clean Build",
+      "script": "clean",
+      "description": "清理构建缓存",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "type": "gradle",
+      "id": "cleanBuild",
+      "label": "🔨 Clean + Build",
+      "script": "clean build",
+      "description": "清理后重新构建",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      }
+    }
+  ]
+}

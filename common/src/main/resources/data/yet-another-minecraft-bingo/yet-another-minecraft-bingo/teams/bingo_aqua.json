@@ -1,0 +1,10 @@
+{
+  "name": {
+    "translate": "bingo.team.aqua",
+    "fallback": "Aqua"
+  },
+  "shouldFormatName": true,
+  "symbol": "\uD83C\uDF44",
+  "color": "AQUA",
+  "blockId": "minecraft:cyan_carpet"
+}

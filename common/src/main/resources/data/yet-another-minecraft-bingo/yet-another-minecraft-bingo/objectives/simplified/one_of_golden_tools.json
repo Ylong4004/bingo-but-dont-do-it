@@ -1,0 +1,18 @@
+{
+  "type": "one_of",
+  "display": {
+    "name": {
+      "translate": "bingo.objective.simplified.one_of_golden_tools",
+      "fallback": "Any Golden Tool"
+    },
+    "item": "minecraft:golden_pickaxe"
+  },
+  "objectives": [
+    "minecraft:golden_axe",
+    "minecraft:golden_hoe",
+    "minecraft:golden_pickaxe",
+    "minecraft:golden_shovel",
+    "minecraft:golden_spear",
+    "minecraft:golden_sword"
+  ]
+}
