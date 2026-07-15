@@ -1,48 +1,52 @@
 package me.jfenn.bingo.integrations.ddi
 
+import me.jfenn.bingo.common.team.BingoTeamKey
 import java.util.UUID
 
-/**
- * 玩家 DDI 状态 — 追踪每个玩家的当前词条、心数、倒计时等。
- */
+/** A fixed participant in the DDI roster. Mutable gameplay state lives on an objective. */
 data class DDIPlayerState(
     val playerId: UUID,
+    val playerName: String,
+    val teamKey: BingoTeamKey,
+)
+
+/**
+ * Server-authoritative state owned by either one player or one Bingo team.
+ *
+ * Team-shared mode creates exactly one objective per Bingo team, so its word,
+ * timer and heart pool can never drift between teammates.
+ */
+data class DDIObjectiveState(
+    val objectiveId: String,
+    val objectiveName: String,
+    val teamKey: BingoTeamKey,
+    val teamName: String,
+    val memberIds: Set<UUID>,
+    val memberNames: List<String>,
+    val isTeamShared: Boolean,
     var currentWord: DDIWordPool.WordEntry? = null,
     var hearts: Int = 3,
     var maxHearts: Int = 3,
     var wordTimerSeconds: Int = 60,
     var maxWordTimerSeconds: Int = 60,
     var isEliminated: Boolean = false,
-    /** 记录每种触发类型的上次触发 tick，用于冷却 */
-    val lastTriggerTick: MutableMap<DDITriggerType, Long> = mutableMapOf(),
-    /** 记录每个 triggerType 是否已触发过（用于一次性触发类） */
-    val triggeredTypes: MutableSet<DDITriggerType> = mutableSetOf(),
+    /** Kept across word changes to reject two callbacks in one server tick. */
+    var lastAcceptedTriggerTick: Long = Long.MIN_VALUE,
 ) {
     val isAlive: Boolean get() = !isEliminated && hearts > 0
 
     fun loseHeart(): Boolean {
-        hearts--
+        hearts = (hearts - 1).coerceAtLeast(0)
         return hearts <= 0
     }
 
     fun addHeart() {
-        hearts++
+        hearts = (hearts + 1).coerceAtMost(maxHearts)
     }
 
     fun assignWord(word: DDIWordPool.WordEntry, timerSeconds: Int) {
         currentWord = word
         wordTimerSeconds = timerSeconds
         maxWordTimerSeconds = timerSeconds
-        triggeredTypes.clear()
-        lastTriggerTick.clear()
-    }
-
-    fun reset() {
-        currentWord = null
-        hearts = maxHearts
-        isEliminated = false
-        wordTimerSeconds = maxWordTimerSeconds
-        lastTriggerTick.clear()
-        triggeredTypes.clear()
     }
 }

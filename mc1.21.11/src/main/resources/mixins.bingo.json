@@ -4,6 +4,12 @@
   "package": "me.jfenn.bingo.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "DDIBlockItemMixin",
+    "DDIBucketItemMixin",
+    "DDICraftingResultSlotMixin",
+    "DDILivingEntityDamageMixin",
+    "DDIServerPlayerActionMixin",
+    "DDIServerPlayerInteractionMixin",
     "EndPortalBlockMixin",
     "GameRuleOverrideMixin",
     "HungerManagerAccessor",

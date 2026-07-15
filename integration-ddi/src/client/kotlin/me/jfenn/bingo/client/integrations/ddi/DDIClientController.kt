@@ -1,83 +1,130 @@
 package me.jfenn.bingo.client.integrations.ddi
 
-import me.jfenn.bingo.client.common.packet.ClientPacketEvents
+import me.jfenn.bingo.client.platform.IClient
 import me.jfenn.bingo.client.platform.IClientNetworking
+import me.jfenn.bingo.client.platform.IOptionsAccessor
+import me.jfenn.bingo.client.platform.event.model.ClientServerEvent
+import me.jfenn.bingo.client.platform.event.model.ClientTickEvent
 import me.jfenn.bingo.client.platform.event.model.HudRenderEvent
-import me.jfenn.bingo.client.platform.renderer.IDrawService
-import me.jfenn.bingo.common.scope.BingoComponent
-import me.jfenn.bingo.platform.event.IEventBus
 import me.jfenn.bingo.integrations.ddi.DDIStateResetPacket
+import me.jfenn.bingo.integrations.ddi.DDITeamSyncPacket
+import me.jfenn.bingo.integrations.ddi.DDITeamTriggeredPacket
 import me.jfenn.bingo.integrations.ddi.DDITriggeredPacket
 import me.jfenn.bingo.integrations.ddi.DDIWordSyncPacket
-import org.koin.core.Koin
+import me.jfenn.bingo.platform.event.IEventBus
 
 /**
- * 客户端 DDI 控制器 — 接收服务端 DDI 包并更新 HUD 状态。
- * 类似 Bingo 已有的 BingoHudController 模式。
+ * Registers DDI packet receivers before connecting and projects packets into
+ * the client HUD state.
  */
 class DDIClientController(
     clientNetworking: IClientNetworking,
     private val state: DDIHudState,
     private val renderer: DDIHudRenderer,
     private val eventBus: IEventBus,
+    private val client: IClient,
+    private val optionsAccessor: IOptionsAccessor,
 ) {
 
     private val wordSyncV1 = clientNetworking.registerS2C(DDIWordSyncPacket.V1)
     private val triggeredV1 = clientNetworking.registerS2C(DDITriggeredPacket.V1)
+    private val teamSyncV1 = clientNetworking.registerS2C(DDITeamSyncPacket.V1)
+    private val teamTriggeredV1 = clientNetworking.registerS2C(DDITeamTriggeredPacket.V1)
     private val stateResetV1 = clientNetworking.registerS2C(DDIStateResetPacket.V1)
 
     init {
-        // 接收词条同步
         eventBus.register(wordSyncV1) { clientPacket ->
             val packet = clientPacket.packet
             if (packet.isSelf) {
-                state.myWordText = packet.wordText
-                state.myHearts = packet.hearts
-                state.myMaxHearts = packet.maxHearts
-                state.myTimerSeconds = packet.timerSeconds
-                state.myMaxTimerSeconds = packet.maxTimerSeconds
-                state.isMyEliminated = packet.isEliminated
-                state.isVisible = true
+                // Never retain the local forbidden word, even when an older
+                // server accidentally includes it in the V1 packet.
+                state.updateSelf(
+                    hearts = packet.hearts,
+                    maxHearts = packet.maxHearts,
+                    timerSeconds = packet.timerSeconds,
+                    maxTimerSeconds = packet.maxTimerSeconds,
+                    isEliminated = packet.isEliminated,
+                )
             } else {
-                state.otherPlayers[packet.playerId] = DDIHudState.PlayerDDIInfo(
+                state.updateOther(
+                    playerId = packet.playerId,
                     playerName = packet.playerName,
                     wordText = packet.wordText,
                     hearts = packet.hearts,
                     maxHearts = packet.maxHearts,
                     timerSeconds = packet.timerSeconds,
+                    maxTimerSeconds = packet.maxTimerSeconds,
                     isEliminated = packet.isEliminated,
                 )
             }
         }
 
-        // 接收触发通知
         eventBus.register(triggeredV1) { clientPacket ->
             val packet = clientPacket.packet
-            state.recentTriggers.add(
+            state.addTrigger(
                 DDIHudState.TriggerNotification(
-                    playerName = packet.playerName,
+                    actorName = packet.playerName,
+                    teamName = null,
                     wordText = packet.wordText,
                     remainingHearts = packet.heartsRemaining,
                     isElimination = packet.isElimination,
                     isGain = packet.isGain,
                 )
             )
-            // 限制通知列表大小
-            if (state.recentTriggers.size > 5) {
-                state.recentTriggers.removeAt(0)
-            }
         }
 
-        // 状态重置
+        eventBus.register(teamSyncV1) { clientPacket ->
+            val packet = clientPacket.packet
+            state.updateTeam(
+                teamId = packet.teamId,
+                teamName = packet.teamName,
+                memberNames = packet.memberNames,
+                // DDIHudState ignores this field for the local team. Keeping
+                // the value here makes the privacy boundary explicit at both ends.
+                wordText = if (packet.isOwnTeam) "" else packet.wordText,
+                hearts = packet.hearts,
+                maxHearts = packet.maxHearts,
+                timerSeconds = packet.timerSeconds,
+                maxTimerSeconds = packet.maxTimerSeconds,
+                isEliminated = packet.isEliminated,
+                isOwnTeam = packet.isOwnTeam,
+            )
+        }
+
+        eventBus.register(teamTriggeredV1) { clientPacket ->
+            val packet = clientPacket.packet
+            state.addTrigger(
+                DDIHudState.TriggerNotification(
+                    actorName = packet.actorPlayerName,
+                    teamName = packet.teamName,
+                    wordText = packet.wordText,
+                    remainingHearts = packet.heartsRemaining,
+                    isElimination = packet.isElimination,
+                    isGain = packet.isGain,
+                )
+            )
+        }
+
         eventBus.register(stateResetV1) {
             state.reset()
         }
 
-        // 每帧渲染 DDI HUD
+        eventBus.register(ClientServerEvent.Join) {
+            state.reset()
+        }
+
+        eventBus.register(ClientServerEvent.Disconnect) {
+            state.reset()
+        }
+
+        eventBus.register(ClientTickEvent.End) {
+            if (!client.isPaused) state.tick()
+        }
+
         eventBus.register(HudRenderEvent) {
-            val drawService = it.drawService
-            drawService.setShaderColor(1f, 1f, 1f, 1f)
-            renderer.render(drawService)
+            if (!optionsAccessor.isHudHidden()) {
+                renderer.render(it.drawService)
+            }
         }
     }
 }

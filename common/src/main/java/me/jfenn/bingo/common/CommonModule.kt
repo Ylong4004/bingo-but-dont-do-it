@@ -273,6 +273,8 @@ val commonModule = module {
         scopedOf(::WriteStatsService)
 
         scopedOf(::GameService)
+        scopedOf(::DDIGameEndService)
+        scopedOf(::DDIGameHistoryService)
         scopedOf(::GameOverService)
         scopedOf(::GameOverController)
         scopedOf(::GameResumeService)

@@ -3,12 +3,28 @@ package me.jfenn.bingo.integrations.ddi
 import me.jfenn.bingo.common.MOD_ID_BINGO
 import me.jfenn.bingo.platform.IPacketBuf
 import me.jfenn.bingo.platform.packet.PacketConverter
+import me.jfenn.bingo.platform.packet.IServerNetworking
 import net.minecraft.util.Identifier
 import java.util.*
 
 /**
  * DDI 网络包定义。使用 Bingo 的 PacketConverter 模式。
  */
+
+/**
+ * Process-wide server packet registrations.
+ *
+ * Fabric payload codecs are global and must not be registered once per game
+ * scope. Keeping the handlers in a Koin singleton makes server restarts and
+ * consecutive games reuse the same registrations.
+ */
+class DDIServerPackets(serverNetworking: IServerNetworking) {
+    val wordSync = serverNetworking.registerS2C(DDIWordSyncPacket.V1)
+    val triggered = serverNetworking.registerS2C(DDITriggeredPacket.V1)
+    val teamSync = serverNetworking.registerS2C(DDITeamSyncPacket.V1)
+    val teamTriggered = serverNetworking.registerS2C(DDITeamTriggeredPacket.V1)
+    val stateReset = serverNetworking.registerS2C(DDIStateResetPacket.V1)
+}
 
 /** S2C: 同步单个玩家的 DDI 词条和心数。 */
 class DDIWordSyncPacket(
@@ -81,6 +97,89 @@ class DDITriggeredPacket(
             dest.writeLong(source.playerId.mostSignificantBits)
             dest.writeLong(source.playerId.leastSignificantBits)
             dest.writeString(source.playerName)
+            dest.writeString(source.wordText)
+            dest.writeInt(source.heartsRemaining)
+            dest.writeBoolean(source.isElimination)
+            dest.writeBoolean(source.isGain)
+        }
+    }
+}
+
+/** S2C: one authoritative shared word/heart/timer projection per Bingo team. */
+class DDITeamSyncPacket(
+    val teamId: String,
+    val teamName: String,
+    val memberNames: List<String>,
+    val wordText: String,
+    val hearts: Int,
+    val maxHearts: Int,
+    val timerSeconds: Int,
+    val maxTimerSeconds: Int,
+    val isEliminated: Boolean,
+    val isOwnTeam: Boolean,
+) {
+    object V1 : PacketConverter<DDITeamSyncPacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_team_sync")!!
+
+        override fun fromPacketBuf(buf: IPacketBuf): DDITeamSyncPacket {
+            return DDITeamSyncPacket(
+                teamId = buf.readString(),
+                teamName = buf.readString(),
+                memberNames = buf.readList(buf::readString),
+                wordText = buf.readString(),
+                hearts = buf.readInt(),
+                maxHearts = buf.readInt(),
+                timerSeconds = buf.readInt(),
+                maxTimerSeconds = buf.readInt(),
+                isEliminated = buf.readBoolean(),
+                isOwnTeam = buf.readBoolean(),
+            )
+        }
+
+        override fun toPacketBuf(source: DDITeamSyncPacket, dest: IPacketBuf) {
+            dest.writeString(source.teamId)
+            dest.writeString(source.teamName)
+            dest.writeList(source.memberNames, dest::writeString)
+            dest.writeString(source.wordText)
+            dest.writeInt(source.hearts)
+            dest.writeInt(source.maxHearts)
+            dest.writeInt(source.timerSeconds)
+            dest.writeInt(source.maxTimerSeconds)
+            dest.writeBoolean(source.isEliminated)
+            dest.writeBoolean(source.isOwnTeam)
+        }
+    }
+}
+
+/** S2C: a member changed the shared state of a Bingo team. */
+class DDITeamTriggeredPacket(
+    val teamId: String,
+    val teamName: String,
+    val actorPlayerName: String,
+    val wordText: String,
+    val heartsRemaining: Int,
+    val isElimination: Boolean,
+    val isGain: Boolean,
+) {
+    object V1 : PacketConverter<DDITeamTriggeredPacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_team_triggered")!!
+
+        override fun fromPacketBuf(buf: IPacketBuf): DDITeamTriggeredPacket {
+            return DDITeamTriggeredPacket(
+                teamId = buf.readString(),
+                teamName = buf.readString(),
+                actorPlayerName = buf.readString(),
+                wordText = buf.readString(),
+                heartsRemaining = buf.readInt(),
+                isElimination = buf.readBoolean(),
+                isGain = buf.readBoolean(),
+            )
+        }
+
+        override fun toPacketBuf(source: DDITeamTriggeredPacket, dest: IPacketBuf) {
+            dest.writeString(source.teamId)
+            dest.writeString(source.teamName)
+            dest.writeString(source.actorPlayerName)
             dest.writeString(source.wordText)
             dest.writeInt(source.heartsRemaining)
             dest.writeBoolean(source.isElimination)

@@ -4,9 +4,21 @@ plugins {
 
 base.archivesName.set("${project.archives_base_name}-integration-ddi")
 
+// The split client outputs below are project model objects rather than a
+// published variant, so make sure those projects have created their source
+// sets before this build script reads them.
+evaluationDependsOn(":platform")
+evaluationDependsOn(":common")
+
 dependencies {
     compileOnly project(path: ":platform", configuration: "namedElements")
     compileOnly project(path: ":common", configuration: "namedElements")
+
+    // Loom keeps client-only output out of namedElements when environment source
+    // sets are split. DDI's client source set imports client APIs from both
+    // projects, so add those outputs to its client compile classpath explicitly.
+    clientCompileOnly this.project(":platform").sourceSets.client.output
+    clientCompileOnly this.project(":common").sourceSets.client.output
 
     modCompileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }

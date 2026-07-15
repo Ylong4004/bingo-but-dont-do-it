@@ -59,6 +59,7 @@ class ScopeManager(
             state.isLobbyMode = isLobbyMode
 
             scope.commonInit()
+            scope.get<BingoPluginHolder>().onScopeStarted(scope)
 
             // re-run state entry listeners
             if (state.state == GameState.UNINITIALIZED) {
@@ -85,6 +86,7 @@ class ScopeManager(
             configService.writeOptions(scope.get())
             BingoApi.set(null)
             eventBus.emit(ScopeStopped, ScopeStopped(scope))
+            scope.get<BingoPluginHolder>().onScopeStopped(scope)
             BingoEvents.CLOSE.invoke(null)
             scope.close()
         }

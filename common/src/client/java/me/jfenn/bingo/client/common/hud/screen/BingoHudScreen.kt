@@ -190,17 +190,23 @@ internal class BingoHudScreen(
         }
     }
 
-    private val tabsWidget = tabsWidgetFactory.create(GameOverPacket.EndScreenTab.entries.map { text.string(it.title) })
+    private val availableTabs = GameOverPacket.EndScreenTab.entries.filter { candidate ->
+        candidate != GameOverPacket.EndScreenTab.DDI ||
+            gameOver?.packet?.ddiDamageHistory?.isNotEmpty() == true
+    }
+
+    private val tabsWidget = tabsWidgetFactory.create(availableTabs.map { text.string(it.title) })
         .apply {
             currentTab = gameOver?.tab?.ordinal ?: 0
             onTabChanged(::onTabChanged)
         }
 
     // If multiple teams have a duration (i.e. have completed the game), show the score list by default
-    private val tab get() = GameOverPacket.EndScreenTab.entries.getOrNull(tabsWidget.currentTab)
+    private val tab get() = availableTabs.getOrNull(tabsWidget.currentTab)
     private val isShowingTabs get() = gameOver != null &&
             (
                     gameOver.packet.scores.size > 1 ||
+                    gameOver.packet.ddiDamageHistory.isNotEmpty() ||
                     tab != GameOverPacket.EndScreenTab.CARDS ||
                     gameOver.packet.defaultTab != GameOverPacket.EndScreenTab.CARDS
             )
@@ -213,6 +219,10 @@ internal class BingoHudScreen(
 
     private val scoresWidget = gameOver
         ?.let { scrollableWidgetFactory.create(BingoEndScoresWidget(koin, gameOver)) }
+
+    private val ddiWidget = gameOver
+        ?.takeIf { it.packet.ddiDamageHistory.isNotEmpty() }
+        ?.let { scrollableWidgetFactory.create(BingoEndDDIWidget(koin, it)) }
 
     private val messagesWidgetImpl = MessageHistoryWidget(koin, gameOver)
     private val messagesWidget = scrollableWidgetFactory.create(messagesWidgetImpl)
@@ -269,6 +279,11 @@ internal class BingoHudScreen(
         scoresWidget?.width = ((width - sidebarWidth) * 0.8f).toInt()
         scoresWidget?.height = ClientCardBufferRenderer.CARD_HEIGHT
 
+        ddiWidget?.x = ((width - sidebarWidth) * 0.1f).toInt()
+        ddiWidget?.y = (height/2) - (ClientCardBufferRenderer.CARD_HEIGHT /2) + tabsHeight
+        ddiWidget?.width = ((width - sidebarWidth) * 0.8f).toInt()
+        ddiWidget?.height = ClientCardBufferRenderer.CARD_HEIGHT
+
         val marginX = 12
         val marginY = 4
 
@@ -314,6 +329,9 @@ internal class BingoHudScreen(
         }
         if (scoresWidget != null && tab == GameOverPacket.EndScreenTab.SCORES) {
             helper.addDrawableChild(scoresWidget.widget!!)
+        }
+        if (ddiWidget != null && tab == GameOverPacket.EndScreenTab.DDI) {
+            helper.addDrawableChild(ddiWidget.widget!!)
         }
 
         helper.addDrawable(sidebarDrawable)

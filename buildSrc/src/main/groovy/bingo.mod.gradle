@@ -61,6 +61,12 @@ shadowJar {
 
     configurations = [project.configurations.shade]
 
+    // Multiple integrations provide the same ServiceLoader descriptor.
+    // Shadow's normal copy policy already handles the other duplicate
+    // resources; forcing Gradle's EXCLUDE policy here removes files before
+    // Shadow's transformers see them (and can produce a directory-only JAR).
+    mergeServiceFiles()
+
     dependencies {
         include(project(":api"))
         include(project(":common"))

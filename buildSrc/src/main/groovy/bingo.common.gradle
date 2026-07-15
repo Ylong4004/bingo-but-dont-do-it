@@ -60,18 +60,26 @@ def fabricApiVersion = project.hasProperty("fabric_version_min")
         : "*")
 def fabricLanguageKotlinVersion = libs.fabric.language.kotlin.get().version
 
+int javaVersion = 21
+if (project.properties.containsKey("java_compat")) {
+    javaVersion = project.java_compat as Integer
+}
+println("Using Java version $javaVersion")
+
 processResources {
     inputs.property "version", projectVersion
     inputs.property "minecraft_version", supportedMinecraftVersion
     inputs.property "fabric_api_version", fabricApiVersion
     inputs.property "fabric_language_kotlin_version", fabricLanguageKotlinVersion
+    inputs.property "java_version", javaVersion
 
     filesMatching("fabric.mod.json") {
         expand(
                 "version": projectVersion,
                 "minecraft_version": supportedMinecraftVersion,
                 "fabric_api_version": fabricApiVersion,
-                "fabric_language_kotlin_version": fabricLanguageKotlinVersion
+                "fabric_language_kotlin_version": fabricLanguageKotlinVersion,
+                "java_version": javaVersion
         )
     }
 }
@@ -82,12 +90,6 @@ java {
     // If you remove this line, sources will not be generated.
     withSourcesJar()
 }
-
-int javaVersion = 21
-if (project.properties.containsKey("java_compat")) {
-    javaVersion = project.java_compat as Integer
-}
-println("Using Java version $javaVersion")
 
 tasks.withType(JavaCompile).configureEach {
     it.options.release = javaVersion

@@ -51,13 +51,17 @@ data class BingoOptions(
 
     // DDI (Don't Do It) settings
     var enableDDI: Boolean = false,
+    var ddiObjectiveMode: DDIObjectiveMode = DDIObjectiveMode.INDIVIDUAL,
     var ddiMaxHearts: Int = 3,
     var ddiWordTimerSeconds: Int = 60,
 ) {
 
     fun isValid(): Boolean {
-        return cards.all { it.isValid() }
+        return cards.all { it.isValid() } && hasValidDDIOptions()
     }
+
+    fun hasValidDDIOptions(): Boolean = !enableDDI ||
+        (ddiMaxHearts in 1..20 && ddiWordTimerSeconds in 10..600)
 
     fun formatGameMode(card: BingoCard): List<StringKey> {
         val gameMode = buildList {
@@ -145,6 +149,13 @@ data class BingoOptions(
             yield(isKeepInventory.toString())
             yield(isElytra.toString())
             yield((isPlayerKit || isTeamKit).toString()) // has starting items enabled
+            if (enableDDI) {
+                // Keep hashes for existing non-DDI presets stable while making
+                // DDI games a distinct difficulty/statistics bucket.
+                // One delimited segment also prevents (1,160) from colliding
+                // with (11,60) when values are fed to the digest consecutively.
+                yield("ddi:${ddiObjectiveMode.name}:$ddiMaxHearts:$ddiWordTimerSeconds")
+            }
             // spawning
             yield(spawnDimension)
         }.forEach {

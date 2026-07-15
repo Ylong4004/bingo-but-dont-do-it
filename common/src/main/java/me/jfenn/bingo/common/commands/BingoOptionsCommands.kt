@@ -8,17 +8,22 @@ import me.jfenn.bingo.common.options.*
 import me.jfenn.bingo.common.scope.BingoComponent
 import me.jfenn.bingo.common.state.BingoState
 import me.jfenn.bingo.common.state.GameState
+import me.jfenn.bingo.common.text.TextProvider
+import me.jfenn.bingo.generated.StringKey
 import me.jfenn.bingo.platform.IServerWorldFactory
 import me.jfenn.bingo.platform.commands.CommandBuilder
 import me.jfenn.bingo.platform.commands.ICommandManager
 import me.jfenn.bingo.platform.commands.IExecutionContext
 import me.jfenn.bingo.platform.commands.IExecutionSource
 import me.jfenn.bingo.platform.event.IEventBus
+import me.jfenn.bingo.platform.text.IText
+import net.minecraft.util.Formatting
 import kotlin.reflect.KMutableProperty1
 
 class BingoOptionsCommands(
     commandManager: ICommandManager,
     private val eventBus: IEventBus,
+    private val text: TextProvider,
 ) : BingoComponent() {
 
     private fun IExecutionSource.hasConfigureGame() = hasState(GameState.PREGAME, GameState.PLAYING) && hasPermission(Permission.CONFIGURE_GAME)
@@ -61,6 +66,33 @@ class BingoOptionsCommands(
     private fun IExecutionContext.setTimeLimit(minutes: Int?) {
         scope.get<OptionsService>().setTimeLimit(optionsContext, minutes)
         eventBus.emit(OptionsChangedEvent, Unit)
+    }
+
+    private fun ddiModeText(mode: DDIObjectiveMode): IText = text.string(
+        when (mode) {
+            DDIObjectiveMode.INDIVIDUAL -> StringKey.DdiOptionModeIndividual
+            DDIObjectiveMode.TEAM_SHARED -> StringKey.DdiOptionModeTeam
+        }
+    )
+
+    private fun formatDDIOptions(options: BingoOptions): IText = text.string(
+        StringKey.DdiCommandOptionsSummary,
+        text.boolean(options.enableDDI),
+        ddiModeText(options.ddiObjectiveMode).formatted(Formatting.YELLOW),
+        text.literal(options.ddiMaxHearts.toString()).formatted(Formatting.YELLOW),
+        text.literal(options.ddiWordTimerSeconds.toString()).formatted(Formatting.YELLOW),
+    )
+
+    private fun IExecutionContext.updateDDIOptions(update: (BingoOptions) -> Unit) {
+        val options = scope.get<BingoState>().options
+        update(options)
+        eventBus.emit(OptionsChangedEvent, Unit)
+        sendFeedback(
+            text.string(
+                StringKey.DdiCommandOptionsUpdated,
+                formatDDIOptions(options),
+            )
+        )
     }
 
     private fun CommandBuilder.executesToggle(callback: IExecutionContext.(Boolean?) -> Unit) {
@@ -227,29 +259,54 @@ class BingoOptionsCommands(
                 }
 
                 literal("ddi") {
-                    requires { hasConfigureGame() }
+                    // Querying remains available during PLAYING, while every
+                    // mutating child stays PREGAME-only because the DDI round
+                    // snapshots these values when it starts.
+                    executes {
+                        sendMessage(formatDDIOptions(scope.get<BingoState>().options))
+                    }
                     literal("enable") {
+                        requires { hasState(GameState.PREGAME) }
                         executesToggle { enabled ->
-                            val opts = scope.get<BingoState>().options
-                            opts.enableDDI = enabled ?: !opts.enableDDI
-                            eventBus.emit(OptionsChangedEvent, Unit)
+                            updateDDIOptions { options ->
+                                options.enableDDI = enabled ?: !options.enableDDI
+                            }
+                        }
+                    }
+                    literal("mode") {
+                        requires { hasState(GameState.PREGAME) }
+                        literal("individual") {
+                            executes {
+                                updateDDIOptions { options ->
+                                    options.ddiObjectiveMode = DDIObjectiveMode.INDIVIDUAL
+                                }
+                            }
+                        }
+                        literal("team") {
+                            executes {
+                                updateDDIOptions { options ->
+                                    options.ddiObjectiveMode = DDIObjectiveMode.TEAM_SHARED
+                                }
+                            }
                         }
                     }
                     literal("hearts") {
+                        requires { hasState(GameState.PREGAME) }
                         integer("count", min = 1, max = 20) { countArg ->
                             executes {
-                                val opts = scope.get<BingoState>().options
-                                opts.ddiMaxHearts = getArgument(countArg)
-                                eventBus.emit(OptionsChangedEvent, Unit)
+                                updateDDIOptions { options ->
+                                    options.ddiMaxHearts = getArgument(countArg)
+                                }
                             }
                         }
                     }
                     literal("timer") {
+                        requires { hasState(GameState.PREGAME) }
                         integer("seconds", min = 10, max = 600) { secondsArg ->
                             executes {
-                                val opts = scope.get<BingoState>().options
-                                opts.ddiWordTimerSeconds = getArgument(secondsArg)
-                                eventBus.emit(OptionsChangedEvent, Unit)
+                                updateDDIOptions { options ->
+                                    options.ddiWordTimerSeconds = getArgument(secondsArg)
+                                }
                             }
                         }
                     }

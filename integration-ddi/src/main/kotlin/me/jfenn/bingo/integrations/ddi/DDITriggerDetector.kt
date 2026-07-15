@@ -5,27 +5,24 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
-import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.fabricmc.fabric.api.event.player.UseItemCallback
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
-import net.minecraft.component.DataComponentTypes
 import net.minecraft.entity.EquipmentSlot
+import net.minecraft.entity.LivingEntity
 import net.minecraft.entity.damage.DamageSource
 import net.minecraft.entity.damage.DamageTypes
-import net.minecraft.entity.mob.HostileEntity
+import net.minecraft.entity.mob.Monster
 import net.minecraft.entity.passive.IronGolemEntity
-import net.minecraft.item.BlockItem
 import net.minecraft.registry.Registries
 import net.minecraft.registry.tag.DamageTypeTags
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
 import net.minecraft.util.ActionResult
-import net.minecraft.util.hit.BlockHitResult
-import net.minecraft.util.hit.HitResult
-import net.minecraft.util.math.BlockPos
+import net.minecraft.util.Identifier
+import net.minecraft.world.Heightmap
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * DDI 词条触发检测器。
@@ -36,17 +33,215 @@ class DDITriggerDetector(
 ) {
 
     var onTriggeredHandler: ((ServerPlayerEntity, DDITriggerType) -> Unit)? = null
+    var activePlayerIdsHandler: (() -> Set<UUID>)? = null
+    var currentTriggerHandler: ((UUID) -> DDITriggerType?)? = null
+
+    private enum class CardinalDirection {
+        SOUTH,
+        WEST,
+        NORTH,
+        EAST,
+    }
+
+    companion object {
+        private val callbacksRegistered = AtomicBoolean(false)
+        private val activeDetectors = Collections.synchronizedMap(
+            IdentityHashMap<MinecraftServer, DDITriggerDetector>()
+        )
+
+        private fun detectorFor(server: MinecraftServer): DDITriggerDetector? = activeDetectors[server]
+
+        private fun detectorFor(player: ServerPlayerEntity): DDITriggerDetector? =
+            player.entityWorld.server?.let(::detectorFor)
+
+        @JvmStatic
+        fun reportAction(player: ServerPlayerEntity, type: DDITriggerType) {
+            detectorFor(player)?.fire(player, type)
+        }
+
+        @JvmStatic
+        fun reportCrafted(player: ServerPlayerEntity, itemId: String) {
+            val type = when (vanillaPath(itemId)) {
+                "crafting_table" -> DDITriggerType.CRAFT_CRAFTING_TABLE
+                "wooden_pickaxe" -> DDITriggerType.CRAFT_WOODEN_PICKAXE
+                "stone_pickaxe" -> DDITriggerType.CRAFT_STONE_PICKAXE
+                "iron_pickaxe" -> DDITriggerType.CRAFT_IRON_PICKAXE
+                "wooden_axe" -> DDITriggerType.CRAFT_WOODEN_AXE
+                "stone_axe" -> DDITriggerType.CRAFT_STONE_AXE
+                "iron_axe" -> DDITriggerType.CRAFT_IRON_AXE
+                "wooden_sword" -> DDITriggerType.CRAFT_WOODEN_SWORD
+                "stone_sword" -> DDITriggerType.CRAFT_STONE_SWORD
+                "iron_sword" -> DDITriggerType.CRAFT_IRON_SWORD
+                else -> null
+            }
+            if (type != null) detectorFor(player)?.fire(player, type)
+        }
+
+        @JvmStatic
+        fun reportPickedUp(player: ServerPlayerEntity, itemId: String) {
+            val detector = detectorFor(player) ?: return
+            detector.fire(player, DDITriggerType.PICKUP_ITEM)
+            val vanillaItemId = vanillaPath(itemId) ?: return
+            if (vanillaItemId.endsWith("_log")) detector.fire(player, DDITriggerType.PICKUP_WOOD)
+            if (vanillaItemId == "diamond") detector.fire(player, DDITriggerType.PICKUP_DIAMOND)
+        }
+
+        /** Called only after vanilla has completed consuming a food item. */
+        @JvmStatic
+        fun reportConsumed(player: ServerPlayerEntity, itemId: String) {
+            val detector = detectorFor(player) ?: return
+            detector.fire(player, DDITriggerType.EAT)
+            if (vanillaPath(itemId) == "rotten_flesh") {
+                detector.fire(player, DDITriggerType.EAT_ROTTEN_FLESH)
+            }
+        }
+
+        /** Called from the authoritative JUMP statistic, not from airborne state. */
+        @JvmStatic
+        fun reportJump(player: ServerPlayerEntity) {
+            val detector = detectorFor(player) ?: return
+            if (!detector.isActive(player)) return
+
+            val id = player.uuid
+            detector.lastJumpTick[id] = detector.server.ticks.toLong()
+            if (detector.currentTrigger(player) != DDITriggerType.JUMP_10_TIMES) return
+
+            val count = detector.jumpCount.merge(id, 1) { current, increment ->
+                (current + increment).coerceAtMost(10)
+            } ?: 1
+            if (count >= 10 && detector.jump10Triggered.getOrDefault(id, false).not()) {
+                detector.jump10Triggered[id] = true
+                detector.fire(player, DDITriggerType.JUMP_10_TIMES)
+            }
+        }
+
+        @JvmStatic
+        fun reportDropped(
+            player: ServerPlayerEntity,
+            itemId: String,
+            itemCount: Int,
+            isBlockItem: Boolean,
+        ) {
+            val detector = detectorFor(player) ?: return
+            if (!detector.isActive(player)) return
+            val triggerAtStart = detector.currentTrigger(player) ?: return
+            detector.fire(player, DDITriggerType.DROP_ITEM)
+            when (vanillaPath(itemId)) {
+                "dirt" -> DDITriggerType.DROP_DIRT
+                "cobblestone" -> DDITriggerType.DROP_COBBLESTONE
+                "cobbled_deepslate" -> DDITriggerType.DROP_COBBLED_DEEPSLATE
+                "andesite" -> DDITriggerType.DROP_ANDESITE
+                "granite" -> DDITriggerType.DROP_GRANITE
+                "diorite" -> DDITriggerType.DROP_DIORITE
+                "tuff" -> DDITriggerType.DROP_TUFF
+                "wooden_pickaxe" -> DDITriggerType.DROP_WOODEN_PICKAXE
+                else -> null
+            }?.let { detector.fire(player, it) }
+
+            if (triggerAtStart != DDITriggerType.DROP_30_ITEMS || !isBlockItem || itemCount <= 0) return
+            val id = player.uuid
+            val count = detector.dropCount.merge(id, itemCount) { current, increment ->
+                (current + increment).coerceAtMost(30)
+            } ?: itemCount.coerceAtMost(30)
+            if (count >= 30 && detector.drop30Triggered.getOrDefault(id, false).not()) {
+                detector.drop30Triggered[id] = true
+                detector.fire(player, DDITriggerType.DROP_30_ITEMS)
+            }
+        }
+
+        @JvmStatic
+        fun reportPlaced(player: ServerPlayerEntity, itemId: String) {
+            val detector = detectorFor(player) ?: return
+            if (!detector.isActive(player)) return
+            val triggerAtStart = detector.currentTrigger(player) ?: return
+            detector.fire(player, DDITriggerType.BLOCK_PLACE)
+            vanillaPath(itemId)?.let { detector.detectPlaceBlock(player, it) }
+
+            if (triggerAtStart != DDITriggerType.PLACE_30_BLOCKS) return
+            val id = player.uuid
+            val count = detector.placeCount.merge(id, 1) { current, increment ->
+                (current + increment).coerceAtMost(30)
+            } ?: 1
+            if (count >= 30 && detector.place30Triggered.getOrDefault(id, false).not()) {
+                detector.place30Triggered[id] = true
+                detector.fire(player, DDITriggerType.PLACE_30_BLOCKS)
+            }
+        }
+
+        @JvmStatic
+        fun beginBlockInteraction(player: ServerPlayerEntity, blockId: String) {
+            detectorFor(player)?.interactingBlockIds?.set(player.uuid, blockId)
+        }
+
+        @JvmStatic
+        fun endBlockInteraction(player: ServerPlayerEntity) {
+            detectorFor(player)?.interactingBlockIds?.remove(player.uuid)
+        }
+
+        @JvmStatic
+        fun reportContainerOpened(player: ServerPlayerEntity) {
+            val detector = detectorFor(player) ?: return
+            // OPEN_CONTAINER includes entity inventories (minecarts/horses)
+            // and other successfully opened handled screens. The narrower
+            // chest/furnace/table rules still require a clicked vanilla block.
+            detector.fire(player, DDITriggerType.OPEN_CONTAINER)
+            val blockId = detector.interactingBlockIds[player.uuid] ?: return
+            vanillaPath(blockId)?.let { detector.detectOpenContainer(player, it) }
+        }
+
+        private fun vanillaPath(id: String): String? {
+            val separator = id.indexOf(':')
+            if (separator < 0) return id
+            return if (id.substring(0, separator) == Identifier.DEFAULT_NAMESPACE) {
+                id.substring(separator + 1)
+            } else {
+                null
+            }
+        }
+
+        /**
+         * Reports damage after vanilla has applied its shield/cooldown damage
+         * adjustments. Non-fatal calls come from Fabric AFTER_DAMAGE; fatal
+         * calls use the same final method-local value immediately before
+         * LivingEntity.onDeath.
+         */
+        @JvmStatic
+        fun reportDamage(entity: LivingEntity, source: DamageSource, damageTaken: Float) {
+            if (damageTaken <= 0f) return
+
+            val attacker = source.attacker as? ServerPlayerEntity
+            val attackerDetector = attacker?.let(::detectorFor)
+            if (attacker != null) {
+                if (entity is Monster) attackerDetector?.fire(attacker, DDITriggerType.ATTACK_HOSTILE)
+                attackerDetector?.fire(attacker, DDITriggerType.DEAL_DAMAGE)
+            }
+
+            if (entity is ServerPlayerEntity) {
+                val victimDetector = detectorFor(entity)
+                victimDetector?.fire(entity, DDITriggerType.TAKE_DAMAGE)
+                if (victimDetector != null && victimDetector.isFireDamage(source)) {
+                    victimDetector.fire(entity, DDITriggerType.TAKE_FIRE_DAMAGE)
+                }
+                if (source.isIn(DamageTypeTags.IS_PROJECTILE)) {
+                    victimDetector?.fire(entity, DDITriggerType.TAKE_PROJECTILE_DAMAGE)
+                }
+            }
+        }
+
+        /** Uses actual health loss, after armor/enchantments/absorption. */
+        @JvmStatic
+        fun reportHealthLoss(entity: LivingEntity, healthLost: Float) {
+            if (entity is ServerPlayerEntity && healthLost >= 5f) {
+                detectorFor(entity)?.fire(entity, DDITriggerType.TAKE_5_DAMAGE)
+            }
+        }
+    }
 
     private val wasSneaking = ConcurrentHashMap<UUID, Boolean>()
     private val wasSprinting = ConcurrentHashMap<UUID, Boolean>()
-    private val wasUsingFood = ConcurrentHashMap<UUID, Boolean>()
-    private val lastEatenFoodId = ConcurrentHashMap<UUID, String>()
     private val wasLookingDown = ConcurrentHashMap<UUID, Boolean>()
     private val wasLookingUp = ConcurrentHashMap<UUID, Boolean>()
-    private val wasLookingEast = ConcurrentHashMap<UUID, Boolean>()
-    private val wasLookingSouth = ConcurrentHashMap<UUID, Boolean>()
-    private val wasLookingWest = ConcurrentHashMap<UUID, Boolean>()
-    private val wasLookingNorth = ConcurrentHashMap<UUID, Boolean>()
+    private val lastCardinalDirection = ConcurrentHashMap<UUID, CardinalDirection>()
     private val lastX = ConcurrentHashMap<UUID, Double>()
     private val lastY = ConcurrentHashMap<UUID, Double>()
     private val lastZ = ConcurrentHashMap<UUID, Double>()
@@ -59,8 +254,6 @@ class DDITriggerDetector(
     private val wasEnclosed = ConcurrentHashMap<UUID, Boolean>()
     private val wasSubmerged = ConcurrentHashMap<UUID, Boolean>()
     private val wasFloating = ConcurrentHashMap<UUID, Boolean>()
-    private val onBlockMaps = (0..9).map { ConcurrentHashMap<UUID, Boolean>() }
-    private val wasOnBedrock = ConcurrentHashMap<UUID, Boolean>()
     private val wasBlockAboveHead = ConcurrentHashMap<UUID, Boolean>()
     private val wasNoBlockAboveHead = ConcurrentHashMap<UUID, Boolean>()
     private val deathTick = ConcurrentHashMap<UUID, Long>()
@@ -75,9 +268,6 @@ class DDITriggerDetector(
     private val jump10Triggered = ConcurrentHashMap<UUID, Boolean>()
     private val prevExperienceLevel = ConcurrentHashMap<UUID, Int>()
     private val prevExperienceProgress = ConcurrentHashMap<UUID, Float>()
-    private val wasOnGround = ConcurrentHashMap<UUID, Boolean>()
-    private val fallStartY = ConcurrentHashMap<UUID, Double>()
-    private val fallTriggered = ConcurrentHashMap<UUID, Boolean>()
     private val placeCount = ConcurrentHashMap<UUID, Int>()
     private val place30Triggered = ConcurrentHashMap<UUID, Boolean>()
     private val dropCount = ConcurrentHashMap<UUID, Int>()
@@ -91,15 +281,13 @@ class DDITriggerDetector(
     private val noJump60sTriggered = ConcurrentHashMap<UUID, Boolean>()
     private val noSneak60sTriggered = ConcurrentHashMap<UUID, Boolean>()
     private val noSprint60sTriggered = ConcurrentHashMap<UUID, Boolean>()
-
-    private var registered = false
+    private val lastTriggeredTick = ConcurrentHashMap<UUID, Long>()
+    private val interactingBlockIds = ConcurrentHashMap<UUID, String>()
 
     // ---- block name constants ----
-    private val grassBlocks = setOf("grass_block")
-    private val leafEndings = setOf("_leaves")
     private val stoneNames = setOf("stone", "cobblestone", "mossy_cobblestone")
     private val deepslateBlockNames = setOf("deepslate")
-    private val singleNames = linkedMapOf(
+    private val mineSingleNames = linkedMapOf(
         "andesite" to DDITriggerType.MINE_ANDESITE,
         "diorite" to DDITriggerType.MINE_DIORITE,
         "granite" to DDITriggerType.MINE_GRANITE,
@@ -107,214 +295,330 @@ class DDITriggerDetector(
         "crafting_table" to DDITriggerType.MINE_CRAFTING_TABLE,
         "furnace" to DDITriggerType.MINE_FURNACE,
     )
+    private val standSingleNames = linkedMapOf(
+        "andesite" to DDITriggerType.STAND_ON_ANDESITE,
+        "diorite" to DDITriggerType.STAND_ON_DIORITE,
+        "granite" to DDITriggerType.STAND_ON_GRANITE,
+        "tuff" to DDITriggerType.STAND_ON_TUFF,
+    )
+    private val heldItemTriggers = mapOf(
+        "crafting_table" to DDITriggerType.HOLD_CRAFTING_TABLE,
+        "furnace" to DDITriggerType.HOLD_FURNACE,
+        "wooden_pickaxe" to DDITriggerType.HOLD_WOODEN_PICKAXE,
+        "iron_pickaxe" to DDITriggerType.HOLD_IRON_PICKAXE,
+        "stone_pickaxe" to DDITriggerType.HOLD_STONE_PICKAXE,
+        "wooden_axe" to DDITriggerType.HOLD_WOODEN_AXE,
+        "stone_axe" to DDITriggerType.HOLD_STONE_AXE,
+        "iron_axe" to DDITriggerType.HOLD_IRON_AXE,
+    )
+    private val inventoryItemTriggers = mapOf(
+        "coal" to DDITriggerType.HAS_COAL,
+        "iron_ingot" to DDITriggerType.HAS_IRON_INGOT,
+        "copper_ingot" to DDITriggerType.HAS_COPPER_INGOT,
+        "crafting_table" to DDITriggerType.HAS_CRAFTING_TABLE,
+        "furnace" to DDITriggerType.HAS_FURNACE,
+        "rotten_flesh" to DDITriggerType.HAS_ROTTEN_FLESH,
+        "diamond" to DDITriggerType.HAS_DIAMOND,
+        "dirt" to DDITriggerType.HAS_DIRT,
+        "stone_pickaxe" to DDITriggerType.HAS_STONE_PICKAXE,
+        "wooden_pickaxe" to DDITriggerType.HAS_WOODEN_PICKAXE,
+        "iron_pickaxe" to DDITriggerType.HAS_IRON_PICKAXE,
+        "bone" to DDITriggerType.HAS_BONE,
+        "string" to DDITriggerType.HAS_STRING,
+        "ender_pearl" to DDITriggerType.HAS_ENDER_PEARL,
+        "leather" to DDITriggerType.HAS_LEATHER,
+        "bucket" to DDITriggerType.HAS_BUCKET,
+        "water_bucket" to DDITriggerType.HAS_WATER_BUCKET,
+        "lava_bucket" to DDITriggerType.HAS_LAVA_BUCKET,
+        "stone" to DDITriggerType.HAS_STONE,
+        "smooth_stone" to DDITriggerType.HAS_SMOOTH_STONE,
+        "tuff" to DDITriggerType.HAS_TUFF,
+        "polished_andesite" to DDITriggerType.HAS_POLISHED_ANDESITE,
+        "polished_granite" to DDITriggerType.HAS_POLISHED_GRANITE,
+        "polished_diorite" to DDITriggerType.HAS_POLISHED_DIORITE,
+    )
+    private val equipmentSuffixes = setOf(
+        "_sword", "_pickaxe", "_axe", "_shovel", "_hoe",
+        "_helmet", "_chestplate", "_leggings", "_boots",
+    )
+    private val inventoryStateTriggers = inventoryItemTriggers.values.toSet() + setOf(
+        DDITriggerType.HAS_AXE,
+        DDITriggerType.HAS_SWORD,
+        DDITriggerType.HAS_LEAVES,
+        DDITriggerType.HAS_WOOL,
+        DDITriggerType.NO_IRON_TOOLS_OR_ARMOR,
+        DDITriggerType.NO_DIAMOND_TOOLS_OR_ARMOR,
+        DDITriggerType.HOLD_SHIELD_OFFHAND,
+    )
+    private val standingBlockTriggers = setOf(
+        DDITriggerType.STAND_ON_GRASS,
+        DDITriggerType.STAND_ON_LEAVES,
+        DDITriggerType.STAND_ON_STONE,
+        DDITriggerType.STAND_ON_DEEPSLATE,
+        DDITriggerType.STAND_ON_ANDESITE,
+        DDITriggerType.STAND_ON_DIORITE,
+        DDITriggerType.STAND_ON_GRANITE,
+        DDITriggerType.STAND_ON_TUFF,
+        DDITriggerType.STAND_ON_BEDROCK,
+    )
 
     fun register() {
-        if (registered) return
-        registered = true
+        clearAllState()
+        activeDetectors[server] = this
+        if (!callbacksRegistered.compareAndSet(false, true)) return
 
         AttackEntityCallback.EVENT.register { player, world, hand, entity, _ ->
-            if (player is ServerPlayerEntity && entity != null && world is ServerWorld) {
-                if (entity !is ServerPlayerEntity) fire(player, DDITriggerType.ATTACK)
+            val detector = if (player is ServerPlayerEntity && world is ServerWorld) world.server?.let(::detectorFor) else null
+            if (detector != null && player is ServerPlayerEntity) {
+                if (entity is LivingEntity && entity !is ServerPlayerEntity) {
+                    detector.fire(player, DDITriggerType.ATTACK)
+                }
                 if (entity is ServerPlayerEntity) {
-                    fire(player, DDITriggerType.ATTACK_PLAYER)
-                    if (player.mainHandStack.isEmpty) fire(player, DDITriggerType.EMPTY_HAND_ATTACK)
+                    detector.fire(player, DDITriggerType.ATTACK_PLAYER)
+                    if (player.mainHandStack.isEmpty) detector.fire(player, DDITriggerType.EMPTY_HAND_ATTACK)
                 }
             }
             ActionResult.PASS
         }
 
-        ServerLivingEntityEvents.AFTER_DAMAGE.register { entity, source, amount, _, _ ->
-            if (amount > 0) {
-                if (entity is HostileEntity && source.attacker is ServerPlayerEntity)
-                    fire(source.attacker as ServerPlayerEntity, DDITriggerType.ATTACK_HOSTILE)
-                if (source.attacker is ServerPlayerEntity)
-                    fire(source.attacker as ServerPlayerEntity, DDITriggerType.DEAL_DAMAGE)
-            }
+        ServerLivingEntityEvents.AFTER_DAMAGE.register { entity, source, _, damageTaken, _ ->
+            reportDamage(entity, source, damageTaken)
         }
 
         PlayerBlockBreakEvents.AFTER.register { world, player, pos, state, _ ->
-            if (player is ServerPlayerEntity && world is ServerWorld) {
-                fire(player, DDITriggerType.BLOCK_BREAK)
-                val id = Registries.BLOCK.getId(state.block).path
-                if (id.contains("_ore") || id == "ancient_debris") fire(player, DDITriggerType.MINE_ORE)
-                detectMineBlock(player, id)
-            }
-        }
-
-        UseBlockCallback.EVENT.register { player, world, hand, hitResult ->
-            if (player is ServerPlayerEntity && world is ServerWorld) {
-                val blockId = Registries.BLOCK.getId(world.getBlockState(hitResult.blockPos).block).path
-                detectOpenContainer(player, blockId)
-                val stack = player.getStackInHand(hand)
-                if (stack.item is BlockItem) {
-                    fire(player, DDITriggerType.BLOCK_PLACE)
-                    val id = player.uuid
-                    val cnt = placeCount.getOrDefault(id, 0) + 1; placeCount[id] = cnt
-                    if (cnt >= 30 && place30Triggered.getOrDefault(id, false).not()) {
-                        place30Triggered[id] = true; fire(player, DDITriggerType.PLACE_30_BLOCKS)
+            val detector = if (player is ServerPlayerEntity && world is ServerWorld) world.server?.let(::detectorFor) else null
+            if (detector != null && player is ServerPlayerEntity) {
+                detector.fire(player, DDITriggerType.BLOCK_BREAK)
+                val blockId = Registries.BLOCK.getId(state.block)
+                if (blockId.namespace == Identifier.DEFAULT_NAMESPACE) {
+                    val id = blockId.path
+                    if (id.endsWith("_ore") || id == "ancient_debris") {
+                        detector.fire(player, DDITriggerType.MINE_ORE)
                     }
-                    detectPlaceBlock(player, Registries.ITEM.getId(stack.item).path)
+                    detector.detectMineBlock(player, id)
                 }
             }
-            ActionResult.PASS
-        }
-
-        UseItemCallback.EVENT.register { player, world, hand ->
-            if (player is ServerPlayerEntity && world is ServerWorld) {
-                val itemId = Registries.ITEM.getId(player.getStackInHand(hand).item).path
-                when (itemId) {
-                    "water_bucket" -> fire(player, DDITriggerType.EMPTY_BUCKET_WATER)
-                    "lava_bucket" -> fire(player, DDITriggerType.EMPTY_BUCKET_LAVA)
-                    "bucket" -> {
-                        val hit = player.raycast(5.0, 0.0f, true)
-                        if (hit.type == HitResult.Type.BLOCK) {
-                            val blockHit = hit as BlockHitResult
-                            val targetId = Registries.BLOCK.getId(world.getBlockState(blockHit.blockPos).block).path
-                            if (targetId == "water") fire(player, DDITriggerType.FILL_BUCKET_WATER)
-                            if (targetId == "lava") fire(player, DDITriggerType.FILL_BUCKET_LAVA)
-                        }
-                    }
-                }
-            }
-            ActionResult.PASS
         }
 
         ServerMessageEvents.CHAT_MESSAGE.register { _, sender, _ ->
-            if (sender is ServerPlayerEntity) fire(sender, DDITriggerType.CHAT)
-        }
-
-        ServerLivingEntityEvents.AFTER_DAMAGE.register { entity, source, amount, _, _ ->
-            if (entity is ServerPlayerEntity && amount > 0) {
-                fire(entity, DDITriggerType.TAKE_DAMAGE)
-                if (isFireDamage(source)) fire(entity, DDITriggerType.TAKE_FIRE_DAMAGE)
-                if (source.isIn(DamageTypeTags.IS_PROJECTILE)) fire(entity, DDITriggerType.TAKE_PROJECTILE_DAMAGE)
-                if (amount >= 5) fire(entity, DDITriggerType.TAKE_5_DAMAGE)
-            }
+            detectorFor(sender)?.fire(sender, DDITriggerType.CHAT)
         }
 
         ServerLivingEntityEvents.AFTER_DEATH.register { entity, source ->
+            val detector = entity.entityWorld.server?.let(::detectorFor)
             if (entity is ServerPlayerEntity) {
-                fire(entity, DDITriggerType.DEATH)
-                val id = entity.uuid; deathTick[id] = server.ticks.toLong()
-                notRespawn3sTriggered.remove(id); notRespawn5sTriggered.remove(id); notRespawn10sTriggered.remove(id)
-                if (source.isOf(DamageTypes.FALL)) fire(entity, DDITriggerType.DEATH_BY_FALL)
-                if (source.isOf(DamageTypes.LAVA)) fire(entity, DDITriggerType.DEATH_BY_LAVA)
-                if (source.isOf(DamageTypes.IN_WALL)) fire(entity, DDITriggerType.DEATH_BY_SUFFOCATION)
-                if (source.isOf(DamageTypes.DROWN)) fire(entity, DDITriggerType.DEATH_BY_DROWN)
-                if (source.isOf(DamageTypes.EXPLOSION) || source.isOf(DamageTypes.PLAYER_EXPLOSION))
-                    fire(entity, DDITriggerType.DEATH_BY_EXPLOSION)
+                detector?.fire(entity, DDITriggerType.DEATH)
+                val id = entity.uuid
+                if (source.isOf(DamageTypes.FALL)) detector?.fire(entity, DDITriggerType.DEATH_BY_FALL)
+                if (source.isOf(DamageTypes.LAVA)) detector?.fire(entity, DDITriggerType.DEATH_BY_LAVA)
+                if (source.isOf(DamageTypes.IN_WALL)) detector?.fire(entity, DDITriggerType.DEATH_BY_SUFFOCATION)
+                if (source.isOf(DamageTypes.DROWN)) detector?.fire(entity, DDITriggerType.DEATH_BY_DROWN)
+                if (source.isIn(DamageTypeTags.IS_EXPLOSION))
+                    detector?.fire(entity, DDITriggerType.DEATH_BY_EXPLOSION)
+
+                // Keep this after every death trigger. A successful trigger
+                // resets per-word state, so writing earlier would erase the
+                // timer when the newly assigned word is NOT_RESPAWN_*.
+                if (detector != null) detector.deathTick[id] = detector.server.ticks.toLong()
+                detector?.notRespawn3sTriggered?.remove(id)
+                detector?.notRespawn5sTriggered?.remove(id)
+                detector?.notRespawn10sTriggered?.remove(id)
             }
-            if (entity is IronGolemEntity && source.attacker is ServerPlayerEntity)
-                fire(source.attacker as ServerPlayerEntity, DDITriggerType.KILL_IRON_GOLEM)
+            val attacker = source.attacker as? ServerPlayerEntity
+            val attackerDetector = attacker?.let(::detectorFor)
+            if (entity is IronGolemEntity && attacker != null)
+                attackerDetector?.fire(attacker, DDITriggerType.KILL_IRON_GOLEM)
         }
 
         ServerPlayerEvents.AFTER_RESPAWN.register { _, newPlayer, _ ->
-            val id = newPlayer.uuid; deathTick.remove(id)
-            notRespawn3sTriggered.remove(id); notRespawn5sTriggered.remove(id); notRespawn10sTriggered.remove(id)
-            fire(newPlayer, DDITriggerType.RESPAWN)
+            val detector = detectorFor(newPlayer)
+            val id = newPlayer.uuid
+            detector?.deathTick?.remove(id)
+            detector?.notRespawn3sTriggered?.remove(id)
+            detector?.notRespawn5sTriggered?.remove(id)
+            detector?.notRespawn10sTriggered?.remove(id)
+            detector?.fire(newPlayer, DDITriggerType.RESPAWN)
         }
 
-        ServerTickEvents.END_SERVER_TICK.register { server -> onServerTick(server) }
+        ServerTickEvents.END_SERVER_TICK.register { tickingServer ->
+            detectorFor(tickingServer)?.onServerTick(tickingServer)
+        }
     }
 
-    fun unregister() { clearAllState(); registered = false }
+    fun unregister() {
+        synchronized(activeDetectors) {
+            if (activeDetectors[server] === this) activeDetectors.remove(server)
+        }
+        clearAllState()
+    }
+
+    private fun currentTrigger(player: ServerPlayerEntity): DDITriggerType? =
+        currentTriggerHandler?.invoke(player.uuid)
+
+    private fun isActive(player: ServerPlayerEntity): Boolean =
+        currentTrigger(player) != null
 
     private fun fire(player: ServerPlayerEntity, type: DDITriggerType) {
-        onTriggeredHandler?.invoke(player, type)
+        if (currentTrigger(player) != type) return
+        val handler = onTriggeredHandler ?: return
+        val tick = server.ticks.toLong()
+        if (lastTriggeredTick.put(player.uuid, tick) == tick) return
+        handler(player, type)
     }
 
     private fun onServerTick(server: MinecraftServer) {
+        if (server !== this.server) return
+        val activePlayerIds = activePlayerIdsHandler?.invoke() ?: return
         for (player in server.playerManager.playerList) {
             val id = player.uuid; val tick = server.ticks.toLong()
+            if (id !in activePlayerIds) continue
+            val currentTrigger = currentTrigger(player) ?: continue
+            // An action callback may already have changed this player's word
+            // earlier in the same server tick. Do not preheat the freshly reset
+            // edge/progress maps with the remainder of this tick.
+            if (lastTriggeredTick[id] == tick) continue
 
             val sneaking = player.isSneaking
             val prevSneak = wasSneaking.put(id, sneaking)
             if (sneaking && (prevSneak == null || !prevSneak)) fire(player, DDITriggerType.SNEAK)
+            if (lastTriggeredTick[id] == tick) continue
 
             val sprinting = player.isSprinting
             val prevSprint = wasSprinting.put(id, sprinting)
             if (sprinting && (prevSprint == null || !prevSprint)) fire(player, DDITriggerType.SPRINT)
-
-            val usingFood = player.isUsingItem && player.activeItem.contains(DataComponentTypes.FOOD)
-            if (usingFood) lastEatenFoodId[id] = Registries.ITEM.getId(player.activeItem.item).path
-            val prevUsingFood = wasUsingFood.put(id, usingFood)
-            if (!usingFood && prevUsingFood != null && prevUsingFood) {
-                fire(player, DDITriggerType.EAT)
-                if (lastEatenFoodId[id] == "rotten_flesh") fire(player, DDITriggerType.EAT_ROTTEN_FLESH)
-            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // look direction
             val lookingDown = player.pitch > 60
-            if (lookingDown && wasLookingDown.put(id, lookingDown) != true) fire(player, DDITriggerType.LOOK_DOWN)
+            val previousLookingDown = wasLookingDown.put(id, lookingDown)
+            if (lookingDown && previousLookingDown != true) fire(player, DDITriggerType.LOOK_DOWN)
             val lookingUp = player.pitch < -60
-            if (lookingUp && wasLookingUp.put(id, lookingUp) != true) fire(player, DDITriggerType.LOOK_UP)
+            val previousLookingUp = wasLookingUp.put(id, lookingUp)
+            if (lookingUp && previousLookingUp != true) fire(player, DDITriggerType.LOOK_UP)
 
             val yaw = ((player.yaw % 360) + 360) % 360
-            if (yaw in 225f..315f && wasLookingWest.put(id, true) != true) fire(player, DDITriggerType.LOOK_WEST)
-            // ... simplified direction checks
-            val lookingSouth = yaw > 315 || yaw < 45
-            if (lookingSouth && wasLookingSouth.put(id, true) != true) fire(player, DDITriggerType.LOOK_SOUTH)
-            val lookingWest = yaw in 45f..135f
-            if (lookingWest && wasLookingWest.put(id, true) != true) fire(player, DDITriggerType.LOOK_WEST)
-            val lookingNorth: Boolean = yaw in 135f..225f
-            if (lookingNorth && wasLookingNorth.put(id, true) != true) fire(player, DDITriggerType.LOOK_NORTH)
-            val lookingEast: Boolean = yaw in 225f..315f
-            if (lookingEast && wasLookingEast.put(id, true) != true) fire(player, DDITriggerType.LOOK_EAST)
-
-            // stand still
-            val cx = player.x; val cy = player.y; val cz = player.z
-            val px = lastX.put(id, cx); val py = lastY.put(id, cy); val pz = lastZ.put(id, cz)
-            if (px != null) {
-                val still = kotlin.math.abs(cx - px) < 0.1 && kotlin.math.abs(cy - py) < 0.1 && kotlin.math.abs(cz - pz) < 0.1
-                if (still) {
-                    val t = standStillTicks.getOrDefault(id, 0) + 1; standStillTicks[id] = t
-                    if (t >= 100 && standStillTriggered.getOrDefault(id, false).not()) { standStillTriggered[id] = true; fire(player, DDITriggerType.STAND_STILL_5S) }
-                } else { standStillTicks[id] = 0; standStillTriggered[id] = false }
+            val direction = when {
+                yaw < 45f || yaw >= 315f -> CardinalDirection.SOUTH
+                yaw < 135f -> CardinalDirection.WEST
+                yaw < 225f -> CardinalDirection.NORTH
+                else -> CardinalDirection.EAST
             }
-
-            // look same dir
-            val cyaw = player.yaw; val cp = player.pitch
-            val pyaw = lastYaw.put(id, cyaw); val pp = lastPitch.put(id, cp)
-            if (pyaw != null) {
-                var diff = kotlin.math.abs(cyaw - pyaw); if (diff > 180) diff = 360 - diff
-                if (diff < 10 && kotlin.math.abs(cp - pp) < 10) {
-                    val t = lookSameDirTicks.getOrDefault(id, 0) + 1; lookSameDirTicks[id] = t
-                    if (t >= 100 && lookSameDirTriggered.getOrDefault(id, false).not()) { lookSameDirTriggered[id] = true; fire(player, DDITriggerType.LOOK_SAME_DIR_5S) }
-                } else { lookSameDirTicks[id] = 0; lookSameDirTriggered[id] = false }
+            if (lastCardinalDirection.put(id, direction) != direction) {
+                val trigger = when (direction) {
+                    CardinalDirection.SOUTH -> DDITriggerType.LOOK_SOUTH
+                    CardinalDirection.WEST -> DDITriggerType.LOOK_WEST
+                    CardinalDirection.NORTH -> DDITriggerType.LOOK_NORTH
+                    CardinalDirection.EAST -> DDITriggerType.LOOK_EAST
+                }
+                fire(player, trigger)
             }
+            if (lastTriggeredTick[id] == tick) continue
+
+            // stand still: compare the whole five-second window against one
+            // anchor. Comparing adjacent ticks would let slow walking count as
+            // standing still indefinitely.
+            if (currentTrigger == DDITriggerType.STAND_STILL_5S) {
+                val cx = player.x; val cy = player.y; val cz = player.z
+                val ax = lastX[id]; val ay = lastY[id]; val az = lastZ[id]
+                if (ax == null || ay == null || az == null) {
+                    lastX[id] = cx; lastY[id] = cy; lastZ[id] = cz
+                    standStillTicks[id] = 0
+                } else if (DDITriggerRules.isWithinStationaryAnchor(ax, ay, az, cx, cy, cz)) {
+                    val t = standStillTicks.getOrDefault(id, 0) + 1
+                    standStillTicks[id] = t
+                    if (t >= 100 && standStillTriggered.getOrDefault(id, false).not()) {
+                        standStillTriggered[id] = true
+                        fire(player, DDITriggerType.STAND_STILL_5S)
+                    }
+                } else {
+                    lastX[id] = cx; lastY[id] = cy; lastZ[id] = cz
+                    standStillTicks[id] = 0
+                    standStillTriggered[id] = false
+                }
+            }
+            if (lastTriggeredTick[id] == tick) continue
+
+            // Same principle for looking: use the start of the window as the
+            // anchor so a player cannot rotate a few degrees every tick.
+            if (currentTrigger == DDITriggerType.LOOK_SAME_DIR_5S) {
+                val cyaw = player.yaw; val cp = player.pitch
+                val anchorYaw = lastYaw[id]; val anchorPitch = lastPitch[id]
+                if (anchorYaw == null || anchorPitch == null) {
+                    lastYaw[id] = cyaw; lastPitch[id] = cp
+                    lookSameDirTicks[id] = 0
+                } else if (DDITriggerRules.isWithinLookAnchor(anchorYaw, anchorPitch, cyaw, cp)) {
+                    val t = lookSameDirTicks.getOrDefault(id, 0) + 1
+                    lookSameDirTicks[id] = t
+                    if (t >= 100 && lookSameDirTriggered.getOrDefault(id, false).not()) {
+                        lookSameDirTriggered[id] = true
+                        fire(player, DDITriggerType.LOOK_SAME_DIR_5S)
+                    }
+                } else {
+                    lastYaw[id] = cyaw; lastPitch[id] = cp
+                    lookSameDirTicks[id] = 0
+                    lookSameDirTriggered[id] = false
+                }
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // enclosed
-            val enclosed = isPlayerEnclosed(player)
-            if (enclosed && wasEnclosed.put(id, true) != true) fire(player, DDITriggerType.ENCLOSED_1X2)
+            if (currentTrigger == DDITriggerType.ENCLOSED_1X2) {
+                val enclosed = isPlayerEnclosed(player)
+                val previousEnclosed = wasEnclosed.put(id, enclosed)
+                if (enclosed && previousEnclosed != true) fire(player, DDITriggerType.ENCLOSED_1X2)
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // submerged
-            val submerged = player.isSubmergedInWater
-            if (submerged && wasSubmerged.put(id, true) != true) fire(player, DDITriggerType.SUBMERGED)
+            if (currentTrigger == DDITriggerType.SUBMERGED) {
+                val submerged = player.isSubmergedInWater
+                val previousSubmerged = wasSubmerged.put(id, submerged)
+                if (submerged && previousSubmerged != true) fire(player, DDITriggerType.SUBMERGED)
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // floating
-            val floating = player.getServerWorld().getBlockState(player.blockPos.down()).isAir
-            if (floating && wasFloating.put(id, true) != true) fire(player, DDITriggerType.FLOATING)
+            if (currentTrigger == DDITriggerType.FLOATING) {
+                val floating = player.entityWorld.getBlockState(player.blockPos.down()).isAir
+                val previousFloating = wasFloating.put(id, floating)
+                if (floating && previousFloating != true) fire(player, DDITriggerType.FLOATING)
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // standing on blocks
-            val belowId = Registries.BLOCK.getId(player.getServerWorld().getBlockState(player.blockPos.down()).block).path
-            val blockConditions = linkedMapOf<DDITriggerType, () -> Boolean>(
-                DDITriggerType.STAND_ON_GRASS to { belowId == "grass_block" },
-                DDITriggerType.STAND_ON_LEAVES to { belowId.endsWith("_leaves") },
-                DDITriggerType.STAND_ON_STONE to { belowId in stoneNames },
-                DDITriggerType.STAND_ON_DEEPSLATE to { belowId in deepslateBlockNames },
-            )
-            for ((type, cond) in blockConditions) {
-                if (cond()) fire(player, type)
+            if (currentTrigger in standingBlockTriggers) {
+                val belowIdentifier = Registries.BLOCK.getId(
+                    player.entityWorld.getBlockState(player.blockPos.down()).block
+                )
+                val belowId = if (belowIdentifier.namespace == Identifier.DEFAULT_NAMESPACE) {
+                    belowIdentifier.path
+                } else {
+                    ""
+                }
+                val matches = when (currentTrigger) {
+                    DDITriggerType.STAND_ON_GRASS -> belowId == "grass_block"
+                    DDITriggerType.STAND_ON_LEAVES -> belowId.endsWith("_leaves")
+                    DDITriggerType.STAND_ON_STONE -> belowId in stoneNames
+                    DDITriggerType.STAND_ON_DEEPSLATE -> belowId in deepslateBlockNames
+                    DDITriggerType.STAND_ON_BEDROCK -> belowId == "bedrock"
+                    else -> standSingleNames[belowId] == currentTrigger
+                }
+                if (matches) fire(player, currentTrigger)
             }
-            for ((name, type) in singleNames) {
-                if (belowId == name) fire(player, type)
-            }
-            if (belowId == "bedrock") fire(player, DDITriggerType.STAND_ON_BEDROCK)
+            if (lastTriggeredTick[id] == tick) continue
 
             // block above head
-            val hasAbove = hasBlockAboveHead(player)
-            if (hasAbove && wasBlockAboveHead.put(id, true) != true) fire(player, DDITriggerType.BLOCK_ABOVE_HEAD)
-            if (!hasAbove && wasNoBlockAboveHead.put(id, true) != true) fire(player, DDITriggerType.NO_BLOCK_ABOVE_HEAD)
+            if (currentTrigger == DDITriggerType.BLOCK_ABOVE_HEAD ||
+                currentTrigger == DDITriggerType.NO_BLOCK_ABOVE_HEAD
+            ) {
+                val hasAbove = hasBlockAboveHead(player)
+                val previousHasAbove = wasBlockAboveHead.put(id, hasAbove)
+                val noBlockAbove = !hasAbove
+                val previousNoBlockAbove = wasNoBlockAboveHead.put(id, noBlockAbove)
+                if (hasAbove && previousHasAbove != true) fire(player, DDITriggerType.BLOCK_ABOVE_HEAD)
+                if (noBlockAbove && previousNoBlockAbove != true) fire(player, DDITriggerType.NO_BLOCK_ABOVE_HEAD)
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // death timer
             val dt = deathTick[id]
@@ -324,6 +628,7 @@ class DDITriggerDetector(
                 if (elapsed >= 100 && notRespawn5sTriggered.getOrDefault(id, false).not()) { notRespawn5sTriggered[id] = true; fire(player, DDITriggerType.NOT_RESPAWN_5S) }
                 if (elapsed >= 200 && notRespawn10sTriggered.getOrDefault(id, false).not()) { notRespawn10sTriggered[id] = true; fire(player, DDITriggerType.NOT_RESPAWN_10S) }
             }
+            if (lastTriggeredTick[id] == tick) continue
 
             // hunger / height
             val hunger = player.hungerManager.foodLevel
@@ -331,96 +636,106 @@ class DDITriggerDetector(
             if (hunger > 18) fire(player, DDITriggerType.HUNGER_ABOVE_18)
             if (player.y > 70) fire(player, DDITriggerType.Y_ABOVE_70)
             if (player.y < 70) fire(player, DDITriggerType.Y_BELOW_70)
+            if (lastTriggeredTick[id] == tick) continue
 
             // distance
-            val allPlayers = server.playerManager.playerList
-            var minDist = Double.MAX_VALUE
-            for (other in allPlayers) { if (other.uuid != id) { val d = player.squaredDistanceTo(other); if (d < minDist) minDist = d } }
-            if (minDist > 225) fire(player, DDITriggerType.FAR_FROM_ALL_15M)
-            if (minDist < 4) fire(player, DDITriggerType.TOO_CLOSE_TO_PLAYER)
+            if (currentTrigger == DDITriggerType.FAR_FROM_ALL_15M ||
+                currentTrigger == DDITriggerType.TOO_CLOSE_TO_PLAYER
+            ) {
+                val opponents = server.playerManager.playerList.filter {
+                    it.uuid != id && it.uuid in activePlayerIds
+                }
+                if (opponents.isNotEmpty()) {
+                    val sameWorldOpponents = opponents.filter { it.entityWorld === player.entityWorld }
+                    val minDist = sameWorldOpponents.minOfOrNull(player::squaredDistanceTo)
+                    if (minDist == null || minDist > 225) fire(player, DDITriggerType.FAR_FROM_ALL_15M)
+                    if (minDist != null && minDist < 4) fire(player, DDITriggerType.TOO_CLOSE_TO_PLAYER)
+                }
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // sustained behaviors
             if (sprinting) { sprintStartTick.putIfAbsent(id, tick); if ((tick - sprintStartTick[id]!!) / 20 >= 30 && sprint30sTriggered.getOrDefault(id, false).not()) { sprint30sTriggered[id] = true; fire(player, DDITriggerType.SPRINT_30S) } }
             else { sprintStartTick.remove(id); sprint30sTriggered.remove(id) }
             if (sneaking) { sneakStartTick.putIfAbsent(id, tick); if ((tick - sneakStartTick[id]!!) / 20 >= 5 && sneak5sTriggered.getOrDefault(id, false).not()) { sneak5sTriggered[id] = true; fire(player, DDITriggerType.SNEAK_5S) } }
             else { sneakStartTick.remove(id); sneak5sTriggered.remove(id) }
-
-            // jump count
-            val onGround = player.isOnGround
-            val prevGround = wasOnGround.put(id, onGround)
-            if (!onGround && prevGround != null && prevGround) {
-                val j = jumpCount.getOrDefault(id, 0) + 1; jumpCount[id] = j
-                if (j >= 10 && jump10Triggered.getOrDefault(id, false).not()) { jump10Triggered[id] = true; fire(player, DDITriggerType.JUMP_10_TIMES) }
-            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // experience
             val cl = player.experienceLevel; val cpr = player.experienceProgress
             val pl = prevExperienceLevel.put(id, cl)
+            val previousProgress = prevExperienceProgress.put(id, cpr)
             if (pl != null && cl > pl) fire(player, DDITriggerType.LEVEL_UP)
-            if (prevExperienceProgress.put(id, cpr) != null && (cpr > (prevExperienceProgress.getOrDefault(id, cpr)) || cl > (pl ?: cl)))
+            if (previousProgress != null && (cpr > previousProgress || cl > (pl ?: cl)))
                 fire(player, DDITriggerType.GAIN_EXPERIENCE)
+            if (lastTriggeredTick[id] == tick) continue
 
             // armor
-            val armorSlots = arrayOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)
-            if (armorSlots.any { !player.getEquippedStack(it).isEmpty }) fire(player, DDITriggerType.WEAR_ARMOR)
+            if (currentTrigger == DDITriggerType.WEAR_ARMOR) {
+                val armorSlots = arrayOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)
+                if (armorSlots.any { !player.getEquippedStack(it).isEmpty }) fire(player, DDITriggerType.WEAR_ARMOR)
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // held item
-            val heldId = Registries.ITEM.getId(player.mainHandStack.item).path
-            val heldMap = mapOf(
-                "crafting_table" to DDITriggerType.HOLD_CRAFTING_TABLE,
-                "furnace" to DDITriggerType.HOLD_FURNACE,
-                "wooden_pickaxe" to DDITriggerType.HOLD_WOODEN_PICKAXE,
-                "iron_pickaxe" to DDITriggerType.HOLD_IRON_PICKAXE,
-                "stone_pickaxe" to DDITriggerType.HOLD_STONE_PICKAXE,
-                "wooden_axe" to DDITriggerType.HOLD_WOODEN_AXE,
-                "stone_axe" to DDITriggerType.HOLD_STONE_AXE,
-                "iron_axe" to DDITriggerType.HOLD_IRON_AXE,
-            )
-            heldMap[heldId]?.let { fire(player, it) }
+            val heldIds = sequenceOf(player.mainHandStack, player.offHandStack)
+                .filterNot { it.isEmpty }
+                .map { Registries.ITEM.getId(it.item) }
+                .filter { it.namespace == Identifier.DEFAULT_NAMESPACE }
+                .map { it.path }
+                .toSet()
+            heldIds.forEach { heldItemTriggers[it]?.let { type -> fire(player, type) } }
+            if (lastTriggeredTick[id] == tick) continue
 
             // hotbar
             if (player.inventory.selectedSlot == 0) fire(player, DDITriggerType.SELECT_SLOT_FIRST)
             if (player.inventory.selectedSlot == 8) fire(player, DDITriggerType.SELECT_SLOT_LAST)
+            if (lastTriggeredTick[id] == tick) continue
 
-            // fall height
-            if (!onGround) {
-                fallStartY.putIfAbsent(id, player.y)
-                if ((fallStartY[id] ?: 0.0) - player.y >= 5 && fallTriggered.getOrDefault(id, false).not()) { fallTriggered[id] = true; fire(player, DDITriggerType.FALL_5_BLOCKS) }
-            } else { fallStartY.remove(id); fallTriggered.remove(id) }
+            // Vanilla fallDistance tracks distance from the airborne apex and
+            // excludes walking off a ledge from being misclassified as a jump.
+            if (player.fallDistance >= 5.0) fire(player, DDITriggerType.FALL_5_BLOCKS)
+            if (lastTriggeredTick[id] == tick) continue
 
             // inventory
-            val invItems = mapOf(
-                "coal" to DDITriggerType.HAS_COAL, "iron_ingot" to DDITriggerType.HAS_IRON_INGOT,
-                "copper_ingot" to DDITriggerType.HAS_COPPER_INGOT, "crafting_table" to DDITriggerType.HAS_CRAFTING_TABLE,
-                "furnace" to DDITriggerType.HAS_FURNACE, "rotten_flesh" to DDITriggerType.HAS_ROTTEN_FLESH,
-                "diamond" to DDITriggerType.HAS_DIAMOND, "dirt" to DDITriggerType.HAS_DIRT,
-                "stone_pickaxe" to DDITriggerType.HAS_STONE_PICKAXE, "wooden_pickaxe" to DDITriggerType.HAS_WOODEN_PICKAXE,
-                "iron_pickaxe" to DDITriggerType.HAS_IRON_PICKAXE, "bone" to DDITriggerType.HAS_BONE,
-                "string" to DDITriggerType.HAS_STRING, "ender_pearl" to DDITriggerType.HAS_ENDER_PEARL,
-                "leather" to DDITriggerType.HAS_LEATHER, "bucket" to DDITriggerType.HAS_BUCKET,
-                "water_bucket" to DDITriggerType.HAS_WATER_BUCKET, "lava_bucket" to DDITriggerType.HAS_LAVA_BUCKET,
-                "stone" to DDITriggerType.HAS_STONE, "smooth_stone" to DDITriggerType.HAS_SMOOTH_STONE,
-                "tuff" to DDITriggerType.HAS_TUFF, "polished_andesite" to DDITriggerType.HAS_POLISHED_ANDESITE,
-                "polished_granite" to DDITriggerType.HAS_POLISHED_GRANITE, "polished_diorite" to DDITriggerType.HAS_POLISHED_DIORITE,
-            )
-            for ((itemId, type) in invItems) { if (hasItem(player, itemId)) fire(player, type) }
-            if (hasItemEnding(player, "_axe")) fire(player, DDITriggerType.HAS_AXE)
-            if (hasItemEnding(player, "_sword")) fire(player, DDITriggerType.HAS_SWORD)
-            if (hasItemEnding(player, "_leaves") || hasItem(player, "leaves")) fire(player, DDITriggerType.HAS_LEAVES)
-            if (hasItemEnding(player, "_wool")) fire(player, DDITriggerType.HAS_WOOL)
-            if (!hasItemStarting(player, "iron_")) fire(player, DDITriggerType.NO_IRON_TOOLS_OR_ARMOR)
-            if (!hasItemStarting(player, "diamond_")) fire(player, DDITriggerType.NO_DIAMOND_TOOLS_OR_ARMOR)
-            val offId = Registries.ITEM.getId(player.offHandStack.item).path
-            if (offId == "shield") fire(player, DDITriggerType.HOLD_SHIELD_OFFHAND)
+            if (currentTrigger in inventoryStateTriggers) {
+                val inventoryIds = buildSet {
+                    for (slot in 0 until player.inventory.size()) {
+                        val stack = player.inventory.getStack(slot)
+                        if (!stack.isEmpty) add(Registries.ITEM.getId(stack.item))
+                    }
+                }
+                val vanillaInventoryPaths = inventoryIds
+                    .filter { it.namespace == Identifier.DEFAULT_NAMESPACE }
+                    .mapTo(mutableSetOf()) { it.path }
+                val allInventoryPaths = inventoryIds.mapTo(mutableSetOf()) { it.path }
+                for ((itemId, type) in inventoryItemTriggers) {
+                    if (itemId in vanillaInventoryPaths) fire(player, type)
+                }
+                if (allInventoryPaths.any { it.endsWith("_axe") }) fire(player, DDITriggerType.HAS_AXE)
+                if (allInventoryPaths.any { it.endsWith("_sword") }) fire(player, DDITriggerType.HAS_SWORD)
+                if (allInventoryPaths.any { it.endsWith("_leaves") || it == "leaves" }) fire(player, DDITriggerType.HAS_LEAVES)
+                if (allInventoryPaths.any { it.endsWith("_wool") }) fire(player, DDITriggerType.HAS_WOOL)
+                if (allInventoryPaths.none { it.startsWith("iron_") && equipmentSuffixes.any(it::endsWith) })
+                    fire(player, DDITriggerType.NO_IRON_TOOLS_OR_ARMOR)
+                if (allInventoryPaths.none { it.startsWith("diamond_") && equipmentSuffixes.any(it::endsWith) })
+                    fire(player, DDITriggerType.NO_DIAMOND_TOOLS_OR_ARMOR)
+                val offId = Registries.ITEM.getId(player.offHandStack.item)
+                if (offId.namespace == Identifier.DEFAULT_NAMESPACE && offId.path == "shield") {
+                    fire(player, DDITriggerType.HOLD_SHIELD_OFFHAND)
+                }
+            }
+            if (lastTriggeredTick[id] == tick) continue
 
             // drop 30
             if (dropCount.getOrDefault(id, 0) >= 30 && drop30Triggered.getOrDefault(id, false).not()) { drop30Triggered[id] = true; fire(player, DDITriggerType.DROP_30_ITEMS) }
 
             // no-action timers
             lastJumpTick.putIfAbsent(id, tick); lastSneakActionTick.putIfAbsent(id, tick); lastSprintActionTick.putIfAbsent(id, tick)
-            if (!onGround && prevGround != null && prevGround) lastJumpTick[id] = tick
-            if (sneaking && (prevSneak == null || !prevSneak)) lastSneakActionTick[id] = tick
-            if (sprinting && (prevSprint == null || !prevSprint)) lastSprintActionTick[id] = tick
+            // These words describe continuously *not* doing the action. Holding
+            // sneak/sprint must therefore keep resetting the timer every tick.
+            if (sneaking) lastSneakActionTick[id] = tick
+            if (sprinting) lastSprintActionTick[id] = tick
             val sj = (tick - lastJumpTick[id]!!) / 20; val ss = (tick - lastSneakActionTick[id]!!) / 20; val sp = (tick - lastSprintActionTick[id]!!) / 20
             if (sj >= 30 && noJump30sTriggered.getOrDefault(id, false).not()) { noJump30sTriggered[id] = true; fire(player, DDITriggerType.NO_JUMP_30S) }
             if (ss >= 30 && noSneak30sTriggered.getOrDefault(id, false).not()) { noSneak30sTriggered[id] = true; fire(player, DDITriggerType.NO_SNEAK_30S) }
@@ -430,26 +745,29 @@ class DDITriggerDetector(
             if (sp >= 60 && noSprint60sTriggered.getOrDefault(id, false).not()) { noSprint60sTriggered[id] = true; fire(player, DDITriggerType.NO_SPRINT_60S) }
         }
 
-        cleanupMaps(server.playerManager.playerList.map { it.uuid }.toSet())
+        if (server.ticks % 100 == 0) {
+            cleanupMaps(server.playerManager.playerList.map { it.uuid }.toSet())
+        }
     }
 
     private fun detectMineBlock(player: ServerPlayerEntity, id: String) {
         if (id.endsWith("_log") || id.endsWith("_wood") || id.endsWith("_stem") || id.endsWith("_hyphae") || id == "bamboo_block") fire(player, DDITriggerType.MINE_WOOD)
         if (id in stoneNames) fire(player, DDITriggerType.MINE_STONE)
-        if (id.contains("deepslate") && !id.contains("_ore")) fire(player, DDITriggerType.MINE_DEEPSLATE)
+        if (id in deepslateBlockNames) fire(player, DDITriggerType.MINE_DEEPSLATE)
         if (id.contains("coal_ore")) fire(player, DDITriggerType.MINE_COAL)
         if (id.contains("iron_ore")) fire(player, DDITriggerType.MINE_IRON)
         if (id.contains("copper_ore")) fire(player, DDITriggerType.MINE_COPPER)
         if (id.contains("gold_ore")) fire(player, DDITriggerType.MINE_GOLD)
         if (id.contains("diamond_ore")) fire(player, DDITriggerType.MINE_DIAMOND)
-        singleNames[id]?.let { fire(player, it) }
+        mineSingleNames[id]?.let { fire(player, it) }
     }
 
     private fun detectOpenContainer(player: ServerPlayerEntity, blockId: String) {
-        when (blockId) {
-            "chest", "trapped_chest", "ender_chest" -> fire(player, DDITriggerType.OPEN_CHEST)
-            "furnace", "blast_furnace", "smoker" -> fire(player, DDITriggerType.OPEN_FURNACE)
-            "crafting_table" -> fire(player, DDITriggerType.OPEN_CRAFTING_TABLE)
+        when {
+            blockId in setOf("chest", "trapped_chest", "ender_chest") ->
+                fire(player, DDITriggerType.OPEN_CHEST)
+            blockId in setOf("furnace", "blast_furnace", "smoker") -> fire(player, DDITriggerType.OPEN_FURNACE)
+            blockId == "crafting_table" -> fire(player, DDITriggerType.OPEN_CRAFTING_TABLE)
         }
     }
 
@@ -465,7 +783,7 @@ class DDITriggerDetector(
     }
 
     private fun isPlayerEnclosed(player: ServerPlayerEntity): Boolean {
-        val world = player.getServerWorld()
+        val world = player.entityWorld
         val feet = player.blockPos; val head = feet.up()
         if (!world.getBlockState(feet.down()).isSolidBlock(world, feet.down())) return false
         if (!world.getBlockState(head.up()).isSolidBlock(world, head.up())) return false
@@ -474,30 +792,17 @@ class DDITriggerDetector(
     }
 
     private fun hasBlockAboveHead(player: ServerPlayerEntity): Boolean {
-        val world = player.getServerWorld(); val fx = player.blockPos.x; val fz = player.blockPos.z
-        for (y in (player.blockPos.y + 2)..(world.dimension.height() - 1)) {
-            if (!world.getBlockState(BlockPos(fx, y, fz)).isAir) return true
-        }
-        return false
+        val world = player.entityWorld
+        val surfaceY = world.getTopY(
+            Heightmap.Type.WORLD_SURFACE,
+            player.blockPos.x,
+            player.blockPos.z,
+        )
+        return surfaceY > player.blockPos.y + 2
     }
 
-    private fun isFireDamage(source: DamageSource): Boolean {
-        val id = source.type.msgId()
-        return id in setOf("inFire", "onFire", "lava", "hotFloor", "campfire") || id.contains("fire") || id.contains("flame") || id.contains("burn") || id.contains("magma")
-    }
-
-    private fun hasItem(player: ServerPlayerEntity, itemId: String): Boolean {
-        for (i in 0 until player.inventory.size()) { if (Registries.ITEM.getId(player.inventory.getStack(i).item).path == itemId) return true }
-        return false
-    }
-    private fun hasItemEnding(player: ServerPlayerEntity, suffix: String): Boolean {
-        for (i in 0 until player.inventory.size()) { if (Registries.ITEM.getId(player.inventory.getStack(i).item).path.endsWith(suffix)) return true }
-        return false
-    }
-    private fun hasItemStarting(player: ServerPlayerEntity, prefix: String): Boolean {
-        for (i in 0 until player.inventory.size()) { if (Registries.ITEM.getId(player.inventory.getStack(i).item).path.startsWith(prefix)) return true }
-        return false
-    }
+    private fun isFireDamage(source: DamageSource): Boolean =
+        source.isIn(DamageTypeTags.IS_FIRE)
 
     fun resetJumpCount(id: UUID) { jumpCount.remove(id); jump10Triggered.remove(id) }
     fun resetLookSameDir(id: UUID) { lastYaw.remove(id); lastPitch.remove(id); lookSameDirTicks.remove(id); lookSameDirTriggered.remove(id) }
@@ -508,31 +813,37 @@ class DDITriggerDetector(
     fun resetNoSprintState(id: UUID) { lastSprintActionTick.remove(id); noSprint30sTriggered.remove(id); noSprint60sTriggered.remove(id) }
     fun resetBlockAboveHeadState(id: UUID) { wasBlockAboveHead.remove(id); wasNoBlockAboveHead.remove(id) }
 
+    fun resetPlayerState(id: UUID, preserveDeathTimer: Boolean = false) {
+        val savedDeathTick = deathTick[id]
+        stateMaps().forEach { it.remove(id) }
+        if (preserveDeathTimer) {
+            deathTick[id] = savedDeathTick ?: server.ticks.toLong()
+        }
+    }
+
     fun clearAllState() {
-        listOf(
-            wasSneaking, wasSprinting, wasUsingFood, lastEatenFoodId, wasLookingDown, wasLookingUp,
-            wasLookingEast, wasLookingSouth, wasLookingWest, wasLookingNorth, lastX, lastY, lastZ,
+        stateMaps().forEach { it.clear() }
+        lastTriggeredTick.clear()
+        interactingBlockIds.clear()
+    }
+
+    private fun stateMaps(): List<MutableMap<UUID, *>> = buildList {
+        addAll(listOf(
+            wasSneaking, wasSprinting, wasLookingDown, wasLookingUp,
+            lastCardinalDirection, lastX, lastY, lastZ,
             standStillTicks, standStillTriggered, lastYaw, lastPitch, lookSameDirTicks, lookSameDirTriggered,
-            wasEnclosed, wasSubmerged, wasFloating, wasOnBedrock, wasBlockAboveHead, wasNoBlockAboveHead,
+            wasEnclosed, wasSubmerged, wasFloating, wasBlockAboveHead, wasNoBlockAboveHead,
             deathTick, notRespawn3sTriggered, notRespawn5sTriggered, notRespawn10sTriggered,
             sprintStartTick, sneakStartTick, jumpCount, sprint30sTriggered, sneak5sTriggered, jump10Triggered,
-            prevExperienceLevel, prevExperienceProgress, wasOnGround, fallStartY, fallTriggered,
+            prevExperienceLevel, prevExperienceProgress,
             placeCount, place30Triggered, dropCount, drop30Triggered, lastJumpTick, lastSneakActionTick, lastSprintActionTick,
             noJump30sTriggered, noSneak30sTriggered, noSprint30sTriggered, noJump60sTriggered, noSneak60sTriggered, noSprint60sTriggered,
-        ).forEach { it.clear() }
+        ))
     }
 
     private fun cleanupMaps(online: Set<UUID>) {
-        listOf(
-            wasSneaking, wasSprinting, wasUsingFood, lastEatenFoodId, wasLookingDown, wasLookingUp,
-            wasLookingEast, wasLookingSouth, wasLookingWest, wasLookingNorth, lastX, lastY, lastZ,
-            standStillTicks, standStillTriggered, lastYaw, lastPitch, lookSameDirTicks, lookSameDirTriggered,
-            wasEnclosed, wasSubmerged, wasFloating, wasOnBedrock, wasBlockAboveHead, wasNoBlockAboveHead,
-            deathTick, notRespawn3sTriggered, notRespawn5sTriggered, notRespawn10sTriggered,
-            sprintStartTick, sneakStartTick, jumpCount, sprint30sTriggered, sneak5sTriggered, jump10Triggered,
-            prevExperienceLevel, prevExperienceProgress, wasOnGround, fallStartY, fallTriggered,
-            placeCount, place30Triggered, dropCount, drop30Triggered, lastJumpTick, lastSneakActionTick, lastSprintActionTick,
-            noJump30sTriggered, noSneak30sTriggered, noSprint30sTriggered, noJump60sTriggered, noSneak60sTriggered, noSprint60sTriggered,
-        ).forEach { it.keys.retainAll(online) }
+        stateMaps().forEach { it.keys.retainAll(online) }
+        lastTriggeredTick.keys.retainAll(online)
+        interactingBlockIds.keys.retainAll(online)
     }
 }

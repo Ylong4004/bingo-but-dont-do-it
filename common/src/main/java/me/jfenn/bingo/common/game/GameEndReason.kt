@@ -19,6 +19,14 @@ sealed interface GameEndReason {
     }
 
     @Serializable
+    @SerialName("ddi")
+    data object DDI : GameEndReason {
+        override fun format(text: TextProvider): IText {
+            return text.string(StringKey.GameEndReasonDdi)
+        }
+    }
+
+    @Serializable
     @SerialName("lockout")
     data object Lockout : GameEndReason {
         override fun format(text: TextProvider): IText {

@@ -289,6 +289,19 @@ class DDIWordPool {
         return allWords.random(random)
     }
 
+    /**
+     * Draws a replacement that differs from the previous rule whenever the
+     * pool has an alternative. This prevents an apparent no-op timer reroll
+     * and avoids immediately dealing the same continuous trigger again.
+     */
+    fun drawReplacement(previous: WordEntry?): WordEntry {
+        if (previous == null) return drawSingle()
+        val alternatives = allWords.filter { it.triggerType != previous.triggerType }
+        return (alternatives.ifEmpty { allWords.filter { it.id != previous.id } })
+            .ifEmpty { allWords }
+            .random(random)
+    }
+
     /** 根据显示文本查找词条 */
     fun findByDisplayText(displayText: String): WordEntry? {
         return allWords.find { it.displayText == displayText }

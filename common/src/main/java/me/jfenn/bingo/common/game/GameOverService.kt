@@ -47,6 +47,7 @@ internal class GameOverService(
     private val permissions: IPermissionsApi,
     private val gameResumeService: GameResumeService,
     private val dialogManager: IDialogManager,
+    private val ddiHistoryService: DDIGameHistoryService,
 ) {
 
     @Serializable
@@ -61,6 +62,7 @@ internal class GameOverService(
         val isBestTime: Boolean,
         val prevBestTime: DurationType?,
         val scoreRankings: List<ScoreRanking>,
+        val ddiDamageHistory: List<DDITeamDamageHistory> = emptyList(),
     )
 
     @Serializable
@@ -104,6 +106,20 @@ internal class GameOverService(
     }
 
     fun getMessage(info: GameOverInfo): IText? {
+        if (info.reason is GameEndReason.DDI) {
+            return (
+                info.winningTeamKey
+                    ?.let { state.teams[it] }
+                    ?.let { winner ->
+                        textProvider.string(
+                            StringKey.GameEndDdiWinner,
+                            winner.getName(textProvider, playerName = true),
+                        )
+                    }
+                    ?: textProvider.string(StringKey.GameEndDdiNoSurvivors)
+                ).formatted(Formatting.YELLOW)
+        }
+
         return (
             info.winningTeamKey?.let { state.teams[it] }
                 ?.let { winner ->
@@ -199,6 +215,7 @@ internal class GameOverService(
             isBestTime = isBestTime,
             prevBestTime = prevBestTime,
             scoreRankings = scoreRankings,
+            ddiDamageHistory = ddiHistoryService.snapshot(),
         )
     }
 
@@ -303,6 +320,7 @@ internal class GameOverService(
             seed = server.overworld.seed,
             scores = scoreRankings,
             defaultTab = defaultTab,
+            ddiDamageHistory = info.ddiDamageHistory,
         )
     }
 
@@ -353,6 +371,42 @@ internal class GameOverService(
                             ?: text.empty()
                     )
             )
+        }
+
+        if (packet.ddiDamageHistory.isNotEmpty()) {
+            builder.addText(text.empty())
+            builder.addText(text.string(StringKey.GameEndDdiHistory).formatted(Formatting.GOLD))
+            for (team in packet.ddiDamageHistory) {
+                val teamName = packet.scores.find { it.key == team.teamKey }?.name?.copy()
+                    ?: text.literal(team.teamName)
+                builder.addText(text.literal("◆ ").formatted(Formatting.GRAY).append(teamName))
+                if (team.entries.isEmpty()) {
+                    builder.addText(
+                        text.literal("  ")
+                            .append(text.string(StringKey.GameEndDdiNoDamage).formatted(Formatting.DARK_GRAY))
+                    )
+                } else {
+                    team.entries.forEachIndexed { index, entry ->
+                        val actor = entry.actorName
+                            ?.let(text::literal)
+                            ?: text.string(StringKey.GameEndDdiSystem)
+                        builder.addText(
+                            text.literal("  ${index + 1}. ")
+                                .append(text.literal(entry.wordText).formatted(Formatting.AQUA))
+                                .append(separator)
+                                .append(actor)
+                                .append(separator)
+                                .append(
+                                    text.string(
+                                        StringKey.GameEndDdiRemaining,
+                                        entry.heartsRemaining,
+                                        entry.maxHearts,
+                                    ).formatted(Formatting.RED)
+                                )
+                        )
+                    }
+                }
+            }
         }
 
         builder.addText(text.empty())

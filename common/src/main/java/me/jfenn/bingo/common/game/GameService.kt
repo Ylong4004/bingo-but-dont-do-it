@@ -92,6 +92,25 @@ internal class GameService(
             teamService.shuffleTeams(1)
         }
 
+        if (options.enableDDI) {
+            if (!options.hasValidDDIOptions()) {
+                warnings += text.string(StringKey.CommandStartDdiInvalidOptions)
+                return false
+            }
+
+            val onlineDDITeams = playerManager.getPlayers()
+                .mapNotNull(teamService::getPlayerTeam)
+                .map { it.key }
+                .toSet()
+            if (onlineDDITeams.size < 2) {
+                warnings += text.string(
+                    StringKey.CommandStartDdiRequiresTeams,
+                    onlineDDITeams.size,
+                )
+                return false
+            }
+        }
+
         // Ensure that all selected tier lists are supported
         var hasWarning = false
         if (!ignoreWarnings) {
