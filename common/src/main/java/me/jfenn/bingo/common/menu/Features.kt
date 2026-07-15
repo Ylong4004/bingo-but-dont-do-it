@@ -10,10 +10,11 @@ import me.jfenn.bingo.generated.StringKey
 import net.minecraft.util.Formatting
 import org.joml.Vector3d
 
-private const val TILE_HEIGHT = 0.6
-private const val TILE_WIDTH = 1.2
+private const val TILE_HEIGHT = 0.65
+private const val TILE_WIDTH = 1.05
 private const val TILE_MARGIN = 0.1
-internal const val MENU_FEATURES_WIDTH = TILE_WIDTH + TILE_MARGIN + TILE_WIDTH
+private const val DDI_LINK_HEIGHT = 0.4
+internal const val MENU_FEATURES_WIDTH = 3*TILE_WIDTH + 2*TILE_MARGIN
 
 internal const val ICON_KEEP_INVENTORY = "\uD83C\uDF92"
 internal const val ICON_ELYTRA = "\uD83E\uDD87"
@@ -34,10 +35,12 @@ internal fun MenuComponent.registerFeatures(
     )
 
     val offsetY = 0.6
-    val offsetX = (TILE_WIDTH + TILE_MARGIN)/2.0
+    val columnOffset = TILE_WIDTH + TILE_MARGIN
+    val firstRowY = -(offsetY + TILE_HEIGHT)
+    val secondRowY = -(offsetY + 2*TILE_HEIGHT + TILE_MARGIN)
 
     registerIconButton(
-        position = position + Vector3d(-offsetX, -(offsetY + TILE_HEIGHT), 0.0),
+        position = position + Vector3d(-columnOffset, firstRowY, 0.0),
         width = TILE_WIDTH,
         height = TILE_HEIGHT,
         icon = "᎒᎒᎒",
@@ -49,7 +52,7 @@ internal fun MenuComponent.registerFeatures(
     }
 
     registerIconButton(
-        position = position + Vector3d(offsetX, -(offsetY + TILE_HEIGHT), 0.0),
+        position = position + Vector3d(0.0, firstRowY, 0.0),
         width = TILE_WIDTH,
         height = TILE_HEIGHT,
         icon = ICON_KEEP_INVENTORY,
@@ -64,7 +67,7 @@ internal fun MenuComponent.registerFeatures(
     }
 
     registerIconButton(
-        position = position + Vector3d(-offsetX, -(offsetY + 2*TILE_HEIGHT + TILE_MARGIN), 0.0),
+        position = position + Vector3d(columnOffset, firstRowY, 0.0),
         width = TILE_WIDTH,
         height = TILE_HEIGHT,
         icon = ICON_ELYTRA,
@@ -76,7 +79,7 @@ internal fun MenuComponent.registerFeatures(
     }
 
     registerIconButton(
-        position = position + Vector3d(offsetX, -(offsetY + 2*TILE_HEIGHT + TILE_MARGIN), 0.0),
+        position = position + Vector3d(-columnOffset, secondRowY, 0.0),
         width = TILE_WIDTH,
         height = TILE_HEIGHT,
         icon = ICON_NIGHTVIS,
@@ -89,7 +92,7 @@ internal fun MenuComponent.registerFeatures(
     }
 
     registerIconButton(
-        position = position + Vector3d(-offsetX, -(offsetY + 3*TILE_HEIGHT + 2*TILE_MARGIN), 0.0),
+        position = position + Vector3d(0.0, secondRowY, 0.0),
         width = TILE_WIDTH,
         height = TILE_HEIGHT,
         icon = ICON_PVP,
@@ -101,7 +104,7 @@ internal fun MenuComponent.registerFeatures(
     }
 
     registerIconButton(
-        position = position + Vector3d(offsetX, -(offsetY + 3*TILE_HEIGHT + 2*TILE_MARGIN), 0.0),
+        position = position + Vector3d(columnOffset, secondRowY, 0.0),
         width = TILE_WIDTH,
         height = TILE_HEIGHT,
         icon = "\uD83D\uDD6E",
@@ -110,5 +113,21 @@ internal fun MenuComponent.registerFeatures(
         isActiveProp = computedProperty { options.isUnlockRecipes },
     ) {
         optionsService.toggleUnlockRecipes(OptionsService.Context(it))
+    }
+
+    registerTileButton(
+        position = position + Vector3d(
+            0.0,
+            -(offsetY + 2*TILE_HEIGHT + 2*TILE_MARGIN + DDI_LINK_HEIGHT),
+            0.0,
+        ),
+        width = MENU_FEATURES_WIDTH,
+        height = DDI_LINK_HEIGHT,
+        icon = "🚫",
+        text = text.string(StringKey.DdiMenuOpen),
+        tooltip = buildTooltip(StringKey.DdiMenuOpen),
+        brightness = MENU_BRIGHTNESS_ALT,
+    ) {
+        state.menu.page = MenuPage.DDI
     }
 }

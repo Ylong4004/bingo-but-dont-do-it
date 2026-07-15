@@ -97,6 +97,7 @@ private const val MENU_BACK_WIDTH = 0.8
 
 private fun MenuComponent.registerBackButton(
     position: Vector3d,
+    targetPage: MenuPage = MenuPage.ROOT,
     state: BingoState = koinScope.get(),
 ) {
     registerTileButton(
@@ -107,7 +108,7 @@ private fun MenuComponent.registerBackButton(
         textScale = 3.5f,
         brightness = MENU_BRIGHTNESS_ALT,
     ) {
-        state.menu.page = MenuPage.ROOT
+        state.menu.page = targetPage
     }
 }
 
@@ -141,6 +142,37 @@ private fun createFeaturesPage(
         position = pos + Vector3d(MENU_SPAWN_DISTANCE_WIDTH/2, 0.0, 0.0),
     )
     pos.add(MENU_SPAWN_DISTANCE_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+}
+
+private fun createDDIPage(
+    koinScope: Scope,
+    position: Vector3d,
+) = component(koinScope) {
+    val pos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, 0.0, 0.0)
+    registerBackButton(
+        position = pos + Vector3d(MENU_BACK_WIDTH/2, 0.0, 0.0),
+        targetPage = MenuPage.FEATURES,
+    )
+    pos.add(MENU_BACK_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDIEnable(
+        position = pos + Vector3d(MENU_DDI_ENABLE_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_ENABLE_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDIMode(
+        position = pos + Vector3d(MENU_DDI_MODE_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_MODE_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDIHearts(
+        position = pos + Vector3d(MENU_DDI_HEARTS_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_HEARTS_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDITimer(
+        position = pos + Vector3d(MENU_DDI_TIMER_WIDTH/2, 0.0, 0.0),
+    )
 }
 
 private fun createGoalPage(
@@ -207,6 +239,7 @@ internal fun MenuComponent.registerMenuPage(
         when (it) {
             MenuPage.ROOT -> createRootPage(koinScope, position)
             MenuPage.FEATURES -> createFeaturesPage(koinScope, position)
+            MenuPage.DDI -> createDDIPage(koinScope, position)
             MenuPage.GOAL -> createGoalPage(koinScope, position)
             MenuPage.ITEMS -> createItemsPage(koinScope, position)
         }

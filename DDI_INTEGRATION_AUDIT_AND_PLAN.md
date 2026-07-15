@@ -340,13 +340,20 @@ META-INF/services/me.jfenn.bingo.plugin.IBingoInternalPlugin
 - 原 1500 ms 墙钟冷却已改为同一 objective 的同 server tick 去重，不会吞掉新词的下一次正常操作；新词也会排除刚结束词条的同 trigger，避免看似没有换词。
 - Fabric 全局回调仍只注册一次；`unregister()` 通过按服务器移除 active detector 路由停止处理，因此连续对局不会重复叠加回调。
 
-### 10.4 验证与交付
+### 10.4 大厅设置墙
+
+- “游戏特色”页保留原有六个特色开关，并调整为三列两行；页面底部新增“不要做挑战设置……”入口，避免把 DDI 的数值选项挤进原有特色开关区域。
+- DDI 使用独立详情页：可直接启用/关闭玩法，在“个人独立”与“队伍共享”之间切换，并设置最大生命和自动换词时间。
+- 最大生命支持 `1..20`，提供 1、3、5 快捷值；换词时间支持 `10..600` 秒、每次增减 10 秒，提供 30、60、120 秒快捷值。
+- DDI 页的返回按钮会回到“游戏特色”页；大厅设置与 `/bingo options ddi ...` 修改的是同一套权威配置。
+
+### 10.5 验证与交付
 
 - `:common:test :integration-ddi:test`：38 个测试，0 failure、0 error、0 skipped。
 - `:mc1.21.11:build`：正式 remap 构建成功。
 - 开发专用服务端启动检查：Fabric Loader 0.18.4 / Fabric API 0.140.2+1.21.11 / Java 21 成功加载；DDICommands 被创建，五个 DDI S2C payload 均完成注册，未出现 Mixin apply/injection 错误。检查在未代用户接受 Mojang EULA 的预期关口停止。
-- 最终 JAR：`mc1.21.11/build/libs/bingo-but-dont--do-it-1.21.11.jar`，32,950,504 bytes，4,318 个 ZIP 条目，0 个重复路径。
-- SHA-256：`3079EDFAC32628923599B0D33FFFDEEDC866D5C34C782A9A83189063DC4321D2`。
+- 最终 JAR：`mc1.21.11/build/libs/bingo-but-dont--do-it-1.21.11.jar`，32,966,361 bytes，4,324 个 ZIP 条目，0 个重复路径。
+- SHA-256：`BF8B7593496F8E213BA13F6DE95EBED60D0011A33B15FDC1F2E36AF0601CD4AC`。
 
 运行要求：Minecraft 1.21.11、Java 21。推荐 Fabric Loader 0.18.4（元数据最低 0.16.9）和 Fabric API 0.140.2+1.21.11（元数据最低 0.140.0+1.21.11）。Fabric Language Kotlin 1.13.7+kotlin.2.2.21 已内嵌，无需单独安装。客户端和服务端使用同一个 JAR，并都要安装 Fabric API。
 

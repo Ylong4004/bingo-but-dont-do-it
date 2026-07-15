@@ -287,6 +287,56 @@ internal class OptionsService(
         )
     }
 
+    fun setDDIEnabled(ctx: Context, enabled: Boolean) {
+        options.enableDDI = enabled
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionEnable,
+                text.boolean(enabled),
+            )
+        )
+    }
+
+    fun setDDIObjectiveMode(ctx: Context, mode: DDIObjectiveMode) {
+        options.ddiObjectiveMode = mode
+        val modeText = text.string(
+            when (mode) {
+                DDIObjectiveMode.INDIVIDUAL -> StringKey.DdiOptionModeIndividual
+                DDIObjectiveMode.TEAM_SHARED -> StringKey.DdiOptionModeTeam
+            }
+        )
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionMode,
+                modeText.formatted(Formatting.WHITE),
+            )
+        )
+    }
+
+    fun setDDIMaxHearts(ctx: Context, hearts: Int) {
+        options.ddiMaxHearts = hearts.coerceIn(1, 20)
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionHearts,
+                text.string(StringKey.DdiOptionHeartsValue, options.ddiMaxHearts),
+            )
+        )
+    }
+
+    fun setDDIWordTimerSeconds(ctx: Context, seconds: Int) {
+        options.ddiWordTimerSeconds = seconds.coerceIn(10, 600)
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionTimer,
+                text.string(StringKey.DdiOptionTimerValue, options.ddiWordTimerSeconds),
+            )
+        )
+    }
+
     fun setTimeLimit(
         ctx: Context,
         minutes: Int?

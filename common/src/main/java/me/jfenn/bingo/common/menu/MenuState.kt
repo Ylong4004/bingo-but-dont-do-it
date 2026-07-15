@@ -11,6 +11,7 @@ class MenuState(
 enum class MenuPage {
     ROOT,
     FEATURES,
+    DDI,
     GOAL,
     ITEMS,
 }
