@@ -68,7 +68,8 @@ public class DDIServerPlayerActionMixin {
         if (stat.getType() == Stats.PICKED_UP && value instanceof Item item) {
             DDITriggerDetector.reportPickedUp(
                     player,
-                    Registries.ITEM.getId(item).toString()
+                    item,
+                    amount
             );
         }
 
@@ -78,7 +79,7 @@ public class DDIServerPlayerActionMixin {
         if (stat.getType() == Stats.DROPPED && value instanceof Item item) {
             DDITriggerDetector.reportDropped(
                     player,
-                    Registries.ITEM.getId(item).toString(),
+                    item,
                     amount,
                     item instanceof BlockItem
             );

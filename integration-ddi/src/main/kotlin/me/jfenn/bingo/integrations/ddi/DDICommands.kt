@@ -116,8 +116,8 @@ class DDICommands(
             if (reveal) {
                 val wordText = objective.wordText
                 val wordId = objective.wordId
-                val triggerType = objective.triggerType
-                if (wordText == null || wordId == null || triggerType == null) {
+                val ruleSummary = objective.ruleSummary
+                if (wordText == null || wordId == null || ruleSummary == null) {
                     sendMessage(
                         text.string(StringKey.DdiCommandStatusWordNone)
                             .formatted(Formatting.DARK_GRAY)
@@ -128,7 +128,7 @@ class DDICommands(
                             StringKey.DdiCommandStatusWord,
                             wordText,
                             wordId,
-                            triggerType.name,
+                            ruleSummary,
                         ).formatted(Formatting.DARK_GRAY)
                     )
                 }

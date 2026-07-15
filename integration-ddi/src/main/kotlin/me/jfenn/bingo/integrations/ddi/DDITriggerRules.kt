@@ -1,5 +1,6 @@
 package me.jfenn.bingo.integrations.ddi
 
+import java.util.UUID
 import kotlin.math.abs
 
 /** Pure threshold rules kept separate so edge semantics can be unit-tested. */
@@ -33,4 +34,18 @@ internal object DDITriggerRules {
         val raw = abs(first - second) % 360f
         return if (raw > 180f) 360f - raw else raw
     }
+
+    /** Damage that survived mitigation, including absorption hearts consumed. */
+    fun effectiveDamageLoss(healthLost: Float, absorptionLost: Float): Float =
+        healthLost.coerceAtLeast(0f) + absorptionLost.coerceAtLeast(0f)
+
+    fun isQualifyingEnemyPlayerDamage(
+        effectiveDamage: Float,
+        attackerId: UUID?,
+        victimId: UUID,
+        areEnemies: Boolean,
+    ): Boolean = effectiveDamage > 0f &&
+        attackerId != null &&
+        attackerId != victimId &&
+        areEnemies
 }

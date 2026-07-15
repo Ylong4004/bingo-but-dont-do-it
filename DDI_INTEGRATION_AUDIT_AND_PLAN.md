@@ -3,7 +3,7 @@
 > 审计日期：2026-07-15  
 > 审计基线：Bingo 2.9.7 集成分支，DDI 代码位于 `integration-ddi/`  
 > 目标版本：先完成 Minecraft 1.21.11 / Java 21 的可运行闭环
-> 当前进展：首轮启动、状态机、同步、HUD、事件桥和结算已实现；2026-07-15 新增个人/队伍共享双玩法、DDI 扣血历史结算页和 V9 结算协议；2026-07-16 新增可配置 HUD、Tab 生命显示与同队触发词条去重，仍需双客户端运行验收。
+> 当前进展：首轮启动、状态机、同步、HUD、事件桥和结算已实现；2026-07-15 新增个人/队伍共享双玩法、DDI 扣血历史结算页和 V9 结算协议；2026-07-16 新增可配置 HUD、Tab 生命显示、同队触发去重和参数化规则引擎。v0.4 已补齐第一批物品/方块、第二批 Bingo 棋盘、第三批移动/敌队交互，并把 316 条词统一到单一 JSON；仍需真实双客户端连续对局验收。
 
 ## 1. 结论摘要
 
@@ -282,7 +282,7 @@ META-INF/services/me.jfenn.bingo.plugin.IBingoInternalPlugin
 | 协议 | 两个客户端 | A 能看到 B 的词；A 的入站网络数据中不存在 A 自己的词，反之亦然 |
 | 同步 | 开局、触发、到期 | 心数、词条、淘汰状态和截止时间立即一致，旧 revision 不覆盖新状态 |
 | 重连 | 断线与 late join | 活动玩家断线即淘汰；重连恢复淘汰快照；非 roster 玩家只旁观；离线玩家不永久阻塞胜负 |
-| 词池 | 171 条目 | 每条都有事件 provider 或即时 evaluator，不可达词不会被随机抽取 |
+| 词池 | 316 条目 | 每条都有事件 provider、参数化 signal 或即时 evaluator；缺少声明依赖或当前棋盘无有效候选的词不会被随机抽取 |
 | 边沿检测 | 进入→离开→再进入 | 潜行、朝向、入水、封闭等每次有效边沿均可再次触发 |
 | 操作检测 | 成功与失败 | 仅成功放置、合成、拾取、丢弃和交易触发；同一动作最多结算一次 |
 | 结算 | 个人淘汰、最后队伍 | 淘汰者保留队伍但进入旁观；仅剩一支有存活成员的队伍时触发正式 GameOver 并冻结 DDI |
@@ -327,7 +327,10 @@ META-INF/services/me.jfenn.bingo.plugin.IBingoInternalPlugin
 
 ### 10.3 词条覆盖与触发语义复核
 
-- 词池共 171 条、171 个唯一 ID、169 种触发类型；169 种枚举均至少有一个词条，静态 provider/即时结算复核无裸缺失类型。
+- v0.3 词池共 271 条、271 个唯一 ID、169 种旧触发类型；旧枚举仍全部有兼容定义，另有 110 条参数化定义（替换旧词 10 条、净新增 100 条）。
+- 参数化层用一次组合信号携带完整对象 ID、注册表标签、数量和旧别名；当前 objective 只求值一条规则，避免通用/具体回调在换词后串联触发。
+- “放置 30 个方块”和“丢弃 30 个方块”的进度移至 objective，因此队伍共享模式可由全队共同累计；同队触发历史继续按稳定 `repeatKey` 永久排除。
+- 100 条净新增具体对象词使用 0.3 权重，10 条迁移词与其余旧词保持 1.0；资源 JSON 有 schema、ID 和参数校验，声明的可选模组未加载时规则不进入抽取候选。
 - 成功进食改由 `consumeItem` 完成路径上报，取消进食不再触发。
 - 跳跃改用原版 `Stats.JUMP`，走下台阶和被击飞不再计为跳跃；丢弃改用 `Stats.DROPPED`，覆盖 Q、Ctrl+Q 和背包界面 THROW。
 - `STAND_STILL_5S` 与 `LOOK_SAME_DIR_5S` 使用固定五秒窗口锚点，不能用慢走或持续缓慢旋转规避。
@@ -387,7 +390,7 @@ META-INF/services/me.jfenn.bingo.plugin.IBingoInternalPlugin
 
 ### 11.4 后续新词条
 
-物品/方块覆盖、Bingo 棋盘联动、移动交互和语音关键词本轮只完成方案，没有加入成品词池。详细候选、架构、隐私与分批审查门见 [`DDI_WORD_EXPANSION_PLAN.md`](DDI_WORD_EXPANSION_PLAN.md)。
+物品/方块覆盖在 v0.3 落地，Bingo 棋盘联动与移动/敌队交互核心包在 v0.4 落地；语音关键词仍只有方案，未加入成品词池。详细候选、架构、隐私与分批审查门见 [`DDI_WORD_EXPANSION_PLAN.md`](DDI_WORD_EXPANSION_PLAN.md)。
 
 ### 11.5 本轮验证与成品
 
@@ -397,3 +400,34 @@ META-INF/services/me.jfenn.bingo.plugin.IBingoInternalPlugin
 - ServiceLoader 文件同时包含 Waystones 与 DDI provider。
 - 最终文件：`mc1.21.11/build/libs/bingo-but-dont--do-it-1.21.11.jar`，33,016,126 bytes。
 - SHA-256：`53F813DC858C3E2B160AE02B876F8268D10980BFBC31E45D853F83DA62C3AABB`。
+
+## 12. 2026-07-16 v0.4 单一词条目录、Bingo 与移动交互
+
+### 12.1 单一词条来源
+
+- 删除 Kotlin 中 171 条硬编码目录及 JSON 的 `replaceId` overlay；运行时只读取 `integration-ddi/src/main/resources/data/yet-another-minecraft-bingo/ddi/words_v1.json`。
+- 原 271 条的 ID、中文、顺序、旧 trigger、`repeatKey`、类别、权重和规则由 SHA-256 语义指纹测试锁定；旧词省略字段时仍恢复 legacy 默认语义。
+- 同一 JSON 末尾新增 Bingo 29 条、移动 12 条、玩家交互 4 条，当前共 316 条、316 个唯一 ID。
+
+### 12.2 Bingo 权威事件与截止规则
+
+- `ScoredItemCheck` 只在 Bingo 已接受本 tick 格子完成时同步发出 `BingoTileCapturedEvent`，包含游戏、棋盘、队伍、可空触发玩家、objective 和零基坐标；聚合的 `ScoreChangedEvent` 不再被误用来猜格子。
+- DDI 校验当前 `gameId`、本队当前 `cardId` 和坐标范围。队伍共享模式结算本队共享 objective；个人模式只结算被 Bingo 归属为实际得分者的 objective。
+- 25 个具体坐标以及中心/角落/任意区域在抽取前检查当前棋盘，区域内没有未完成格时从候选排除；个人模式中若队友使已分配坐标失效，会立即无惩罚重抽。
+- 新增 `SATISFY_DEADLINE`：完成格子会使“倒计时内没有完成任何格”安全，到期未满足才扣血；同 tick 仍按 objective token 最多完成一次结算。
+
+### 12.3 移动与敌队交互
+
+- 步行、疾跑、游泳和乘船分别读取原版服务器厘米统计，只在当前词需要时采样一项；首次、换词、统计重置只建立基线。
+- 玩家交互以最终生命与吸收心实际损失为准；盾牌完全格挡、取消、自伤、同队伤害和非参赛玩家不会触发。
+- 同一敌对伤害为攻击者和受害者批量提交两个信号，统一完成胜负检查；修复双方都剩最后一颗心时顺序结算漏判另一方的问题。
+- 致命伤害的 legacy 补偿与最终生命损失上报分离，避免同一次 fatal damage 重复累计。
+
+### 12.4 v0.4 验证与成品
+
+- `common` 34 项、`integration-ddi` 28 项，共 62 项测试通过，0 failure、0 error、0 skipped。
+- `:mc1.21.11:build` 正式 remap 构建成功。
+- 最终文件：`mc1.21.11/build/libs/bingo-but-dont-do-it-1.21.11-v0.4.jar`，33,069,292 bytes，4,360 个 ZIP 条目，0 个重复路径。
+- 内置 `words_v1.json` 实测 316 条、316 个唯一 ID；Bingo 事件类、Bingo selector 与移动统计 sampler 均存在。
+- SHA-256：`B3BAC025D6C866EF98AD74E710409B824BE11C336CD6852F64524B8CC8798C8F`。
+- 运行要求：Minecraft 1.21.11、Java 21。推荐 Fabric Loader 0.18.4（元数据最低 0.16.9）和 Fabric API 0.140.2+1.21.11（元数据最低 0.140.0+1.21.11）；Fabric Language Kotlin 1.13.7+kotlin.2.2.21 已内嵌。

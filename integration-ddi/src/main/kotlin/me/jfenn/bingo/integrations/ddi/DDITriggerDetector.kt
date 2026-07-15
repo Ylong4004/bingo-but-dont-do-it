@@ -12,11 +12,14 @@ import net.minecraft.entity.damage.DamageSource
 import net.minecraft.entity.damage.DamageTypes
 import net.minecraft.entity.mob.Monster
 import net.minecraft.entity.passive.IronGolemEntity
+import net.minecraft.block.Block
+import net.minecraft.item.Item
 import net.minecraft.registry.Registries
 import net.minecraft.registry.tag.DamageTypeTags
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
+import net.minecraft.stat.Stats
 import net.minecraft.util.ActionResult
 import net.minecraft.util.Identifier
 import net.minecraft.world.Heightmap
@@ -32,9 +35,13 @@ class DDITriggerDetector(
     private val server: MinecraftServer,
 ) {
 
-    var onTriggeredHandler: ((ServerPlayerEntity, DDITriggerType) -> Unit)? = null
+    var onSignalHandler: ((ServerPlayerEntity, DDISignal) -> Boolean)? = null
     var activePlayerIdsHandler: (() -> Set<UUID>)? = null
     var currentTriggerHandler: ((UUID) -> DDITriggerType?)? = null
+    var currentRuleHandler: ((UUID) -> DDIRuleDefinition?)? = null
+    var isEnemyPlayerHandler: ((UUID, UUID) -> Boolean)? = null
+    var onEnemyPlayerDamageHandler:
+        ((ServerPlayerEntity, ServerPlayerEntity) -> Pair<Boolean, Boolean>)? = null
 
     private enum class CardinalDirection {
         SOUTH,
@@ -60,7 +67,9 @@ class DDITriggerDetector(
         }
 
         @JvmStatic
-        fun reportCrafted(player: ServerPlayerEntity, itemId: String) {
+        fun reportCrafted(player: ServerPlayerEntity, item: Item) {
+            val detector = detectorFor(player) ?: return
+            val itemId = Registries.ITEM.getId(item).toString()
             val type = when (vanillaPath(itemId)) {
                 "crafting_table" -> DDITriggerType.CRAFT_CRAFTING_TABLE
                 "wooden_pickaxe" -> DDITriggerType.CRAFT_WOODEN_PICKAXE
@@ -74,16 +83,30 @@ class DDITriggerDetector(
                 "iron_sword" -> DDITriggerType.CRAFT_IRON_SWORD
                 else -> null
             }
-            if (type != null) detectorFor(player)?.fire(player, type)
+            detector.emitItemSignal(
+                player = player,
+                kind = DDISignalKind.ITEM_CRAFTED,
+                item = item,
+                legacyAliases = setOfNotNull(type),
+            )
         }
 
         @JvmStatic
-        fun reportPickedUp(player: ServerPlayerEntity, itemId: String) {
+        fun reportPickedUp(player: ServerPlayerEntity, item: Item, itemCount: Int) {
             val detector = detectorFor(player) ?: return
-            detector.fire(player, DDITriggerType.PICKUP_ITEM)
-            val vanillaItemId = vanillaPath(itemId) ?: return
-            if (vanillaItemId.endsWith("_log")) detector.fire(player, DDITriggerType.PICKUP_WOOD)
-            if (vanillaItemId == "diamond") detector.fire(player, DDITriggerType.PICKUP_DIAMOND)
+            val aliases = linkedSetOf(DDITriggerType.PICKUP_ITEM)
+            when (val vanillaItemId = vanillaPath(Registries.ITEM.getId(item).toString())) {
+                null -> Unit
+                "diamond" -> aliases += DDITriggerType.PICKUP_DIAMOND
+                else -> if (vanillaItemId.endsWith("_log")) aliases += DDITriggerType.PICKUP_WOOD
+            }
+            detector.emitItemSignal(
+                player = player,
+                kind = DDISignalKind.ITEM_PICKED_UP,
+                item = item,
+                quantity = itemCount,
+                legacyAliases = aliases,
+            )
         }
 
         /** Called only after vanilla has completed consuming a food item. */
@@ -118,15 +141,14 @@ class DDITriggerDetector(
         @JvmStatic
         fun reportDropped(
             player: ServerPlayerEntity,
-            itemId: String,
+            item: Item,
             itemCount: Int,
             isBlockItem: Boolean,
         ) {
             val detector = detectorFor(player) ?: return
             if (!detector.isActive(player)) return
-            val triggerAtStart = detector.currentTrigger(player) ?: return
-            detector.fire(player, DDITriggerType.DROP_ITEM)
-            when (vanillaPath(itemId)) {
+            val aliases = linkedSetOf(DDITriggerType.DROP_ITEM)
+            when (vanillaPath(Registries.ITEM.getId(item).toString())) {
                 "dirt" -> DDITriggerType.DROP_DIRT
                 "cobblestone" -> DDITriggerType.DROP_COBBLESTONE
                 "cobbled_deepslate" -> DDITriggerType.DROP_COBBLED_DEEPSLATE
@@ -136,36 +158,31 @@ class DDITriggerDetector(
                 "tuff" -> DDITriggerType.DROP_TUFF
                 "wooden_pickaxe" -> DDITriggerType.DROP_WOODEN_PICKAXE
                 else -> null
-            }?.let { detector.fire(player, it) }
-
-            if (triggerAtStart != DDITriggerType.DROP_30_ITEMS || !isBlockItem || itemCount <= 0) return
-            val id = player.uuid
-            val count = detector.dropCount.merge(id, itemCount) { current, increment ->
-                (current + increment).coerceAtMost(30)
-            } ?: itemCount.coerceAtMost(30)
-            if (count >= 30 && detector.drop30Triggered.getOrDefault(id, false).not()) {
-                detector.drop30Triggered[id] = true
-                detector.fire(player, DDITriggerType.DROP_30_ITEMS)
-            }
+            }?.let(aliases::add)
+            detector.emitItemSignal(
+                player = player,
+                kind = DDISignalKind.ITEM_DROPPED,
+                item = item,
+                quantity = itemCount,
+                isBlockItem = isBlockItem,
+                legacyAliases = aliases,
+            )
         }
 
         @JvmStatic
-        fun reportPlaced(player: ServerPlayerEntity, itemId: String) {
+        fun reportPlaced(player: ServerPlayerEntity, block: Block) {
             val detector = detectorFor(player) ?: return
             if (!detector.isActive(player)) return
-            val triggerAtStart = detector.currentTrigger(player) ?: return
-            detector.fire(player, DDITriggerType.BLOCK_PLACE)
-            vanillaPath(itemId)?.let { detector.detectPlaceBlock(player, it) }
-
-            if (triggerAtStart != DDITriggerType.PLACE_30_BLOCKS) return
-            val id = player.uuid
-            val count = detector.placeCount.merge(id, 1) { current, increment ->
-                (current + increment).coerceAtMost(30)
-            } ?: 1
-            if (count >= 30 && detector.place30Triggered.getOrDefault(id, false).not()) {
-                detector.place30Triggered[id] = true
-                detector.fire(player, DDITriggerType.PLACE_30_BLOCKS)
-            }
+            val aliases = linkedSetOf(DDITriggerType.BLOCK_PLACE)
+            vanillaPath(Registries.BLOCK.getId(block).toString())
+                ?.let(detector::legacyPlaceAlias)
+                ?.let(aliases::add)
+            detector.emitBlockSignal(
+                player = player,
+                kind = DDISignalKind.BLOCK_PLACED,
+                block = block,
+                legacyAliases = aliases,
+            )
         }
 
         @JvmStatic
@@ -228,11 +245,64 @@ class DDITriggerDetector(
             }
         }
 
-        /** Uses actual health loss, after armor/enchantments/absorption. */
+        /**
+         * Reports the one final damage result emitted by the RETURN mixin.
+         * Health loss preserves the old five-damage rule; absorption consumed
+         * also makes an enemy-player hit effective for the new interaction rules.
+         */
         @JvmStatic
-        fun reportHealthLoss(entity: LivingEntity, healthLost: Float) {
-            if (entity is ServerPlayerEntity && healthLost >= 5f) {
-                detectorFor(entity)?.fire(entity, DDITriggerType.TAKE_5_DAMAGE)
+        fun reportFinalDamage(
+            entity: LivingEntity,
+            source: DamageSource,
+            healthLost: Float,
+            absorptionLost: Float,
+        ) {
+            val victim = entity as? ServerPlayerEntity ?: return
+            val victimDetector = detectorFor(victim) ?: return
+            if (healthLost >= 5f) {
+                victimDetector.fire(victim, DDITriggerType.TAKE_5_DAMAGE)
+            }
+
+            val attacker = source.attacker as? ServerPlayerEntity ?: return
+            val attackerDetector = detectorFor(attacker) ?: return
+            if (attackerDetector !== victimDetector) return
+
+            val effectiveDamage = DDITriggerRules.effectiveDamageLoss(
+                healthLost = healthLost,
+                absorptionLost = absorptionLost,
+            )
+            val areEnemies = attackerDetector.isEnemyPlayerHandler
+                ?.invoke(attacker.uuid, victim.uuid)
+                ?: false
+            if (!DDITriggerRules.isQualifyingEnemyPlayerDamage(
+                    effectiveDamage = effectiveDamage,
+                    attackerId = attacker.uuid,
+                    victimId = victim.uuid,
+                    areEnemies = areEnemies,
+                )
+            ) return
+
+            val batchHandler = attackerDetector.onEnemyPlayerDamageHandler
+            if (batchHandler != null) {
+                val (attackerAccepted, victimAccepted) = batchHandler(attacker, victim)
+                val tick = attackerDetector.server.ticks.toLong()
+                if (attackerAccepted) attackerDetector.lastTriggeredTick[attacker.uuid] = tick
+                if (victimAccepted) victimDetector.lastTriggeredTick[victim.uuid] = tick
+            } else {
+                attackerDetector.emitSignal(
+                    attacker,
+                    DDISignal(
+                        kind = DDISignalKind.ENEMY_PLAYER_DAMAGED,
+                        legacyAliases = setOf(DDITriggerType.DAMAGE_ENEMY_PLAYER),
+                    ),
+                )
+                victimDetector.emitSignal(
+                    victim,
+                    DDISignal(
+                        kind = DDISignalKind.DAMAGED_BY_ENEMY_PLAYER,
+                        legacyAliases = setOf(DDITriggerType.DAMAGED_BY_ENEMY_PLAYER),
+                    ),
+                )
             }
         }
     }
@@ -268,10 +338,6 @@ class DDITriggerDetector(
     private val jump10Triggered = ConcurrentHashMap<UUID, Boolean>()
     private val prevExperienceLevel = ConcurrentHashMap<UUID, Int>()
     private val prevExperienceProgress = ConcurrentHashMap<UUID, Float>()
-    private val placeCount = ConcurrentHashMap<UUID, Int>()
-    private val place30Triggered = ConcurrentHashMap<UUID, Boolean>()
-    private val dropCount = ConcurrentHashMap<UUID, Int>()
-    private val drop30Triggered = ConcurrentHashMap<UUID, Boolean>()
     private val lastJumpTick = ConcurrentHashMap<UUID, Long>()
     private val lastSneakActionTick = ConcurrentHashMap<UUID, Long>()
     private val lastSprintActionTick = ConcurrentHashMap<UUID, Long>()
@@ -283,6 +349,20 @@ class DDITriggerDetector(
     private val noSprint60sTriggered = ConcurrentHashMap<UUID, Boolean>()
     private val lastTriggeredTick = ConcurrentHashMap<UUID, Long>()
     private val interactingBlockIds = ConcurrentHashMap<UUID, String>()
+    private val travelStatSampler = DDITravelStatSampler()
+
+    private val travelStats = mapOf(
+        DDISignalKind.DISTANCE_WALKED_CM to Stats.CUSTOM.getOrCreateStat(Stats.WALK_ONE_CM),
+        DDISignalKind.DISTANCE_SPRINTED_CM to Stats.CUSTOM.getOrCreateStat(Stats.SPRINT_ONE_CM),
+        DDISignalKind.DISTANCE_SWUM_CM to Stats.CUSTOM.getOrCreateStat(Stats.SWIM_ONE_CM),
+        DDISignalKind.DISTANCE_BOAT_CM to Stats.CUSTOM.getOrCreateStat(Stats.BOAT_ONE_CM),
+    )
+    private val travelLegacyAliases = mapOf(
+        DDISignalKind.DISTANCE_WALKED_CM to DDITriggerType.WALK_DISTANCE,
+        DDISignalKind.DISTANCE_SPRINTED_CM to DDITriggerType.SPRINT_DISTANCE,
+        DDISignalKind.DISTANCE_SWUM_CM to DDITriggerType.SWIM_DISTANCE,
+        DDISignalKind.DISTANCE_BOAT_CM to DDITriggerType.BOAT_DISTANCE,
+    )
 
     // ---- block name constants ----
     private val stoneNames = setOf("stone", "cobblestone", "mossy_cobblestone")
@@ -388,15 +468,21 @@ class DDITriggerDetector(
         PlayerBlockBreakEvents.AFTER.register { world, player, pos, state, _ ->
             val detector = if (player is ServerPlayerEntity && world is ServerWorld) world.server?.let(::detectorFor) else null
             if (detector != null && player is ServerPlayerEntity) {
-                detector.fire(player, DDITriggerType.BLOCK_BREAK)
                 val blockId = Registries.BLOCK.getId(state.block)
+                val aliases = linkedSetOf(DDITriggerType.BLOCK_BREAK)
                 if (blockId.namespace == Identifier.DEFAULT_NAMESPACE) {
                     val id = blockId.path
                     if (id.endsWith("_ore") || id == "ancient_debris") {
-                        detector.fire(player, DDITriggerType.MINE_ORE)
+                        aliases += DDITriggerType.MINE_ORE
                     }
-                    detector.detectMineBlock(player, id)
+                    aliases += detector.legacyMineAliases(id)
                 }
+                detector.emitBlockSignal(
+                    player = player,
+                    kind = DDISignalKind.BLOCK_BROKEN,
+                    block = state.block,
+                    legacyAliases = aliases,
+                )
             }
         }
 
@@ -455,15 +541,66 @@ class DDITriggerDetector(
     private fun currentTrigger(player: ServerPlayerEntity): DDITriggerType? =
         currentTriggerHandler?.invoke(player.uuid)
 
+    private fun currentRule(player: ServerPlayerEntity): DDIRuleDefinition? =
+        currentRuleHandler?.invoke(player.uuid)
+
     private fun isActive(player: ServerPlayerEntity): Boolean =
-        currentTrigger(player) != null
+        currentRule(player) != null
 
     private fun fire(player: ServerPlayerEntity, type: DDITriggerType) {
-        if (currentTrigger(player) != type) return
-        val handler = onTriggeredHandler ?: return
+        emitSignal(player, DDISignal.legacy(type))
+    }
+
+    private fun emitSignal(player: ServerPlayerEntity, signal: DDISignal) {
+        val rule = currentRule(player) ?: return
+        if (!rule.matches(signal)) return
+        val handler = onSignalHandler ?: return
         val tick = server.ticks.toLong()
-        if (lastTriggeredTick.put(player.uuid, tick) == tick) return
-        handler(player, type)
+        if (lastTriggeredTick[player.uuid] == tick) return
+        if (handler(player, signal)) lastTriggeredTick[player.uuid] = tick
+    }
+
+    private fun emitItemSignal(
+        player: ServerPlayerEntity,
+        kind: DDISignalKind,
+        item: Item,
+        quantity: Int = 1,
+        isBlockItem: Boolean = false,
+        legacyAliases: Set<DDITriggerType> = emptySet(),
+    ) {
+        if (quantity <= 0) return
+        emitSignal(
+            player,
+            DDISignal(
+                kind = kind,
+                subjectId = Registries.ITEM.getId(item).toString(),
+                subjectTags = Registries.ITEM.getEntry(item).streamTags().iterator().asSequence()
+                    .map { it.id.toString() }
+                    .toSet(),
+                quantity = quantity,
+                isBlockItem = isBlockItem,
+                legacyAliases = legacyAliases,
+            ),
+        )
+    }
+
+    private fun emitBlockSignal(
+        player: ServerPlayerEntity,
+        kind: DDISignalKind,
+        block: Block,
+        legacyAliases: Set<DDITriggerType> = emptySet(),
+    ) {
+        emitSignal(
+            player,
+            DDISignal(
+                kind = kind,
+                subjectId = Registries.BLOCK.getId(block).toString(),
+                subjectTags = Registries.BLOCK.getEntry(block).streamTags().iterator().asSequence()
+                    .map { it.id.toString() }
+                    .toSet(),
+                legacyAliases = legacyAliases,
+            ),
+        )
     }
 
     private fun onServerTick(server: MinecraftServer) {
@@ -472,11 +609,36 @@ class DDITriggerDetector(
         for (player in server.playerManager.playerList) {
             val id = player.uuid; val tick = server.ticks.toLong()
             if (id !in activePlayerIds) continue
-            val currentTrigger = currentTrigger(player) ?: continue
+            val currentRule = currentRule(player) ?: continue
+            val currentTrigger = currentTrigger(player)
             // An action callback may already have changed this player's word
             // earlier in the same server tick. Do not preheat the freshly reset
             // edge/progress maps with the remainder of this tick.
             if (lastTriggeredTick[id] == tick) continue
+
+            // Vanilla owns the movement classification and excludes teleports,
+            // respawns and dimension changes from these centimetre statistics.
+            // A movement rule has no other matching signal, so skip the legacy
+            // per-tick checks after sampling its one relevant statistic.
+            val travelStat = travelStats[currentRule.signalKind]
+            if (travelStat != null) {
+                val travelledCentimetres = travelStatSampler.sample(
+                    playerId = id,
+                    signalKind = currentRule.signalKind,
+                    currentCentimetres = player.statHandler.getStat(travelStat),
+                )
+                if (travelledCentimetres > 0) {
+                    emitSignal(
+                        player,
+                        DDISignal(
+                            kind = currentRule.signalKind,
+                            quantity = travelledCentimetres,
+                            legacyAliases = setOfNotNull(travelLegacyAliases[currentRule.signalKind]),
+                        ),
+                    )
+                }
+                continue
+            }
 
             val sneaking = player.isSneaking
             val prevSneak = wasSneaking.put(id, sneaking)
@@ -585,25 +747,25 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // standing on blocks
-            if (currentTrigger in standingBlockTriggers) {
-                val belowIdentifier = Registries.BLOCK.getId(
-                    player.entityWorld.getBlockState(player.blockPos.down()).block
-                )
-                val belowId = if (belowIdentifier.namespace == Identifier.DEFAULT_NAMESPACE) {
-                    belowIdentifier.path
+            // Use the collision support selected by vanilla. blockPos.down()
+            // misclassifies slabs, stairs, beds, carpets and block boundaries.
+            if ((currentRule.signalKind == DDISignalKind.BLOCK_STOOD_ON ||
+                    currentTrigger in standingBlockTriggers) &&
+                player.isOnGround && !player.hasVehicle()
+            ) {
+                val steppingBlock = player.steppingBlockState.block
+                val steppingId = Registries.BLOCK.getId(steppingBlock)
+                val aliases = if (steppingId.namespace == Identifier.DEFAULT_NAMESPACE) {
+                    legacyStandingAliases(steppingId.path)
                 } else {
-                    ""
+                    emptySet()
                 }
-                val matches = when (currentTrigger) {
-                    DDITriggerType.STAND_ON_GRASS -> belowId == "grass_block"
-                    DDITriggerType.STAND_ON_LEAVES -> belowId.endsWith("_leaves")
-                    DDITriggerType.STAND_ON_STONE -> belowId in stoneNames
-                    DDITriggerType.STAND_ON_DEEPSLATE -> belowId in deepslateBlockNames
-                    DDITriggerType.STAND_ON_BEDROCK -> belowId == "bedrock"
-                    else -> standSingleNames[belowId] == currentTrigger
-                }
-                if (matches) fire(player, currentTrigger)
+                emitBlockSignal(
+                    player = player,
+                    kind = DDISignalKind.BLOCK_STOOD_ON,
+                    block = steppingBlock,
+                    legacyAliases = aliases,
+                )
             }
             if (lastTriggeredTick[id] == tick) continue
 
@@ -677,14 +839,27 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // held item
-            val heldIds = sequenceOf(player.mainHandStack, player.offHandStack)
-                .filterNot { it.isEmpty }
-                .map { Registries.ITEM.getId(it.item) }
-                .filter { it.namespace == Identifier.DEFAULT_NAMESPACE }
-                .map { it.path }
-                .toSet()
-            heldIds.forEach { heldItemTriggers[it]?.let { type -> fire(player, type) } }
+            // held item (the established semantics are either hand)
+            if (currentRule.signalKind == DDISignalKind.ITEM_HELD ||
+                currentTrigger in heldItemTriggers.values
+            ) {
+                sequenceOf(player.mainHandStack, player.offHandStack)
+                    .filterNot { it.isEmpty }
+                    .forEach { stack ->
+                        val itemId = Registries.ITEM.getId(stack.item)
+                        val alias = if (itemId.namespace == Identifier.DEFAULT_NAMESPACE) {
+                            heldItemTriggers[itemId.path]
+                        } else {
+                            null
+                        }
+                        emitItemSignal(
+                            player = player,
+                            kind = DDISignalKind.ITEM_HELD,
+                            item = stack.item,
+                            legacyAliases = setOfNotNull(alias),
+                        )
+                    }
+            }
             if (lastTriggeredTick[id] == tick) continue
 
             // hotbar
@@ -727,9 +902,6 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // drop 30
-            if (dropCount.getOrDefault(id, 0) >= 30 && drop30Triggered.getOrDefault(id, false).not()) { drop30Triggered[id] = true; fire(player, DDITriggerType.DROP_30_ITEMS) }
-
             // no-action timers
             lastJumpTick.putIfAbsent(id, tick); lastSneakActionTick.putIfAbsent(id, tick); lastSprintActionTick.putIfAbsent(id, tick)
             // These words describe continuously *not* doing the action. Holding
@@ -750,16 +922,27 @@ class DDITriggerDetector(
         }
     }
 
-    private fun detectMineBlock(player: ServerPlayerEntity, id: String) {
-        if (id.endsWith("_log") || id.endsWith("_wood") || id.endsWith("_stem") || id.endsWith("_hyphae") || id == "bamboo_block") fire(player, DDITriggerType.MINE_WOOD)
-        if (id in stoneNames) fire(player, DDITriggerType.MINE_STONE)
-        if (id in deepslateBlockNames) fire(player, DDITriggerType.MINE_DEEPSLATE)
-        if (id.contains("coal_ore")) fire(player, DDITriggerType.MINE_COAL)
-        if (id.contains("iron_ore")) fire(player, DDITriggerType.MINE_IRON)
-        if (id.contains("copper_ore")) fire(player, DDITriggerType.MINE_COPPER)
-        if (id.contains("gold_ore")) fire(player, DDITriggerType.MINE_GOLD)
-        if (id.contains("diamond_ore")) fire(player, DDITriggerType.MINE_DIAMOND)
-        mineSingleNames[id]?.let { fire(player, it) }
+    private fun legacyMineAliases(id: String): Set<DDITriggerType> = buildSet {
+        if (id.endsWith("_log") || id.endsWith("_wood") || id.endsWith("_stem") ||
+            id.endsWith("_hyphae") || id == "bamboo_block"
+        ) add(DDITriggerType.MINE_WOOD)
+        if (id in stoneNames) add(DDITriggerType.MINE_STONE)
+        if (id in deepslateBlockNames) add(DDITriggerType.MINE_DEEPSLATE)
+        if (id.contains("coal_ore")) add(DDITriggerType.MINE_COAL)
+        if (id.contains("iron_ore")) add(DDITriggerType.MINE_IRON)
+        if (id.contains("copper_ore")) add(DDITriggerType.MINE_COPPER)
+        if (id.contains("gold_ore")) add(DDITriggerType.MINE_GOLD)
+        if (id.contains("diamond_ore")) add(DDITriggerType.MINE_DIAMOND)
+        mineSingleNames[id]?.let(::add)
+    }
+
+    private fun legacyStandingAliases(id: String): Set<DDITriggerType> = buildSet {
+        if (id == "grass_block") add(DDITriggerType.STAND_ON_GRASS)
+        if (id.endsWith("_leaves")) add(DDITriggerType.STAND_ON_LEAVES)
+        if (id in stoneNames) add(DDITriggerType.STAND_ON_STONE)
+        if (id in deepslateBlockNames) add(DDITriggerType.STAND_ON_DEEPSLATE)
+        if (id == "bedrock") add(DDITriggerType.STAND_ON_BEDROCK)
+        standSingleNames[id]?.let(::add)
     }
 
     private fun detectOpenContainer(player: ServerPlayerEntity, blockId: String) {
@@ -771,7 +954,7 @@ class DDITriggerDetector(
         }
     }
 
-    private fun detectPlaceBlock(player: ServerPlayerEntity, itemId: String) {
+    private fun legacyPlaceAlias(itemId: String): DDITriggerType? {
         val map = mapOf(
             "dirt" to DDITriggerType.PLACE_DIRT, "cobblestone" to DDITriggerType.PLACE_COBBLESTONE,
             "cobbled_deepslate" to DDITriggerType.PLACE_COBBLED_DEEPSLATE, "andesite" to DDITriggerType.PLACE_ANDESITE,
@@ -779,7 +962,7 @@ class DDITriggerDetector(
             "tuff" to DDITriggerType.PLACE_TUFF, "crafting_table" to DDITriggerType.PLACE_CRAFTING_TABLE,
             "furnace" to DDITriggerType.PLACE_FURNACE, "chest" to DDITriggerType.PLACE_CHEST,
         )
-        map[itemId]?.let { fire(player, it) }
+        return map[itemId]
     }
 
     private fun isPlayerEnclosed(player: ServerPlayerEntity): Boolean {
@@ -806,8 +989,6 @@ class DDITriggerDetector(
 
     fun resetJumpCount(id: UUID) { jumpCount.remove(id); jump10Triggered.remove(id) }
     fun resetLookSameDir(id: UUID) { lastYaw.remove(id); lastPitch.remove(id); lookSameDirTicks.remove(id); lookSameDirTriggered.remove(id) }
-    fun resetPlaceCount(id: UUID) { placeCount.remove(id); place30Triggered.remove(id) }
-    fun resetDropCount(id: UUID) { dropCount.remove(id); drop30Triggered.remove(id) }
     fun resetNoJumpState(id: UUID) { lastJumpTick.remove(id); noJump30sTriggered.remove(id); noJump60sTriggered.remove(id) }
     fun resetNoSneakState(id: UUID) { lastSneakActionTick.remove(id); noSneak30sTriggered.remove(id); noSneak60sTriggered.remove(id) }
     fun resetNoSprintState(id: UUID) { lastSprintActionTick.remove(id); noSprint30sTriggered.remove(id); noSprint60sTriggered.remove(id) }
@@ -816,6 +997,7 @@ class DDITriggerDetector(
     fun resetPlayerState(id: UUID, preserveDeathTimer: Boolean = false) {
         val savedDeathTick = deathTick[id]
         stateMaps().forEach { it.remove(id) }
+        travelStatSampler.reset(id)
         if (preserveDeathTimer) {
             deathTick[id] = savedDeathTick ?: server.ticks.toLong()
         }
@@ -825,6 +1007,7 @@ class DDITriggerDetector(
         stateMaps().forEach { it.clear() }
         lastTriggeredTick.clear()
         interactingBlockIds.clear()
+        travelStatSampler.clear()
     }
 
     private fun stateMaps(): List<MutableMap<UUID, *>> = buildList {
@@ -836,7 +1019,7 @@ class DDITriggerDetector(
             deathTick, notRespawn3sTriggered, notRespawn5sTriggered, notRespawn10sTriggered,
             sprintStartTick, sneakStartTick, jumpCount, sprint30sTriggered, sneak5sTriggered, jump10Triggered,
             prevExperienceLevel, prevExperienceProgress,
-            placeCount, place30Triggered, dropCount, drop30Triggered, lastJumpTick, lastSneakActionTick, lastSprintActionTick,
+            lastJumpTick, lastSneakActionTick, lastSprintActionTick,
             noJump30sTriggered, noSneak30sTriggered, noSprint30sTriggered, noJump60sTriggered, noSneak60sTriggered, noSprint60sTriggered,
         ))
     }
@@ -845,5 +1028,6 @@ class DDITriggerDetector(
         stateMaps().forEach { it.keys.retainAll(online) }
         lastTriggeredTick.keys.retainAll(online)
         interactingBlockIds.keys.retainAll(online)
+        travelStatSampler.retainPlayers(online)
     }
 }

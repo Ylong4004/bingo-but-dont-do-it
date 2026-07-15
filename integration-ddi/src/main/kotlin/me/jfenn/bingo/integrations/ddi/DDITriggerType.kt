@@ -250,5 +250,14 @@ enum class DDITriggerType(val displayName: String) {
     EMPTY_BUCKET_LAVA("用桶倒岩浆"),
 
     // ---- 站在基岩上 ----
-    STAND_ON_BEDROCK("站在基岩上");
+    STAND_ON_BEDROCK("站在基岩上"),
+
+    // ---- Bingo 棋盘、移动与队伍交互 ----
+    COMPLETE_BINGO_TILE("完成 Bingo 棋盘格"),
+    WALK_DISTANCE("累计步行距离"),
+    SPRINT_DISTANCE("累计疾跑距离"),
+    SWIM_DISTANCE("累计游泳距离"),
+    BOAT_DISTANCE("累计乘船距离"),
+    DAMAGE_ENEMY_PLAYER("伤害敌队玩家"),
+    DAMAGED_BY_ENEMY_PLAYER("受到敌队玩家伤害");
 }

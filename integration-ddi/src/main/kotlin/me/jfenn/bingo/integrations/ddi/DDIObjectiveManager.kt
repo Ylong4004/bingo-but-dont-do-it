@@ -1,6 +1,7 @@
 package me.jfenn.bingo.integrations.ddi
 
 import me.jfenn.bingo.common.game.DDIGameHistoryService
+import me.jfenn.bingo.common.event.model.BingoTileCapturedEvent
 import me.jfenn.bingo.common.options.DDIObjectiveMode
 import me.jfenn.bingo.common.state.BingoState
 import me.jfenn.bingo.common.state.GameState
@@ -51,6 +52,7 @@ data class DDIObjectiveSnapshot(
     val wordId: String?,
     val wordText: String?,
     val triggerType: DDITriggerType?,
+    val ruleSummary: String?,
     val hearts: Int,
     val maxHearts: Int,
     val timerSeconds: Int,
@@ -127,6 +129,7 @@ class DDIObjectiveManager(
                     wordId = word?.id,
                     wordText = word?.displayText,
                     triggerType = word?.triggerType,
+                    ruleSummary = word?.rule?.diagnosticName(),
                     hearts = objective.hearts,
                     maxHearts = objective.maxHearts,
                     timerSeconds = objective.wordTimerSeconds,
@@ -151,7 +154,7 @@ class DDIObjectiveManager(
     }
 
     init {
-        triggerDetector.onTriggeredHandler = ::onTriggered
+        triggerDetector.onSignalHandler = ::onSignal
         triggerDetector.activePlayerIdsHandler = {
             if (!hasRound || roundCompleted) emptySet()
             else playerStates.keys.asSequence()
@@ -166,6 +169,24 @@ class DDIObjectiveManager(
                 ?.currentWord
                 ?.triggerType
         }
+        triggerDetector.currentRuleHandler = { playerId ->
+            if (roundCompleted) null
+            else objectiveFor(playerId)
+                ?.takeIf { playerId !in inactivePlayerIds }
+                ?.takeIf { it.isAlive }
+                ?.currentWord
+                ?.rule
+        }
+        triggerDetector.isEnemyPlayerHandler = { attackerId, victimId ->
+            val attacker = playerStates[attackerId]
+            val victim = playerStates[victimId]
+            attacker != null && victim != null &&
+                attackerId != victimId &&
+                attacker.teamKey != victim.teamKey &&
+                attackerId !in inactivePlayerIds && victimId !in inactivePlayerIds &&
+                objectiveFor(attackerId)?.isAlive == true && objectiveFor(victimId)?.isAlive == true
+        }
+        triggerDetector.onEnemyPlayerDamageHandler = ::onEnemyPlayerDamage
     }
 
     /** Starts a new round. The roster, ownership mode and options are fixed for that round. */
@@ -294,65 +315,142 @@ class DDIObjectiveManager(
         log.debug("[DDI] Round state cleared")
     }
 
-    internal fun onTriggered(player: ServerPlayerEntity, triggerType: DDITriggerType) {
-        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return
-        if (player.uuid in inactivePlayerIds) return
+    internal fun onSignal(player: ServerPlayerEntity, signal: DDISignal): Boolean {
+        return applyPlayerSignal(player, signal, finalizeWinCheck = true)
+    }
 
-        val participant = playerStates[player.uuid] ?: return
-        val objective = objectiveFor(player.uuid)?.takeIf { it.isAlive } ?: return
-        val currentWord = objective.currentWord ?: return
-        if (currentWord.triggerType != triggerType) return
+    private fun applyPlayerSignal(
+        player: ServerPlayerEntity,
+        signal: DDISignal,
+        finalizeWinCheck: Boolean,
+    ): Boolean {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return false
+        if (player.uuid in inactivePlayerIds) return false
 
-        val triggerTick = currentServer?.ticks?.toLong() ?: return
-        if (objective.lastAcceptedTriggerTick == triggerTick) return
+        val participant = playerStates[player.uuid] ?: return false
+        val objective = objectiveFor(player.uuid)?.takeIf { it.isAlive } ?: return false
+        return applySignal(objective, signal, participant.playerName, finalizeWinCheck)
+    }
+
+    private fun onEnemyPlayerDamage(
+        attacker: ServerPlayerEntity,
+        victim: ServerPlayerEntity,
+    ): Pair<Boolean, Boolean> {
+        val attackerAccepted = applyPlayerSignal(
+            attacker,
+            DDISignal(
+                kind = DDISignalKind.ENEMY_PLAYER_DAMAGED,
+                legacyAliases = setOf(DDITriggerType.DAMAGE_ENEMY_PLAYER),
+            ),
+            finalizeWinCheck = false,
+        )
+        val victimAccepted = applyPlayerSignal(
+            victim,
+            DDISignal(
+                kind = DDISignalKind.DAMAGED_BY_ENEMY_PLAYER,
+                legacyAliases = setOf(DDITriggerType.DAMAGED_BY_ENEMY_PLAYER),
+            ),
+            finalizeWinCheck = false,
+        )
+        if (attackerAccepted || victimAccepted) checkWinCondition()
+        return attackerAccepted to victimAccepted
+    }
+
+    /** Consumes only score transactions emitted by the current Bingo game. */
+    internal fun onBingoTileCaptured(event: BingoTileCapturedEvent): Boolean {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return false
+        if (event.gameId != currentGameId || event.x !in 0..4 || event.y !in 0..4) return false
+        val bingoTeam = state.teams[event.team] ?: return false
+        if (bingoTeam.cardId != event.cardId) return false
+
+        val config = roundConfig ?: return false
+        val objective = when (config.objectiveMode) {
+            DDIObjectiveMode.TEAM_SHARED -> objectiveStates.values.firstOrNull {
+                it.isTeamShared && it.teamKey == event.team && it.isAlive
+            }
+            DDIObjectiveMode.INDIVIDUAL -> event.playerId
+                ?.takeIf { it !in inactivePlayerIds }
+                ?.let(::objectiveFor)
+                ?.takeIf { !it.isTeamShared && it.teamKey == event.team && it.isAlive }
+        }
+        val actorName = event.playerId?.let { playerStates[it]?.playerName }
+        val accepted = objective?.let {
+            applySignal(
+                it,
+                DDIBingoSignals.capturedTile(event.x, event.y),
+                actorName,
+                finalizeWinCheck = true,
+            )
+        } ?: false
+        // In individual mode a teammate can claim the fixed tile selected by
+        // another player's word. That word is now impossible for the owner, so
+        // replace it immediately without recording a trigger or deducting life.
+        if (!roundCompleted) rerollUnavailableBingoObjectives(event.team)
+        return accepted
+    }
+
+    private fun rerollUnavailableBingoObjectives(teamKey: BingoTeamKey) {
+        var changed = false
+        objectiveStates.values
+            .filter { it.teamKey == teamKey && it.isAlive }
+            .forEach { objective ->
+                if (roundCompleted) return@forEach
+                val word = objective.currentWord ?: return@forEach
+                if (word.rule.signalKind != DDISignalKind.BINGO_TILE_CAPTURED ||
+                    isWordAvailableForObjective(objective, word)
+                ) return@forEach
+
+                val nextWord = drawNextWord(objective, word)
+                if (nextWord == null) {
+                    completeByPoolExhaustion(objective)
+                } else {
+                    assignResolvedWord(objective, nextWord, announceInstant = true)
+                }
+                syncObjectiveToAll(objective)
+                changed = true
+            }
+        if (changed && !roundCompleted) checkWinCondition()
+    }
+
+    private fun applySignal(
+        objective: DDIObjectiveState,
+        signal: DDISignal,
+        actorName: String?,
+        finalizeWinCheck: Boolean,
+    ): Boolean {
+        val currentWord = objective.currentWord ?: return false
+        val progress = DDIRuleEngine.apply(currentWord.rule, objective.ruleProgress, signal)
+            ?: return false
+
+        val triggerTick = currentServer?.ticks?.toLong() ?: return false
+        if (objective.lastAcceptedTriggerTick == triggerTick) return false
+        objective.ruleProgress = progress.progress
+        if (!progress.completed) return false
         // This value deliberately survives word changes, preventing two
         // teammates' callbacks from settling two words in one physical tick,
         // without swallowing legitimate actions on the newly assigned word.
         objective.lastAcceptedTriggerTick = triggerTick
 
+        if (currentWord.rule.matchBehavior == DDIMatchBehavior.SATISFY_DEADLINE) {
+            objective.deadlineSatisfied = true
+            return true
+        }
+
         // Instant entries normally settle while being dealt. Keep this branch
         // as a safety net if a future word provider assigns one directly.
-        if (triggerType == DDITriggerType.INSTANT_LOSE_HEART ||
-            triggerType == DDITriggerType.INSTANT_GAIN_HEART
+        if (currentWord.triggerType == DDITriggerType.INSTANT_LOSE_HEART ||
+            currentWord.triggerType == DDITriggerType.INSTANT_GAIN_HEART
         ) {
             assignResolvedWord(objective, currentWord, announceInstant = true)
             syncObjectiveToAll(objective)
-            checkWinCondition()
-            return
+            if (finalizeWinCheck) checkWinCondition()
+            return true
         }
 
-        teamWordHistory.record(objective.teamKey, currentWord)
-        val eliminated = objective.loseHeart()
-        historyService.recordDamage(
-            teamKey = objective.teamKey,
-            teamName = displayTeamName(objective),
-            wordText = currentWord.displayText,
-            actorName = participant.playerName,
-            heartsRemaining = objective.hearts,
-            maxHearts = objective.maxHearts,
-        )
-        if (eliminated) eliminate(objective)
-        broadcastTrigger(
-            objective = objective,
-            word = currentWord,
-            actorName = participant.playerName,
-            isElimination = eliminated,
-            isGain = false,
-        )
-
-        if (objective.isAlive) {
-            val nextWord = drawNextWord(objective, currentWord)
-            if (nextWord == null) {
-                completeByPoolExhaustion(objective)
-            } else {
-                assignResolvedWord(objective, nextWord, announceInstant = true)
-            }
-        } else {
-            clearWord(objective)
-        }
-
+        settleViolation(objective, currentWord, actorName)
         syncObjectiveToAll(objective)
-        checkWinCondition()
+        if (finalizeWinCheck) checkWinCondition()
+        return true
     }
 
     /** Called once per server second while the controller is Active. */
@@ -368,19 +466,30 @@ class DDIObjectiveManager(
             if (!objective.isAlive || objective.currentWord == null) continue
             objective.wordTimerSeconds = (objective.wordTimerSeconds - 1).coerceAtLeast(0)
             if (objective.wordTimerSeconds == 0) {
-                val previous = objective.currentWord
-                val nextWord = drawNextWord(objective, previous)
-                if (nextWord == null) {
-                    completeByPoolExhaustion(objective)
-                    syncObjectiveToAll(objective)
-                    return
-                } else {
-                    assignResolvedWord(objective, nextWord, announceInstant = true)
-                }
+                handleExpiredObjective(objective)
                 syncObjectiveToAll(objective)
+                if (roundCompleted) break
             }
         }
         checkWinCondition()
+    }
+
+    /** Shared by the server timer loop and a focused deadline contract test. */
+    internal fun handleExpiredObjective(objective: DDIObjectiveState) {
+        val previous = objective.currentWord ?: return
+        if (previous.rule.deadlineBehavior == DDIDeadlineBehavior.TRIGGER_ON_EXPIRY) {
+            if (!objective.deadlineSatisfied) {
+                settleViolation(objective, previous, actorName = null)
+                return
+            }
+        }
+
+        val nextWord = drawNextWord(objective, previous)
+        if (nextWord == null) {
+            completeByPoolExhaustion(objective)
+        } else {
+            assignResolvedWord(objective, nextWord, announceInstant = true)
+        }
     }
 
     /**
@@ -557,7 +666,46 @@ class DDIObjectiveManager(
     private fun clearWord(objective: DDIObjectiveState) {
         objective.currentWord = null
         objective.wordTimerSeconds = 0
+        objective.ruleProgress = 0
+        objective.deadlineSatisfied = false
         resetObjectiveDetection(objective)
+    }
+
+    /** Applies one action/deadline violation and deals the next available word. */
+    private fun settleViolation(
+        objective: DDIObjectiveState,
+        word: DDIWordPool.WordEntry,
+        actorName: String?,
+    ) {
+        teamWordHistory.record(objective.teamKey, word)
+        val eliminated = objective.loseHeart()
+        historyService.recordDamage(
+            teamKey = objective.teamKey,
+            teamName = displayTeamName(objective),
+            wordText = word.displayText,
+            actorName = actorName,
+            heartsRemaining = objective.hearts,
+            maxHearts = objective.maxHearts,
+        )
+        if (eliminated) eliminate(objective)
+        broadcastTrigger(
+            objective = objective,
+            word = word,
+            actorName = actorName,
+            isElimination = eliminated,
+            isGain = false,
+        )
+
+        if (!objective.isAlive) {
+            clearWord(objective)
+            return
+        }
+        val nextWord = drawNextWord(objective, word)
+        if (nextWord == null) {
+            completeByPoolExhaustion(objective)
+        } else {
+            assignResolvedWord(objective, nextWord, announceInstant = true)
+        }
     }
 
     private fun resetObjectiveDetection(objective: DDIObjectiveState) {
@@ -604,7 +752,22 @@ class DDIObjectiveManager(
             previous = previous,
             triggeredRepeatKeys = teamWordHistory.get(objective.teamKey),
             softRepeatKeys = activeTeammateRules,
+            predicate = { isWordAvailableForObjective(objective, it) },
         )
+    }
+
+    private fun isWordAvailableForObjective(
+        objective: DDIObjectiveState,
+        word: DDIWordPool.WordEntry,
+    ): Boolean {
+        if (word.rule.signalKind != DDISignalKind.BINGO_TILE_CAPTURED) return true
+        val team = state.teams[objective.teamKey] ?: return false
+        val card = state.getCard(team) ?: return false
+        val coordinates = DDIBingoSignals.selectedCoordinates(word.rule) ?: return true
+        return coordinates.any { (x, y) ->
+            val bingoObjective = card.objective(x, y)?.second ?: return@any false
+            !bingoObjective.hasAchieved(objective.teamKey)
+        }
     }
 
     internal fun tabLivesFor(playerId: UUID): Int? {

@@ -1,6 +1,7 @@
 package me.jfenn.bingo.common.event
 
 import me.jfenn.bingo.common.event.model.OptionsChangedEvent
+import me.jfenn.bingo.common.event.model.BingoTileCapturedEvent
 import me.jfenn.bingo.common.event.model.StateChangedEvent
 import me.jfenn.bingo.common.event.model.TeamChangedEvent
 import me.jfenn.bingo.common.scope.BingoComponent
@@ -54,6 +55,9 @@ class ScopedEvents(
     fun onChangeTeam(callback: (TeamChangedEvent) -> Unit) {
         eventBus.register(TeamChangedEvent, callback)
     }
+
+    fun onBingoTileCaptured(callback: (BingoTileCapturedEvent) -> Unit) =
+        eventBus.register(BingoTileCapturedEvent, callback)
 
     fun onClose(callback: (ScopeStopped) -> Unit) = eventBus.register(ScopeStopped, callback)
 

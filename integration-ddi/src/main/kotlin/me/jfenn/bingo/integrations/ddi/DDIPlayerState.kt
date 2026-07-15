@@ -32,6 +32,10 @@ data class DDIObjectiveState(
     var wordTimerSeconds: Int = 60,
     var maxWordTimerSeconds: Int = 60,
     var isEliminated: Boolean = false,
+    /** Shared progress for the currently assigned parameterized rule. */
+    var ruleProgress: Int = 0,
+    /** True once an ON_DEADLINE_MISSED rule has been satisfied this assignment. */
+    var deadlineSatisfied: Boolean = false,
     /** Kept across word changes to reject two callbacks in one server tick. */
     var lastAcceptedTriggerTick: Long = Long.MIN_VALUE,
 ) {
@@ -50,5 +54,7 @@ data class DDIObjectiveState(
         currentWord = word
         wordTimerSeconds = timerSeconds
         maxWordTimerSeconds = timerSeconds
+        ruleProgress = 0
+        deadlineSatisfied = false
     }
 }

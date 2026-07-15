@@ -9,6 +9,7 @@ import me.jfenn.bingo.common.card.objective.BingoObjectiveManager
 import me.jfenn.bingo.common.card.objective.ItemObjectiveManager
 import me.jfenn.bingo.common.event.ScopedEvents
 import me.jfenn.bingo.common.event.model.CardShuffledEvent
+import me.jfenn.bingo.common.event.model.BingoTileCapturedEvent
 import me.jfenn.bingo.common.event.model.ScoreChangedEvent
 import me.jfenn.bingo.common.event.model.TeamWinnerEvent
 import me.jfenn.bingo.common.game.GameCommands
@@ -64,7 +65,9 @@ internal class ScoredItemCheck(
         sendUpdates: Boolean,
     ) {
         var card = initialCard // card is mutable, as WinCondition.ReplaceGoals can occur during score counting
-        val rootObjectives = card.entries.mapNotNull { card.objectives[it.objectiveId] }
+        val rootObjectives = card.entries.mapIndexedNotNull { index, entry ->
+            card.objectives[entry.objectiveId]?.let { objective -> Triple(index, entry, objective) }
+        }
 
         val teams = state.getRegisteredTeams()
             // if the team is already a winner, their score should not change
@@ -75,8 +78,8 @@ internal class ScoredItemCheck(
             rootObjectives
                 .takeIf { sendUpdates }
                 // if the objective has been updated in this tick
-                ?.filter { it.updatedAt(team.key) as Any == tickStart as Any }
-                ?.forEach { objective ->
+                ?.filter { (_, _, objective) -> objective.updatedAt(team.key) as Any == tickStart as Any }
+                ?.forEach { (entryIndex, _, objective) ->
                     if (objective.hasAchieved(team.key)) {
                         // find the player that captured the objective
                         val player = objective.players
@@ -102,6 +105,18 @@ internal class ScoredItemCheck(
                             team = team,
                             objective = objective,
                             card = card,
+                        )
+                        eventBus.emit(
+                            BingoTileCapturedEvent,
+                            BingoTileCapturedEvent(
+                                gameId = state.gameId,
+                                cardId = card.id,
+                                team = team.key,
+                                playerId = player?.uuid,
+                                objectiveId = objective.id,
+                                x = entryIndex % 5,
+                                y = entryIndex / 5,
+                            ),
                         )
                     } else {
                         scoreUpdateService.sendItemLost(

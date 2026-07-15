@@ -17,6 +17,9 @@ public class DDILivingEntityDamageMixin {
     @Unique
     private float bingo$ddiHealthBeforeDamage;
 
+    @Unique
+    private float bingo$ddiAbsorptionBeforeDamage;
+
     @Inject(
             method = "damage(Lnet/minecraft/server/world/ServerWorld;Lnet/minecraft/entity/damage/DamageSource;F)Z",
             at = @At("HEAD")
@@ -27,7 +30,9 @@ public class DDILivingEntityDamageMixin {
             float damageTaken,
             CallbackInfoReturnable<Boolean> cir
     ) {
-        bingo$ddiHealthBeforeDamage = ((LivingEntity) (Object) this).getHealth();
+        LivingEntity entity = (LivingEntity) (Object) this;
+        bingo$ddiHealthBeforeDamage = entity.getHealth();
+        bingo$ddiAbsorptionBeforeDamage = entity.getAbsorptionAmount();
     }
 
     @Inject(
@@ -45,10 +50,6 @@ public class DDILivingEntityDamageMixin {
     ) {
         LivingEntity entity = (LivingEntity) (Object) this;
         DDITriggerDetector.reportDamage(entity, source, damageTaken);
-        DDITriggerDetector.reportHealthLoss(
-                entity,
-                Math.max(0.0F, bingo$ddiHealthBeforeDamage - entity.getHealth())
-        );
     }
 
     @Inject(
@@ -63,9 +64,11 @@ public class DDILivingEntityDamageMixin {
     ) {
         if (!cir.getReturnValue()) return;
         LivingEntity entity = (LivingEntity) (Object) this;
-        DDITriggerDetector.reportHealthLoss(
+        DDITriggerDetector.reportFinalDamage(
                 entity,
-                Math.max(0.0F, bingo$ddiHealthBeforeDamage - entity.getHealth())
+                source,
+                Math.max(0.0F, bingo$ddiHealthBeforeDamage - entity.getHealth()),
+                Math.max(0.0F, bingo$ddiAbsorptionBeforeDamage - entity.getAbsorptionAmount())
         );
     }
 }

@@ -1,0 +1,2473 @@
+{
+  "schemaVersion": 1,
+  "words": [
+    {
+      "id": "sneak_01",
+      "displayText": "潜行",
+      "triggerType": "SNEAK"
+    },
+    {
+      "id": "attack_01",
+      "displayText": "攻击生物",
+      "triggerType": "ATTACK"
+    },
+    {
+      "id": "attack_02",
+      "displayText": "打怪",
+      "triggerType": "ATTACK_HOSTILE"
+    },
+    {
+      "id": "break_01",
+      "displayText": "破坏方块",
+      "triggerType": "BLOCK_BREAK"
+    },
+    {
+      "id": "break_02",
+      "displayText": "挖矿",
+      "triggerType": "MINE_ORE"
+    },
+    {
+      "id": "place_01",
+      "displayText": "放置方块",
+      "triggerType": "BLOCK_PLACE"
+    },
+    {
+      "id": "place_02",
+      "displayText": "搭方块",
+      "triggerType": "BLOCK_PLACE"
+    },
+    {
+      "id": "chat_01",
+      "displayText": "发送聊天消息",
+      "triggerType": "CHAT"
+    },
+    {
+      "id": "chat_02",
+      "displayText": "打字说话",
+      "triggerType": "CHAT"
+    },
+    {
+      "id": "damage_01",
+      "displayText": "受到伤害",
+      "triggerType": "TAKE_DAMAGE"
+    },
+    {
+      "id": "eat_01",
+      "displayText": "吃东西",
+      "triggerType": "EAT"
+    },
+    {
+      "id": "sprint_01",
+      "displayText": "疾跑",
+      "triggerType": "SPRINT"
+    },
+    {
+      "id": "drop_01",
+      "displayText": "丢弃物品",
+      "triggerType": "DROP_ITEM"
+    },
+    {
+      "id": "container_01",
+      "displayText": "打开容器",
+      "triggerType": "OPEN_CONTAINER"
+    },
+    {
+      "id": "pickup_01",
+      "displayText": "捡起物品",
+      "triggerType": "PICKUP_ITEM"
+    },
+    {
+      "id": "mine_wood_01",
+      "displayText": "挖掘木头",
+      "triggerType": "MINE_WOOD"
+    },
+    {
+      "id": "mine_stone_01",
+      "displayText": "挖掘石头",
+      "triggerType": "MINE_STONE"
+    },
+    {
+      "id": "mine_coal_01",
+      "displayText": "挖掘煤矿",
+      "triggerType": "MINE_COAL"
+    },
+    {
+      "id": "mine_iron_01",
+      "displayText": "挖掘铁矿",
+      "triggerType": "MINE_IRON"
+    },
+    {
+      "id": "mine_copper_01",
+      "displayText": "挖掘铜矿",
+      "triggerType": "MINE_COPPER"
+    },
+    {
+      "id": "mine_gold_01",
+      "displayText": "挖掘金矿",
+      "triggerType": "MINE_GOLD"
+    },
+    {
+      "id": "mine_diamond_01",
+      "displayText": "挖掘钻石矿",
+      "triggerType": "MINE_DIAMOND"
+    },
+    {
+      "id": "pickup_wood_01",
+      "displayText": "捡起原木或菌柄类物品",
+      "triggerType": "PICKUP_WOOD",
+      "repeatKey": "item_picked_up:#minecraft:logs",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectTags": [
+          "minecraft:logs"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "craft_table_01",
+      "displayText": "合成工作台",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:crafting_table",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:crafting_table"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "craft_wooden_pickaxe",
+      "displayText": "合成木镐",
+      "triggerType": "CRAFT_WOODEN_PICKAXE",
+      "repeatKey": "item_crafted:minecraft:wooden_pickaxe",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:wooden_pickaxe"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "craft_stone_pickaxe",
+      "displayText": "合成石镐",
+      "triggerType": "CRAFT_STONE_PICKAXE",
+      "repeatKey": "item_crafted:minecraft:stone_pickaxe",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:stone_pickaxe"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "craft_iron_pickaxe",
+      "displayText": "合成铁镐",
+      "triggerType": "CRAFT_IRON_PICKAXE",
+      "repeatKey": "item_crafted:minecraft:iron_pickaxe",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:iron_pickaxe"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "craft_wooden_axe",
+      "displayText": "合成木斧",
+      "triggerType": "CRAFT_WOODEN_AXE"
+    },
+    {
+      "id": "craft_stone_axe",
+      "displayText": "合成石斧",
+      "triggerType": "CRAFT_STONE_AXE"
+    },
+    {
+      "id": "craft_iron_axe",
+      "displayText": "合成铁斧",
+      "triggerType": "CRAFT_IRON_AXE"
+    },
+    {
+      "id": "craft_wooden_sword",
+      "displayText": "合成木剑",
+      "triggerType": "CRAFT_WOODEN_SWORD"
+    },
+    {
+      "id": "craft_stone_sword",
+      "displayText": "合成石剑",
+      "triggerType": "CRAFT_STONE_SWORD"
+    },
+    {
+      "id": "craft_iron_sword",
+      "displayText": "合成铁剑",
+      "triggerType": "CRAFT_IRON_SWORD"
+    },
+    {
+      "id": "look_down_01",
+      "displayText": "低头",
+      "triggerType": "LOOK_DOWN"
+    },
+    {
+      "id": "look_up_01",
+      "displayText": "抬头",
+      "triggerType": "LOOK_UP"
+    },
+    {
+      "id": "look_east_01",
+      "displayText": "看向东方",
+      "triggerType": "LOOK_EAST"
+    },
+    {
+      "id": "look_south_01",
+      "displayText": "看向南方",
+      "triggerType": "LOOK_SOUTH"
+    },
+    {
+      "id": "look_west_01",
+      "displayText": "看向西方",
+      "triggerType": "LOOK_WEST"
+    },
+    {
+      "id": "look_north_01",
+      "displayText": "看向北方",
+      "triggerType": "LOOK_NORTH"
+    },
+    {
+      "id": "stand_still_01",
+      "displayText": "禁止不动五秒",
+      "triggerType": "STAND_STILL_5S"
+    },
+    {
+      "id": "look_same_dir_01",
+      "displayText": "持续看向一个方向五秒",
+      "triggerType": "LOOK_SAME_DIR_5S"
+    },
+    {
+      "id": "enclosed_01",
+      "displayText": "自闭",
+      "triggerType": "ENCLOSED_1X2"
+    },
+    {
+      "id": "submerged_01",
+      "displayText": "沉入水中",
+      "triggerType": "SUBMERGED"
+    },
+    {
+      "id": "mine_andesite_01",
+      "displayText": "挖掘安山岩",
+      "triggerType": "MINE_ANDESITE"
+    },
+    {
+      "id": "mine_diorite_01",
+      "displayText": "挖掘闪长岩",
+      "triggerType": "MINE_DIORITE"
+    },
+    {
+      "id": "mine_deepslate_01",
+      "displayText": "挖掘深板岩",
+      "triggerType": "MINE_DEEPSLATE"
+    },
+    {
+      "id": "stand_grass_01",
+      "displayText": "站在草方块上",
+      "triggerType": "STAND_ON_GRASS"
+    },
+    {
+      "id": "stand_leaves_01",
+      "displayText": "站在树叶上",
+      "triggerType": "STAND_ON_LEAVES"
+    },
+    {
+      "id": "stand_stone_01",
+      "displayText": "站在石头上",
+      "triggerType": "STAND_ON_STONE"
+    },
+    {
+      "id": "stand_deepslate_01",
+      "displayText": "站在深板岩上",
+      "triggerType": "STAND_ON_DEEPSLATE"
+    },
+    {
+      "id": "stand_andesite_01",
+      "displayText": "站在安山岩上",
+      "triggerType": "STAND_ON_ANDESITE"
+    },
+    {
+      "id": "stand_diorite_01",
+      "displayText": "站在闪长岩上",
+      "triggerType": "STAND_ON_DIORITE"
+    },
+    {
+      "id": "floating_01",
+      "displayText": "浮空",
+      "triggerType": "FLOATING"
+    },
+    {
+      "id": "death_01",
+      "displayText": "死亡",
+      "triggerType": "DEATH"
+    },
+    {
+      "id": "respawn_01",
+      "displayText": "复活",
+      "triggerType": "RESPAWN"
+    },
+    {
+      "id": "not_respawn_3s",
+      "displayText": "三秒不复活",
+      "triggerType": "NOT_RESPAWN_3S"
+    },
+    {
+      "id": "not_respawn_5s",
+      "displayText": "五秒不复活",
+      "triggerType": "NOT_RESPAWN_5S"
+    },
+    {
+      "id": "not_respawn_10s",
+      "displayText": "十秒不复活",
+      "triggerType": "NOT_RESPAWN_10S"
+    },
+    {
+      "id": "pickup_diamond_01",
+      "displayText": "捡起钻石",
+      "triggerType": "PICKUP_DIAMOND",
+      "repeatKey": "item_picked_up:minecraft:diamond",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:diamond"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "has_coal_01",
+      "displayText": "背包里有煤炭",
+      "triggerType": "HAS_COAL"
+    },
+    {
+      "id": "has_iron_01",
+      "displayText": "背包里有铁锭",
+      "triggerType": "HAS_IRON_INGOT"
+    },
+    {
+      "id": "has_copper_01",
+      "displayText": "背包里有铜锭",
+      "triggerType": "HAS_COPPER_INGOT"
+    },
+    {
+      "id": "has_table_01",
+      "displayText": "背包里有工作台",
+      "triggerType": "HAS_CRAFTING_TABLE"
+    },
+    {
+      "id": "has_furnace_01",
+      "displayText": "背包里有熔炉",
+      "triggerType": "HAS_FURNACE"
+    },
+    {
+      "id": "has_axe_01",
+      "displayText": "背包里有斧头",
+      "triggerType": "HAS_AXE"
+    },
+    {
+      "id": "has_sword_01",
+      "displayText": "背包里有剑",
+      "triggerType": "HAS_SWORD"
+    },
+    {
+      "id": "has_spick_01",
+      "displayText": "背包里有石镐",
+      "triggerType": "HAS_STONE_PICKAXE"
+    },
+    {
+      "id": "has_wpick_01",
+      "displayText": "背包里有木镐",
+      "triggerType": "HAS_WOODEN_PICKAXE"
+    },
+    {
+      "id": "has_ipick_01",
+      "displayText": "背包里有铁镐",
+      "triggerType": "HAS_IRON_PICKAXE"
+    },
+    {
+      "id": "has_flesh_01",
+      "displayText": "背包里有腐肉",
+      "triggerType": "HAS_ROTTEN_FLESH"
+    },
+    {
+      "id": "has_diamond_01",
+      "displayText": "背包里有钻石",
+      "triggerType": "HAS_DIAMOND"
+    },
+    {
+      "id": "has_dirt_01",
+      "displayText": "背包里有泥土",
+      "triggerType": "HAS_DIRT"
+    },
+    {
+      "id": "eat_rotten_flesh_01",
+      "displayText": "吃腐肉",
+      "triggerType": "EAT_ROTTEN_FLESH"
+    },
+    {
+      "id": "instant_lose_01",
+      "displayText": "直接扣一颗心",
+      "triggerType": "INSTANT_LOSE_HEART"
+    },
+    {
+      "id": "instant_gain_01",
+      "displayText": "直接回一颗心",
+      "triggerType": "INSTANT_GAIN_HEART"
+    },
+    {
+      "id": "fire_damage_01",
+      "displayText": "受到火焰伤害",
+      "triggerType": "TAKE_FIRE_DAMAGE"
+    },
+    {
+      "id": "hunger_below_01",
+      "displayText": "饱食度低于18",
+      "triggerType": "HUNGER_BELOW_18"
+    },
+    {
+      "id": "hunger_above_01",
+      "displayText": "饱食度高于18",
+      "triggerType": "HUNGER_ABOVE_18"
+    },
+    {
+      "id": "y_above_01",
+      "displayText": "玩家高度Y＞70",
+      "triggerType": "Y_ABOVE_70"
+    },
+    {
+      "id": "y_below_01",
+      "displayText": "玩家高度Y＜70",
+      "triggerType": "Y_BELOW_70"
+    },
+    {
+      "id": "attack_player_01",
+      "displayText": "攻击玩家",
+      "triggerType": "ATTACK_PLAYER"
+    },
+    {
+      "id": "deal_damage_01",
+      "displayText": "造成伤害",
+      "triggerType": "DEAL_DAMAGE"
+    },
+    {
+      "id": "sprint_30s_01",
+      "displayText": "连续奔跑30s",
+      "triggerType": "SPRINT_30S"
+    },
+    {
+      "id": "sneak_5s_01",
+      "displayText": "连续潜行5s",
+      "triggerType": "SNEAK_5S"
+    },
+    {
+      "id": "jump_10_01",
+      "displayText": "跳跃10次",
+      "triggerType": "JUMP_10_TIMES"
+    },
+    {
+      "id": "far_15m_01",
+      "displayText": "距离所有玩家15米",
+      "triggerType": "FAR_FROM_ALL_15M"
+    },
+    {
+      "id": "too_close_01",
+      "displayText": "和玩家贴贴",
+      "triggerType": "TOO_CLOSE_TO_PLAYER"
+    },
+    {
+      "id": "mine_granite_01",
+      "displayText": "挖掘花岗岩",
+      "triggerType": "MINE_GRANITE"
+    },
+    {
+      "id": "stand_granite_01",
+      "displayText": "站在花岗岩",
+      "triggerType": "STAND_ON_GRANITE"
+    },
+    {
+      "id": "mine_tuff_01",
+      "displayText": "挖掘凝灰岩",
+      "triggerType": "MINE_TUFF"
+    },
+    {
+      "id": "stand_tuff_01",
+      "displayText": "站在凝灰岩上",
+      "triggerType": "STAND_ON_TUFF"
+    },
+    {
+      "id": "gain_xp_01",
+      "displayText": "获得经验",
+      "triggerType": "GAIN_EXPERIENCE"
+    },
+    {
+      "id": "level_up_01",
+      "displayText": "升级",
+      "triggerType": "LEVEL_UP"
+    },
+    {
+      "id": "wear_armor_01",
+      "displayText": "穿装备",
+      "triggerType": "WEAR_ARMOR"
+    },
+    {
+      "id": "hold_table_01",
+      "displayText": "手持工作台",
+      "triggerType": "HOLD_CRAFTING_TABLE"
+    },
+    {
+      "id": "hold_furnace_01",
+      "displayText": "手持熔炉",
+      "triggerType": "HOLD_FURNACE"
+    },
+    {
+      "id": "hold_wpick_01",
+      "displayText": "手持木镐",
+      "triggerType": "HOLD_WOODEN_PICKAXE"
+    },
+    {
+      "id": "hold_ipick_01",
+      "displayText": "手持铁镐",
+      "triggerType": "HOLD_IRON_PICKAXE"
+    },
+    {
+      "id": "hold_spick_01",
+      "displayText": "手持石镐",
+      "triggerType": "HOLD_STONE_PICKAXE"
+    },
+    {
+      "id": "hold_waxe_01",
+      "displayText": "手持木斧",
+      "triggerType": "HOLD_WOODEN_AXE"
+    },
+    {
+      "id": "hold_saxe_01",
+      "displayText": "手持石斧",
+      "triggerType": "HOLD_STONE_AXE"
+    },
+    {
+      "id": "hold_iaxe_01",
+      "displayText": "手持铁斧",
+      "triggerType": "HOLD_IRON_AXE"
+    },
+    {
+      "id": "slot_first_01",
+      "displayText": "选中快捷栏第一位",
+      "triggerType": "SELECT_SLOT_FIRST"
+    },
+    {
+      "id": "slot_last_01",
+      "displayText": "选中快捷栏最后一位",
+      "triggerType": "SELECT_SLOT_LAST"
+    },
+    {
+      "id": "fall_5_01",
+      "displayText": "下降5格高度",
+      "triggerType": "FALL_5_BLOCKS"
+    },
+    {
+      "id": "empty_attack_01",
+      "displayText": "空手打人",
+      "triggerType": "EMPTY_HAND_ATTACK"
+    },
+    {
+      "id": "has_pandesite_01",
+      "displayText": "背包里有磨制安山岩",
+      "triggerType": "HAS_POLISHED_ANDESITE"
+    },
+    {
+      "id": "has_pgranite_01",
+      "displayText": "背包里有磨制花岗岩",
+      "triggerType": "HAS_POLISHED_GRANITE"
+    },
+    {
+      "id": "has_pdiorite_01",
+      "displayText": "背包里有磨制闪长岩",
+      "triggerType": "HAS_POLISHED_DIORITE"
+    },
+    {
+      "id": "has_tuff_01",
+      "displayText": "背包里有凝灰岩",
+      "triggerType": "HAS_TUFF"
+    },
+    {
+      "id": "has_stone_01",
+      "displayText": "背包里有石头",
+      "triggerType": "HAS_STONE"
+    },
+    {
+      "id": "has_sstone_01",
+      "displayText": "背包里有平滑石头",
+      "triggerType": "HAS_SMOOTH_STONE"
+    },
+    {
+      "id": "has_leaves_01",
+      "displayText": "背包里有树叶",
+      "triggerType": "HAS_LEAVES"
+    },
+    {
+      "id": "no_iron_01",
+      "displayText": "背包里没有铁质工具或防具",
+      "triggerType": "NO_IRON_TOOLS_OR_ARMOR"
+    },
+    {
+      "id": "no_diamond_01",
+      "displayText": "背包里没有钻石工具或防具",
+      "triggerType": "NO_DIAMOND_TOOLS_OR_ARMOR"
+    },
+    {
+      "id": "has_bone_01",
+      "displayText": "背包里有骨头",
+      "triggerType": "HAS_BONE"
+    },
+    {
+      "id": "has_string_01",
+      "displayText": "背包里有线",
+      "triggerType": "HAS_STRING"
+    },
+    {
+      "id": "has_pearl_01",
+      "displayText": "背包里有末影珍珠",
+      "triggerType": "HAS_ENDER_PEARL"
+    },
+    {
+      "id": "has_leather_01",
+      "displayText": "背包里有皮革",
+      "triggerType": "HAS_LEATHER"
+    },
+    {
+      "id": "has_wool_01",
+      "displayText": "背包里有羊毛",
+      "triggerType": "HAS_WOOL"
+    },
+    {
+      "id": "offhand_shield_01",
+      "displayText": "副手持盾",
+      "triggerType": "HOLD_SHIELD_OFFHAND"
+    },
+    {
+      "id": "open_chest_01",
+      "displayText": "打开箱子",
+      "triggerType": "OPEN_CHEST"
+    },
+    {
+      "id": "open_furnace_01",
+      "displayText": "与熔炉交互",
+      "triggerType": "OPEN_FURNACE"
+    },
+    {
+      "id": "open_table_01",
+      "displayText": "与工作台交互",
+      "triggerType": "OPEN_CRAFTING_TABLE"
+    },
+    {
+      "id": "mine_table_01",
+      "displayText": "挖掘工作台",
+      "triggerType": "MINE_CRAFTING_TABLE"
+    },
+    {
+      "id": "mine_furnace_01",
+      "displayText": "挖掘熔炉",
+      "triggerType": "MINE_FURNACE"
+    },
+    {
+      "id": "kill_golem_01",
+      "displayText": "杀死铁傀儡",
+      "triggerType": "KILL_IRON_GOLEM"
+    },
+    {
+      "id": "trade_01",
+      "displayText": "村民交易",
+      "triggerType": "VILLAGER_TRADE"
+    },
+    {
+      "id": "place_30_01",
+      "displayText": "放置30个方块",
+      "triggerType": "PLACE_30_BLOCKS",
+      "repeatKey": "block_placed:any:30",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "requiredProgress": 30,
+        "progressMode": "ACTIONS"
+      },
+      "weight": 1
+    },
+    {
+      "id": "drop_30_01",
+      "displayText": "丢弃30个方块",
+      "triggerType": "DROP_30_ITEMS",
+      "repeatKey": "block_item_dropped:any:30",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "requireBlockItem": true,
+        "requiredProgress": 30,
+        "progressMode": "QUANTITY"
+      },
+      "weight": 1
+    },
+    {
+      "id": "no_jump_30s_01",
+      "displayText": "30秒不跳",
+      "triggerType": "NO_JUMP_30S"
+    },
+    {
+      "id": "no_sneak_30s_01",
+      "displayText": "30秒不潜行",
+      "triggerType": "NO_SNEAK_30S"
+    },
+    {
+      "id": "no_sprint_30s_01",
+      "displayText": "30秒不疾跑",
+      "triggerType": "NO_SPRINT_30S"
+    },
+    {
+      "id": "no_jump_60s_01",
+      "displayText": "60秒不跳",
+      "triggerType": "NO_JUMP_60S"
+    },
+    {
+      "id": "no_sneak_60s_01",
+      "displayText": "60秒不潜行",
+      "triggerType": "NO_SNEAK_60S"
+    },
+    {
+      "id": "no_sprint_60s_01",
+      "displayText": "60秒不疾跑",
+      "triggerType": "NO_SPRINT_60S"
+    },
+    {
+      "id": "place_dirt_01",
+      "displayText": "放置泥土",
+      "triggerType": "PLACE_DIRT",
+      "repeatKey": "block_placed:minecraft:dirt",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectIds": [
+          "minecraft:dirt"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "place_cobble_01",
+      "displayText": "放置圆石",
+      "triggerType": "PLACE_COBBLESTONE"
+    },
+    {
+      "id": "place_cdeep_01",
+      "displayText": "放置深板岩圆石",
+      "triggerType": "PLACE_COBBLED_DEEPSLATE"
+    },
+    {
+      "id": "place_andesite_01",
+      "displayText": "放置安山岩",
+      "triggerType": "PLACE_ANDESITE"
+    },
+    {
+      "id": "place_granite_01",
+      "displayText": "放置花岗岩",
+      "triggerType": "PLACE_GRANITE"
+    },
+    {
+      "id": "place_diorite_01",
+      "displayText": "放置闪长岩",
+      "triggerType": "PLACE_DIORITE"
+    },
+    {
+      "id": "place_tuff_01",
+      "displayText": "放置凝灰岩",
+      "triggerType": "PLACE_TUFF"
+    },
+    {
+      "id": "place_table_01",
+      "displayText": "放置工作台",
+      "triggerType": "PLACE_CRAFTING_TABLE"
+    },
+    {
+      "id": "place_furnace_01",
+      "displayText": "放置熔炉",
+      "triggerType": "PLACE_FURNACE"
+    },
+    {
+      "id": "place_chest_01",
+      "displayText": "放置箱子",
+      "triggerType": "PLACE_CHEST"
+    },
+    {
+      "id": "drop_dirt_01",
+      "displayText": "丢弃泥土",
+      "triggerType": "DROP_DIRT",
+      "repeatKey": "item_dropped:minecraft:dirt",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:dirt"
+        ]
+      },
+      "weight": 1
+    },
+    {
+      "id": "drop_cobble_01",
+      "displayText": "丢弃圆石",
+      "triggerType": "DROP_COBBLESTONE"
+    },
+    {
+      "id": "drop_cdeep_01",
+      "displayText": "丢弃深板岩圆石",
+      "triggerType": "DROP_COBBLED_DEEPSLATE"
+    },
+    {
+      "id": "drop_andesite_01",
+      "displayText": "丢弃安山岩",
+      "triggerType": "DROP_ANDESITE"
+    },
+    {
+      "id": "drop_granite_01",
+      "displayText": "丢弃花岗岩",
+      "triggerType": "DROP_GRANITE"
+    },
+    {
+      "id": "drop_diorite_01",
+      "displayText": "丢弃闪长岩",
+      "triggerType": "DROP_DIORITE"
+    },
+    {
+      "id": "drop_tuff_01",
+      "displayText": "丢弃凝灰岩",
+      "triggerType": "DROP_TUFF"
+    },
+    {
+      "id": "drop_wpick_01",
+      "displayText": "丢弃木镐",
+      "triggerType": "DROP_WOODEN_PICKAXE"
+    },
+    {
+      "id": "death_fall_01",
+      "displayText": "摔死",
+      "triggerType": "DEATH_BY_FALL"
+    },
+    {
+      "id": "death_lava_01",
+      "displayText": "岩浆里游泳",
+      "triggerType": "DEATH_BY_LAVA"
+    },
+    {
+      "id": "death_suffocate_01",
+      "displayText": "窒息",
+      "triggerType": "DEATH_BY_SUFFOCATION"
+    },
+    {
+      "id": "death_drown_01",
+      "displayText": "溺死",
+      "triggerType": "DEATH_BY_DROWN"
+    },
+    {
+      "id": "death_explode_01",
+      "displayText": "炸死",
+      "triggerType": "DEATH_BY_EXPLOSION"
+    },
+    {
+      "id": "dmg_projectile_01",
+      "displayText": "弹射物伤害",
+      "triggerType": "TAKE_PROJECTILE_DAMAGE"
+    },
+    {
+      "id": "dmg_5_01",
+      "displayText": "一次性受到5滴血伤害",
+      "triggerType": "TAKE_5_DAMAGE"
+    },
+    {
+      "id": "block_above_01",
+      "displayText": "头顶有方块遮挡",
+      "triggerType": "BLOCK_ABOVE_HEAD"
+    },
+    {
+      "id": "no_block_above_01",
+      "displayText": "头顶无方块遮挡",
+      "triggerType": "NO_BLOCK_ABOVE_HEAD"
+    },
+    {
+      "id": "has_bucket_01",
+      "displayText": "背包里有桶",
+      "triggerType": "HAS_BUCKET"
+    },
+    {
+      "id": "has_water_bucket_01",
+      "displayText": "背包里有水桶",
+      "triggerType": "HAS_WATER_BUCKET"
+    },
+    {
+      "id": "has_lava_bucket_01",
+      "displayText": "背包里有岩浆桶",
+      "triggerType": "HAS_LAVA_BUCKET"
+    },
+    {
+      "id": "fill_water_01",
+      "displayText": "用桶装水",
+      "triggerType": "FILL_BUCKET_WATER"
+    },
+    {
+      "id": "empty_water_01",
+      "displayText": "用桶倒水",
+      "triggerType": "EMPTY_BUCKET_WATER"
+    },
+    {
+      "id": "fill_lava_01",
+      "displayText": "用桶装岩浆",
+      "triggerType": "FILL_BUCKET_LAVA"
+    },
+    {
+      "id": "empty_lava_01",
+      "displayText": "用桶倒岩浆",
+      "triggerType": "EMPTY_BUCKET_LAVA"
+    },
+    {
+      "id": "stand_bedrock_01",
+      "displayText": "站在基岩上",
+      "triggerType": "STAND_ON_BEDROCK"
+    },
+    {
+      "id": "craft_planks_01",
+      "displayText": "合成木板",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:#minecraft:planks",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectTags": [
+          "minecraft:planks"
+        ]
+      }
+    },
+    {
+      "id": "craft_stick_01",
+      "displayText": "合成木棍",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:stick",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:stick"
+        ]
+      }
+    },
+    {
+      "id": "craft_chest_01",
+      "displayText": "合成箱子",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:chest",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:chest"
+        ]
+      }
+    },
+    {
+      "id": "craft_furnace_01",
+      "displayText": "合成熔炉",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:furnace",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:furnace"
+        ]
+      }
+    },
+    {
+      "id": "craft_torch_01",
+      "displayText": "合成火把",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:torch",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:torch"
+        ]
+      }
+    },
+    {
+      "id": "craft_bed_01",
+      "displayText": "合成任意床",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:#minecraft:beds",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectTags": [
+          "minecraft:beds"
+        ]
+      }
+    },
+    {
+      "id": "craft_boat_01",
+      "displayText": "合成船或竹筏",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:#minecraft:boats",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectTags": [
+          "minecraft:boats"
+        ]
+      }
+    },
+    {
+      "id": "craft_bread_01",
+      "displayText": "合成面包",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:bread",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:bread"
+        ]
+      }
+    },
+    {
+      "id": "craft_bucket_01",
+      "displayText": "合成桶",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:bucket",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:bucket"
+        ]
+      }
+    },
+    {
+      "id": "craft_shield_01",
+      "displayText": "合成盾牌",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:shield",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:shield"
+        ]
+      }
+    },
+    {
+      "id": "craft_shears_01",
+      "displayText": "合成剪刀",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:shears",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:shears"
+        ]
+      }
+    },
+    {
+      "id": "craft_stone_shovel_01",
+      "displayText": "合成石铲",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:stone_shovel",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:stone_shovel"
+        ]
+      }
+    },
+    {
+      "id": "craft_iron_shovel_01",
+      "displayText": "合成铁铲",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:iron_shovel",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:iron_shovel"
+        ]
+      }
+    },
+    {
+      "id": "craft_iron_hoe_01",
+      "displayText": "合成铁锄",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:minecraft:iron_hoe",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:iron_hoe"
+        ]
+      }
+    },
+    {
+      "id": "craft_iron_armor_01",
+      "displayText": "合成任意铁质防具",
+      "triggerType": "CRAFT_CRAFTING_TABLE",
+      "repeatKey": "item_crafted:iron_armor",
+      "category": "craft",
+      "rule": {
+        "signal": "ITEM_CRAFTED",
+        "subjectIds": [
+          "minecraft:iron_helmet",
+          "minecraft:iron_chestplate",
+          "minecraft:iron_leggings",
+          "minecraft:iron_boots"
+        ]
+      }
+    },
+    {
+      "id": "pickup_cobblestone_01",
+      "displayText": "捡起圆石",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:cobblestone",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:cobblestone"
+        ]
+      }
+    },
+    {
+      "id": "pickup_cobbled_deepslate_01",
+      "displayText": "捡起深板岩圆石",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:cobbled_deepslate",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:cobbled_deepslate"
+        ]
+      }
+    },
+    {
+      "id": "pickup_dirt_01",
+      "displayText": "捡起泥土",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:dirt",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:dirt"
+        ]
+      }
+    },
+    {
+      "id": "pickup_sand_01",
+      "displayText": "捡起普通沙子",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:sand",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:sand"
+        ]
+      }
+    },
+    {
+      "id": "pickup_gravel_01",
+      "displayText": "捡起沙砾",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:gravel",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:gravel"
+        ]
+      }
+    },
+    {
+      "id": "pickup_coal_01",
+      "displayText": "捡起煤炭",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:coal",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:coal"
+        ]
+      }
+    },
+    {
+      "id": "pickup_raw_iron_01",
+      "displayText": "捡起粗铁",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:raw_iron",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:raw_iron"
+        ]
+      }
+    },
+    {
+      "id": "pickup_iron_ingot_01",
+      "displayText": "捡起铁锭",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:iron_ingot",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:iron_ingot"
+        ]
+      }
+    },
+    {
+      "id": "pickup_raw_copper_01",
+      "displayText": "捡起粗铜",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:raw_copper",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:raw_copper"
+        ]
+      }
+    },
+    {
+      "id": "pickup_raw_gold_01",
+      "displayText": "捡起粗金",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:raw_gold",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:raw_gold"
+        ]
+      }
+    },
+    {
+      "id": "pickup_redstone_01",
+      "displayText": "捡起红石",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:redstone",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:redstone"
+        ]
+      }
+    },
+    {
+      "id": "pickup_lapis_01",
+      "displayText": "捡起青金石",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:lapis_lazuli",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:lapis_lazuli"
+        ]
+      }
+    },
+    {
+      "id": "pickup_bone_01",
+      "displayText": "捡起骨头",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:bone",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:bone"
+        ]
+      }
+    },
+    {
+      "id": "pickup_string_01",
+      "displayText": "捡起线",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:string",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:string"
+        ]
+      }
+    },
+    {
+      "id": "pickup_rotten_flesh_01",
+      "displayText": "捡起腐肉",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:rotten_flesh",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:rotten_flesh"
+        ]
+      }
+    },
+    {
+      "id": "pickup_leather_01",
+      "displayText": "捡起皮革",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:leather",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:leather"
+        ]
+      }
+    },
+    {
+      "id": "pickup_ender_pearl_01",
+      "displayText": "捡起末影珍珠",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:ender_pearl",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:ender_pearl"
+        ]
+      }
+    },
+    {
+      "id": "pickup_bread_01",
+      "displayText": "捡起面包",
+      "triggerType": "PICKUP_ITEM",
+      "repeatKey": "item_picked_up:minecraft:bread",
+      "category": "pickup",
+      "rule": {
+        "signal": "ITEM_PICKED_UP",
+        "subjectIds": [
+          "minecraft:bread"
+        ]
+      }
+    },
+    {
+      "id": "drop_logs_01",
+      "displayText": "丢弃原木或菌柄类物品",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:#minecraft:logs",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectTags": [
+          "minecraft:logs"
+        ]
+      }
+    },
+    {
+      "id": "drop_planks_01",
+      "displayText": "丢弃木板",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:#minecraft:planks",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectTags": [
+          "minecraft:planks"
+        ]
+      }
+    },
+    {
+      "id": "drop_sand_01",
+      "displayText": "丢弃普通沙子",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:sand",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:sand"
+        ]
+      }
+    },
+    {
+      "id": "drop_gravel_01",
+      "displayText": "丢弃沙砾",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:gravel",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:gravel"
+        ]
+      }
+    },
+    {
+      "id": "drop_coal_01",
+      "displayText": "丢弃煤炭",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:coal",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:coal"
+        ]
+      }
+    },
+    {
+      "id": "drop_raw_iron_01",
+      "displayText": "丢弃粗铁",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:raw_iron",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:raw_iron"
+        ]
+      }
+    },
+    {
+      "id": "drop_iron_ingot_01",
+      "displayText": "丢弃铁锭",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:iron_ingot",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:iron_ingot"
+        ]
+      }
+    },
+    {
+      "id": "drop_diamond_01",
+      "displayText": "丢弃钻石",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:diamond",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:diamond"
+        ]
+      }
+    },
+    {
+      "id": "drop_torch_01",
+      "displayText": "丢弃火把",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:torch",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:torch"
+        ]
+      }
+    },
+    {
+      "id": "drop_table_01",
+      "displayText": "丢弃工作台",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:crafting_table",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:crafting_table"
+        ]
+      }
+    },
+    {
+      "id": "drop_furnace_01",
+      "displayText": "丢弃熔炉",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:furnace",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:furnace"
+        ]
+      }
+    },
+    {
+      "id": "drop_stone_pickaxe_01",
+      "displayText": "丢弃石镐",
+      "triggerType": "DROP_ITEM",
+      "repeatKey": "item_dropped:minecraft:stone_pickaxe",
+      "category": "drop",
+      "rule": {
+        "signal": "ITEM_DROPPED",
+        "subjectIds": [
+          "minecraft:stone_pickaxe"
+        ]
+      }
+    },
+    {
+      "id": "stand_dirt_param_01",
+      "displayText": "站在泥土类方块上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:plain_dirt",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:dirt",
+          "minecraft:coarse_dirt",
+          "minecraft:rooted_dirt"
+        ]
+      }
+    },
+    {
+      "id": "stand_sand_param_01",
+      "displayText": "站在沙子或红沙上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:common_sand",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:sand",
+          "minecraft:red_sand"
+        ]
+      }
+    },
+    {
+      "id": "stand_gravel_param_01",
+      "displayText": "站在沙砾上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:minecraft:gravel",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:gravel"
+        ]
+      }
+    },
+    {
+      "id": "stand_cobble_param_01",
+      "displayText": "站在圆石上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:minecraft:cobblestone",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:cobblestone"
+        ]
+      }
+    },
+    {
+      "id": "stand_cobbled_deepslate_param_01",
+      "displayText": "站在深板岩圆石上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:minecraft:cobbled_deepslate",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:cobbled_deepslate"
+        ]
+      }
+    },
+    {
+      "id": "stand_logs_param_01",
+      "displayText": "站在原木或菌柄类方块上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:#minecraft:logs",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectTags": [
+          "minecraft:logs"
+        ]
+      }
+    },
+    {
+      "id": "stand_planks_param_01",
+      "displayText": "站在木板上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:#minecraft:planks",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectTags": [
+          "minecraft:planks"
+        ]
+      }
+    },
+    {
+      "id": "stand_wool_param_01",
+      "displayText": "站在羊毛上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:#minecraft:wool",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectTags": [
+          "minecraft:wool"
+        ]
+      }
+    },
+    {
+      "id": "stand_table_param_01",
+      "displayText": "站在工作台上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:minecraft:crafting_table",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:crafting_table"
+        ]
+      }
+    },
+    {
+      "id": "stand_furnace_param_01",
+      "displayText": "站在熔炉类方块上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:furnaces",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:furnace",
+          "minecraft:blast_furnace",
+          "minecraft:smoker"
+        ]
+      }
+    },
+    {
+      "id": "stand_chest_param_01",
+      "displayText": "站在箱子上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:minecraft:chest",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectIds": [
+          "minecraft:chest"
+        ]
+      }
+    },
+    {
+      "id": "stand_bed_param_01",
+      "displayText": "站在床上",
+      "triggerType": "STAND_ON_STONE",
+      "repeatKey": "block_stood_on:#minecraft:beds",
+      "category": "stand",
+      "rule": {
+        "signal": "BLOCK_STOOD_ON",
+        "subjectTags": [
+          "minecraft:beds"
+        ]
+      }
+    },
+    {
+      "id": "mine_dirt_param_01",
+      "displayText": "破坏泥土类方块",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:plain_dirt",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:dirt",
+          "minecraft:coarse_dirt",
+          "minecraft:rooted_dirt"
+        ]
+      }
+    },
+    {
+      "id": "mine_sand_param_01",
+      "displayText": "破坏沙子或红沙",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:common_sand",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:sand",
+          "minecraft:red_sand"
+        ]
+      }
+    },
+    {
+      "id": "mine_gravel_param_01",
+      "displayText": "破坏沙砾",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:minecraft:gravel",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:gravel"
+        ]
+      }
+    },
+    {
+      "id": "mine_planks_param_01",
+      "displayText": "破坏木板",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:#minecraft:planks",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectTags": [
+          "minecraft:planks"
+        ]
+      }
+    },
+    {
+      "id": "mine_leaves_param_01",
+      "displayText": "破坏树叶",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:#minecraft:leaves",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectTags": [
+          "minecraft:leaves"
+        ]
+      }
+    },
+    {
+      "id": "mine_cobble_param_01",
+      "displayText": "破坏圆石",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:minecraft:cobblestone",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:cobblestone"
+        ]
+      }
+    },
+    {
+      "id": "mine_cobbled_deepslate_param_01",
+      "displayText": "破坏深板岩圆石",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:minecraft:cobbled_deepslate",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:cobbled_deepslate"
+        ]
+      }
+    },
+    {
+      "id": "mine_redstone_ore_param_01",
+      "displayText": "破坏红石矿石",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:#minecraft:redstone_ores",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectTags": [
+          "minecraft:redstone_ores"
+        ]
+      }
+    },
+    {
+      "id": "mine_lapis_ore_param_01",
+      "displayText": "破坏青金石矿石",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:#minecraft:lapis_ores",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectTags": [
+          "minecraft:lapis_ores"
+        ]
+      }
+    },
+    {
+      "id": "mine_emerald_ore_param_01",
+      "displayText": "破坏绿宝石矿石",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:#minecraft:emerald_ores",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectTags": [
+          "minecraft:emerald_ores"
+        ]
+      }
+    },
+    {
+      "id": "mine_wool_param_01",
+      "displayText": "破坏羊毛",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:#minecraft:wool",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectTags": [
+          "minecraft:wool"
+        ]
+      }
+    },
+    {
+      "id": "mine_chest_param_01",
+      "displayText": "破坏箱子",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:minecraft:chest",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:chest"
+        ]
+      }
+    },
+    {
+      "id": "mine_bed_param_01",
+      "displayText": "破坏床",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:#minecraft:beds",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectTags": [
+          "minecraft:beds"
+        ]
+      }
+    },
+    {
+      "id": "mine_torch_param_01",
+      "displayText": "破坏火把",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:standard_torches",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:torch",
+          "minecraft:wall_torch"
+        ]
+      }
+    },
+    {
+      "id": "mine_obsidian_param_01",
+      "displayText": "破坏黑曜石",
+      "triggerType": "BLOCK_BREAK",
+      "repeatKey": "block_broken:minecraft:obsidian",
+      "category": "break",
+      "rule": {
+        "signal": "BLOCK_BROKEN",
+        "subjectIds": [
+          "minecraft:obsidian"
+        ]
+      }
+    },
+    {
+      "id": "place_sand_param_01",
+      "displayText": "放置沙子或红沙",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:common_sand",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectIds": [
+          "minecraft:sand",
+          "minecraft:red_sand"
+        ]
+      }
+    },
+    {
+      "id": "place_gravel_param_01",
+      "displayText": "放置沙砾",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:minecraft:gravel",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectIds": [
+          "minecraft:gravel"
+        ]
+      }
+    },
+    {
+      "id": "place_stone_param_01",
+      "displayText": "放置石头",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:minecraft:stone",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectIds": [
+          "minecraft:stone"
+        ]
+      }
+    },
+    {
+      "id": "place_deepslate_param_01",
+      "displayText": "放置深板岩",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:minecraft:deepslate",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectIds": [
+          "minecraft:deepslate"
+        ]
+      }
+    },
+    {
+      "id": "place_logs_param_01",
+      "displayText": "放置原木或菌柄类方块",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:#minecraft:logs",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectTags": [
+          "minecraft:logs"
+        ]
+      }
+    },
+    {
+      "id": "place_planks_param_01",
+      "displayText": "放置木板",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:#minecraft:planks",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectTags": [
+          "minecraft:planks"
+        ]
+      }
+    },
+    {
+      "id": "place_leaves_param_01",
+      "displayText": "放置树叶",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:#minecraft:leaves",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectTags": [
+          "minecraft:leaves"
+        ]
+      }
+    },
+    {
+      "id": "place_wool_param_01",
+      "displayText": "放置羊毛",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:#minecraft:wool",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectTags": [
+          "minecraft:wool"
+        ]
+      }
+    },
+    {
+      "id": "place_bed_param_01",
+      "displayText": "放置床",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:#minecraft:beds",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectTags": [
+          "minecraft:beds"
+        ]
+      }
+    },
+    {
+      "id": "place_torch_param_01",
+      "displayText": "放置火把",
+      "triggerType": "BLOCK_PLACE",
+      "repeatKey": "block_placed:standard_torches",
+      "category": "place",
+      "rule": {
+        "signal": "BLOCK_PLACED",
+        "subjectIds": [
+          "minecraft:torch",
+          "minecraft:wall_torch"
+        ]
+      }
+    },
+    {
+      "id": "hold_logs_param_01",
+      "displayText": "手持原木或菌柄类物品",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:#minecraft:logs",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectTags": [
+          "minecraft:logs"
+        ]
+      }
+    },
+    {
+      "id": "hold_planks_param_01",
+      "displayText": "手持木板",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:#minecraft:planks",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectTags": [
+          "minecraft:planks"
+        ]
+      }
+    },
+    {
+      "id": "hold_dirt_param_01",
+      "displayText": "手持泥土",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:dirt",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:dirt"
+        ]
+      }
+    },
+    {
+      "id": "hold_cobble_param_01",
+      "displayText": "手持圆石",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:cobblestone",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:cobblestone"
+        ]
+      }
+    },
+    {
+      "id": "hold_torch_param_01",
+      "displayText": "手持火把",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:torch",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:torch"
+        ]
+      }
+    },
+    {
+      "id": "hold_coal_param_01",
+      "displayText": "手持煤炭",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:coal",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:coal"
+        ]
+      }
+    },
+    {
+      "id": "hold_raw_iron_param_01",
+      "displayText": "手持粗铁",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:raw_iron",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:raw_iron"
+        ]
+      }
+    },
+    {
+      "id": "hold_iron_ingot_param_01",
+      "displayText": "手持铁锭",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:iron_ingot",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:iron_ingot"
+        ]
+      }
+    },
+    {
+      "id": "hold_chest_param_01",
+      "displayText": "手持箱子",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:chest",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:chest"
+        ]
+      }
+    },
+    {
+      "id": "hold_shield_param_01",
+      "displayText": "手持盾牌",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:shield",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:shield"
+        ]
+      }
+    },
+    {
+      "id": "hold_bucket_param_01",
+      "displayText": "手持空桶",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:bucket",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:bucket"
+        ]
+      }
+    },
+    {
+      "id": "hold_water_bucket_param_01",
+      "displayText": "手持水桶",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:water_bucket",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:water_bucket"
+        ]
+      }
+    },
+    {
+      "id": "hold_wooden_sword_param_01",
+      "displayText": "手持木剑",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:wooden_sword",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:wooden_sword"
+        ]
+      }
+    },
+    {
+      "id": "hold_stone_sword_param_01",
+      "displayText": "手持石剑",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:stone_sword",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:stone_sword"
+        ]
+      }
+    },
+    {
+      "id": "hold_iron_sword_param_01",
+      "displayText": "手持铁剑",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:iron_sword",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:iron_sword"
+        ]
+      }
+    },
+    {
+      "id": "hold_stone_shovel_param_01",
+      "displayText": "手持石铲",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:stone_shovel",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:stone_shovel"
+        ]
+      }
+    },
+    {
+      "id": "hold_iron_shovel_param_01",
+      "displayText": "手持铁铲",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:iron_shovel",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:iron_shovel"
+        ]
+      }
+    },
+    {
+      "id": "hold_iron_hoe_param_01",
+      "displayText": "手持铁锄",
+      "triggerType": "HOLD_CRAFTING_TABLE",
+      "repeatKey": "item_held:minecraft:iron_hoe",
+      "category": "hold",
+      "rule": {
+        "signal": "ITEM_HELD",
+        "subjectIds": [
+          "minecraft:iron_hoe"
+        ]
+      }
+    },
+    {
+      "id": "bingo_capture_any_01",
+      "displayText": "在本词条倒计时内完成任意 Bingo 格",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:any",
+      "category": "bingo",
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectTags": ["bingo:any_tile"]
+      }
+    },
+    {
+      "id": "bingo_miss_any_deadline_01",
+      "displayText": "本词条倒计时内没有完成任何 Bingo 格",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_deadline_missed:any",
+      "category": "bingo",
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectTags": ["bingo:any_tile"],
+        "deadlineBehavior": "TRIGGER_ON_EXPIRY",
+        "matchBehavior": "SATISFY_DEADLINE"
+      }
+    },
+    {
+      "id": "bingo_capture_center_01",
+      "displayText": "完成 Bingo 棋盘中心格",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:center",
+      "category": "bingo",
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectTags": ["bingo:center"]
+      }
+    },
+    {
+      "id": "bingo_capture_corner_01",
+      "displayText": "完成 Bingo 棋盘任意角落格",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:corner",
+      "category": "bingo",
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectTags": ["bingo:corner"]
+      }
+    },
+    {
+      "id": "bingo_capture_tile_1_1", "displayText": "完成 Bingo 棋盘格（列1，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_1", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_1"]}
+    },
+    {
+      "id": "bingo_capture_tile_2_1", "displayText": "完成 Bingo 棋盘格（列2，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_1", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_1"]}
+    },
+    {
+      "id": "bingo_capture_tile_3_1", "displayText": "完成 Bingo 棋盘格（列3，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_1", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_1"]}
+    },
+    {
+      "id": "bingo_capture_tile_4_1", "displayText": "完成 Bingo 棋盘格（列4，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_1", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_1"]}
+    },
+    {
+      "id": "bingo_capture_tile_5_1", "displayText": "完成 Bingo 棋盘格（列5，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_1", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_1"]}
+    },
+    {
+      "id": "bingo_capture_tile_1_2", "displayText": "完成 Bingo 棋盘格（列1，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_2", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_2"]}
+    },
+    {
+      "id": "bingo_capture_tile_2_2", "displayText": "完成 Bingo 棋盘格（列2，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_2", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_2"]}
+    },
+    {
+      "id": "bingo_capture_tile_3_2", "displayText": "完成 Bingo 棋盘格（列3，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_2", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_2"]}
+    },
+    {
+      "id": "bingo_capture_tile_4_2", "displayText": "完成 Bingo 棋盘格（列4，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_2", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_2"]}
+    },
+    {
+      "id": "bingo_capture_tile_5_2", "displayText": "完成 Bingo 棋盘格（列5，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_2", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_2"]}
+    },
+    {
+      "id": "bingo_capture_tile_1_3", "displayText": "完成 Bingo 棋盘格（列1，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_3", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_3"]}
+    },
+    {
+      "id": "bingo_capture_tile_2_3", "displayText": "完成 Bingo 棋盘格（列2，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_3", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_3"]}
+    },
+    {
+      "id": "bingo_capture_tile_3_3", "displayText": "完成 Bingo 棋盘格（列3，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_3", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_3"]}
+    },
+    {
+      "id": "bingo_capture_tile_4_3", "displayText": "完成 Bingo 棋盘格（列4，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_3", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_3"]}
+    },
+    {
+      "id": "bingo_capture_tile_5_3", "displayText": "完成 Bingo 棋盘格（列5，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_3", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_3"]}
+    },
+    {
+      "id": "bingo_capture_tile_1_4", "displayText": "完成 Bingo 棋盘格（列1，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_4", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_4"]}
+    },
+    {
+      "id": "bingo_capture_tile_2_4", "displayText": "完成 Bingo 棋盘格（列2，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_4", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_4"]}
+    },
+    {
+      "id": "bingo_capture_tile_3_4", "displayText": "完成 Bingo 棋盘格（列3，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_4", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_4"]}
+    },
+    {
+      "id": "bingo_capture_tile_4_4", "displayText": "完成 Bingo 棋盘格（列4，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_4", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_4"]}
+    },
+    {
+      "id": "bingo_capture_tile_5_4", "displayText": "完成 Bingo 棋盘格（列5，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_4", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_4"]}
+    },
+    {
+      "id": "bingo_capture_tile_1_5", "displayText": "完成 Bingo 棋盘格（列1，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_5", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_5"]}
+    },
+    {
+      "id": "bingo_capture_tile_2_5", "displayText": "完成 Bingo 棋盘格（列2，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_5", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_5"]}
+    },
+    {
+      "id": "bingo_capture_tile_3_5", "displayText": "完成 Bingo 棋盘格（列3，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_5", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_5"]}
+    },
+    {
+      "id": "bingo_capture_tile_4_5", "displayText": "完成 Bingo 棋盘格（列4，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_5", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_5"]}
+    },
+    {
+      "id": "bingo_capture_tile_5_5", "displayText": "完成 Bingo 棋盘格（列5，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_5", "category": "bingo", "weight": 0.12,
+      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_5"]}
+    },
+    {
+      "id": "move_walk_25_blocks", "displayText": "累计步行25格", "triggerType": "WALK_DISTANCE", "repeatKey": "distance_walked_cm:2500", "category": "movement",
+      "rule": {"signal": "DISTANCE_WALKED_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_walk_50_blocks", "displayText": "累计步行50格", "triggerType": "WALK_DISTANCE", "repeatKey": "distance_walked_cm:5000", "category": "movement",
+      "rule": {"signal": "DISTANCE_WALKED_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_walk_100_blocks", "displayText": "累计步行100格", "triggerType": "WALK_DISTANCE", "repeatKey": "distance_walked_cm:10000", "category": "movement",
+      "rule": {"signal": "DISTANCE_WALKED_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_sprint_25_blocks", "displayText": "累计疾跑25格", "triggerType": "SPRINT_DISTANCE", "repeatKey": "distance_sprinted_cm:2500", "category": "movement",
+      "rule": {"signal": "DISTANCE_SPRINTED_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_sprint_50_blocks", "displayText": "累计疾跑50格", "triggerType": "SPRINT_DISTANCE", "repeatKey": "distance_sprinted_cm:5000", "category": "movement",
+      "rule": {"signal": "DISTANCE_SPRINTED_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_sprint_100_blocks", "displayText": "累计疾跑100格", "triggerType": "SPRINT_DISTANCE", "repeatKey": "distance_sprinted_cm:10000", "category": "movement",
+      "rule": {"signal": "DISTANCE_SPRINTED_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_swim_25_blocks", "displayText": "累计游泳25格", "triggerType": "SWIM_DISTANCE", "repeatKey": "distance_swum_cm:2500", "category": "movement",
+      "rule": {"signal": "DISTANCE_SWUM_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_swim_50_blocks", "displayText": "累计游泳50格", "triggerType": "SWIM_DISTANCE", "repeatKey": "distance_swum_cm:5000", "category": "movement",
+      "rule": {"signal": "DISTANCE_SWUM_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_swim_100_blocks", "displayText": "累计游泳100格", "triggerType": "SWIM_DISTANCE", "repeatKey": "distance_swum_cm:10000", "category": "movement",
+      "rule": {"signal": "DISTANCE_SWUM_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_boat_25_blocks", "displayText": "累计乘船移动25格", "triggerType": "BOAT_DISTANCE", "repeatKey": "distance_boat_cm:2500", "category": "movement",
+      "rule": {"signal": "DISTANCE_BOAT_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_boat_50_blocks", "displayText": "累计乘船移动50格", "triggerType": "BOAT_DISTANCE", "repeatKey": "distance_boat_cm:5000", "category": "movement",
+      "rule": {"signal": "DISTANCE_BOAT_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "move_boat_100_blocks", "displayText": "累计乘船移动100格", "triggerType": "BOAT_DISTANCE", "repeatKey": "distance_boat_cm:10000", "category": "movement",
+      "rule": {"signal": "DISTANCE_BOAT_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+    },
+    {
+      "id": "combat_damage_enemy_player_01", "displayText": "对任意敌队玩家造成有效伤害", "triggerType": "DAMAGE_ENEMY_PLAYER", "repeatKey": "enemy_player_damaged:1", "category": "player_interaction",
+      "rule": {"signal": "ENEMY_PLAYER_DAMAGED"}
+    },
+    {
+      "id": "combat_damage_enemy_player_03", "displayText": "对敌队玩家造成3次有效伤害", "triggerType": "DAMAGE_ENEMY_PLAYER", "repeatKey": "enemy_player_damaged:3", "category": "player_interaction",
+      "rule": {"signal": "ENEMY_PLAYER_DAMAGED", "requiredProgress": 3, "progressMode": "ACTIONS"}
+    },
+    {
+      "id": "combat_damaged_by_enemy_player_01", "displayText": "受到任意敌队玩家的有效伤害", "triggerType": "DAMAGED_BY_ENEMY_PLAYER", "repeatKey": "damaged_by_enemy_player:1", "category": "player_interaction",
+      "rule": {"signal": "DAMAGED_BY_ENEMY_PLAYER"}
+    },
+    {
+      "id": "combat_damaged_by_enemy_player_03", "displayText": "受到敌队玩家3次有效伤害", "triggerType": "DAMAGED_BY_ENEMY_PLAYER", "repeatKey": "damaged_by_enemy_player:3", "category": "player_interaction",
+      "rule": {"signal": "DAMAGED_BY_ENEMY_PLAYER", "requiredProgress": 3, "progressMode": "ACTIONS"}
+    }
+  ]
+}

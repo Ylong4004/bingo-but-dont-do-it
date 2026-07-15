@@ -75,6 +75,9 @@ class DDIGameController(
         events.onChangeTeam { event ->
             if (!isShutdown) ddiManager.onPlayerTeamChanged(event.player.uuid, event.team?.key)
         }
+        events.onBingoTileCaptured { event ->
+            if (!isShutdown) ddiManager.onBingoTileCaptured(event)
+        }
 
         // The plugin hook normally creates this controller before ScopeManager
         // replays the saved state. Reconcile here as well so construction is
