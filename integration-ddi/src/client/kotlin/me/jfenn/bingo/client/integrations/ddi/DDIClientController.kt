@@ -6,12 +6,14 @@ import me.jfenn.bingo.client.platform.IOptionsAccessor
 import me.jfenn.bingo.client.platform.event.model.ClientServerEvent
 import me.jfenn.bingo.client.platform.event.model.ClientTickEvent
 import me.jfenn.bingo.client.platform.event.model.HudRenderEvent
+import me.jfenn.bingo.common.config.BingoConfig
 import me.jfenn.bingo.integrations.ddi.DDIStateResetPacket
 import me.jfenn.bingo.integrations.ddi.DDITeamSyncPacket
 import me.jfenn.bingo.integrations.ddi.DDITeamTriggeredPacket
 import me.jfenn.bingo.integrations.ddi.DDITriggeredPacket
 import me.jfenn.bingo.integrations.ddi.DDIWordSyncPacket
 import me.jfenn.bingo.platform.event.IEventBus
+import net.minecraft.client.gui.screen.ChatScreen
 
 /**
  * Registers DDI packet receivers before connecting and projects packets into
@@ -24,11 +26,12 @@ class DDIClientController(
     private val eventBus: IEventBus,
     private val client: IClient,
     private val optionsAccessor: IOptionsAccessor,
+    private val config: BingoConfig,
 ) {
 
     private val wordSyncV1 = clientNetworking.registerS2C(DDIWordSyncPacket.V1)
     private val triggeredV1 = clientNetworking.registerS2C(DDITriggeredPacket.V1)
-    private val teamSyncV1 = clientNetworking.registerS2C(DDITeamSyncPacket.V1)
+    private val teamSyncV2 = clientNetworking.registerS2C(DDITeamSyncPacket.V2)
     private val teamTriggeredV1 = clientNetworking.registerS2C(DDITeamTriggeredPacket.V1)
     private val stateResetV1 = clientNetworking.registerS2C(DDIStateResetPacket.V1)
 
@@ -73,11 +76,12 @@ class DDIClientController(
             )
         }
 
-        eventBus.register(teamSyncV1) { clientPacket ->
+        eventBus.register(teamSyncV2) { clientPacket ->
             val packet = clientPacket.packet
             state.updateTeam(
                 teamId = packet.teamId,
                 teamName = packet.teamName,
+                teamColor = packet.teamColor,
                 memberNames = packet.memberNames,
                 // DDIHudState ignores this field for the local team. Keeping
                 // the value here makes the privacy boundary explicit at both ends.
@@ -122,9 +126,18 @@ class DDIClientController(
         }
 
         eventBus.register(HudRenderEvent) {
-            if (!optionsAccessor.isHudHidden()) {
-                renderer.render(it.drawService)
-            }
+            if (optionsAccessor.isHudHidden() || !config.client.enableDdiHud) return@register
+            val isDebugEnabled = optionsAccessor.isDebugEnabled()
+            val isChatOpen = client.screen is ChatScreen
+            val isPlayerListOpen = optionsAccessor.isPlayerListPressed()
+            val isBingoScreen = client.screen
+                ?.javaClass
+                ?.packageName
+                ?.startsWith("me.jfenn.bingo") == true
+            if (isBingoScreen || isPlayerListOpen) return@register
+            if (config.client.hideOnF3 && isDebugEnabled) return@register
+            if (config.client.hideOnChat && isChatOpen) return@register
+            renderer.render(it.drawService)
         }
     }
 }

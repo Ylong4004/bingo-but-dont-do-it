@@ -12,6 +12,8 @@ class DDIWordPool {
         val id: String,
         val displayText: String,
         val triggerType: DDITriggerType,
+        /** Stable gameplay rule identity used for per-team no-repeat history. */
+        val repeatKey: String = triggerType.name,
     )
 
     private val allWords = mutableListOf<WordEntry>()
@@ -272,8 +274,13 @@ class DDIWordPool {
         add("stand_bedrock_01", "站在基岩上", DDITriggerType.STAND_ON_BEDROCK)
     }
 
-    fun add(id: String, displayText: String, type: DDITriggerType) {
-        allWords.add(WordEntry(id, displayText, type))
+    fun add(
+        id: String,
+        displayText: String,
+        type: DDITriggerType,
+        repeatKey: String = type.name,
+    ) {
+        allWords.add(WordEntry(id, displayText, type, repeatKey))
     }
 
     /** 为指定数量的玩家各抽取一个不重复的词条 */
@@ -295,11 +302,31 @@ class DDIWordPool {
      * and avoids immediately dealing the same continuous trigger again.
      */
     fun drawReplacement(previous: WordEntry?): WordEntry {
-        if (previous == null) return drawSingle()
-        val alternatives = allWords.filter { it.triggerType != previous.triggerType }
-        return (alternatives.ifEmpty { allWords.filter { it.id != previous.id } })
-            .ifEmpty { allWords }
-            .random(random)
+        return drawAvailable(previous, emptySet(), emptySet()) ?: drawSingle()
+    }
+
+    /**
+     * Draws without ever relaxing [triggeredRepeatKeys]. [softRepeatKeys]
+     * prevents duplicate live rules within a team when the pool has room, but
+     * may be relaxed before declaring the team's unique rule pool exhausted.
+     */
+    fun drawAvailable(
+        previous: WordEntry?,
+        triggeredRepeatKeys: Set<String>,
+        softRepeatKeys: Set<String>,
+    ): WordEntry? {
+        val hardCandidates = allWords.filter { it.repeatKey !in triggeredRepeatKeys }
+        if (hardCandidates.isEmpty()) return null
+
+        val preferred = hardCandidates.filter { candidate ->
+            candidate.repeatKey !in softRepeatKeys &&
+                candidate.repeatKey != previous?.repeatKey
+        }
+        if (preferred.isNotEmpty()) return preferred.random(random)
+
+        val withoutPrevious = hardCandidates.filter { it.repeatKey != previous?.repeatKey }
+        if (withoutPrevious.isNotEmpty()) return withoutPrevious.random(random)
+        return hardCandidates.random(random)
     }
 
     /** 根据显示文本查找词条 */

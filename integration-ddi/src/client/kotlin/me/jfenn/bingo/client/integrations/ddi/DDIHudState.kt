@@ -1,5 +1,6 @@
 package me.jfenn.bingo.client.integrations.ddi
 
+import net.minecraft.util.Formatting
 import java.util.UUID
 
 /** Client projection of the server-authoritative individual or team DDI state. */
@@ -48,11 +49,14 @@ class DDIHudState {
         private set
     var myTeamName: String = ""
         private set
+    var myTeamColor: Formatting = Formatting.WHITE
+        private set
     var myTeamMembers: List<String> = emptyList()
         private set
 
     data class TeamDDIInfo(
         val teamName: String,
+        val teamColor: Formatting,
         val memberNames: List<String>,
         val wordText: String,
         val hearts: Int,
@@ -121,6 +125,7 @@ class DDIHudState {
     fun updateTeam(
         teamId: String,
         teamName: String,
+        teamColor: Formatting,
         memberNames: List<String>,
         wordText: String,
         hearts: Int,
@@ -135,6 +140,7 @@ class DDIHudState {
             hasOwnTeam = true
             myTeamId = teamId
             myTeamName = teamName
+            myTeamColor = teamColor
             myTeamMembers = memberNames.toList()
             otherTeams.remove(teamId)
             // The server intentionally sends an empty own-team word. Do not
@@ -147,6 +153,7 @@ class DDIHudState {
         val safeMaxTimer = maxTimerSeconds.coerceAtLeast(0)
         otherTeams[teamId] = TeamDDIInfo(
             teamName = teamName,
+            teamColor = teamColor,
             memberNames = memberNames.toList(),
             wordText = wordText,
             hearts = hearts.coerceIn(0, safeMaxHearts),
@@ -234,6 +241,7 @@ class DDIHudState {
         hasOwnTeam = false
         myTeamId = ""
         myTeamName = ""
+        myTeamColor = Formatting.WHITE
         myTeamMembers = emptyList()
         otherTeams.clear()
         recentTriggers.clear()

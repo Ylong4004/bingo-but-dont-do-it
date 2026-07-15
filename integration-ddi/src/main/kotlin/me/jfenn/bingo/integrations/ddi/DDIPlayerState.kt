@@ -1,6 +1,7 @@
 package me.jfenn.bingo.integrations.ddi
 
 import me.jfenn.bingo.common.team.BingoTeamKey
+import net.minecraft.util.Formatting
 import java.util.UUID
 
 /** A fixed participant in the DDI roster. Mutable gameplay state lives on an objective. */
@@ -21,6 +22,7 @@ data class DDIObjectiveState(
     val objectiveName: String,
     val teamKey: BingoTeamKey,
     val teamName: String,
+    val teamColor: Formatting,
     val memberIds: Set<UUID>,
     val memberNames: List<String>,
     val isTeamShared: Boolean,

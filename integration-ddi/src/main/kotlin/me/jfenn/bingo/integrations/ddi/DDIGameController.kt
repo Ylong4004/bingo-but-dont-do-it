@@ -133,6 +133,7 @@ class DDIGameController(
                         profile = profile,
                         teamKey = team.key,
                         teamName = team.getSimpleName().toString(),
+                        teamColor = team.textColor,
                     )
                 }
             }

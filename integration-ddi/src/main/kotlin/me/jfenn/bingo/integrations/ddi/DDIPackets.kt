@@ -5,6 +5,7 @@ import me.jfenn.bingo.platform.IPacketBuf
 import me.jfenn.bingo.platform.packet.PacketConverter
 import me.jfenn.bingo.platform.packet.IServerNetworking
 import net.minecraft.util.Identifier
+import net.minecraft.util.Formatting
 import java.util.*
 
 /**
@@ -21,7 +22,7 @@ import java.util.*
 class DDIServerPackets(serverNetworking: IServerNetworking) {
     val wordSync = serverNetworking.registerS2C(DDIWordSyncPacket.V1)
     val triggered = serverNetworking.registerS2C(DDITriggeredPacket.V1)
-    val teamSync = serverNetworking.registerS2C(DDITeamSyncPacket.V1)
+    val teamSync = serverNetworking.registerS2C(DDITeamSyncPacket.V2)
     val teamTriggered = serverNetworking.registerS2C(DDITeamTriggeredPacket.V1)
     val stateReset = serverNetworking.registerS2C(DDIStateResetPacket.V1)
 }
@@ -109,6 +110,7 @@ class DDITriggeredPacket(
 class DDITeamSyncPacket(
     val teamId: String,
     val teamName: String,
+    val teamColor: Formatting,
     val memberNames: List<String>,
     val wordText: String,
     val hearts: Int,
@@ -118,13 +120,15 @@ class DDITeamSyncPacket(
     val isEliminated: Boolean,
     val isOwnTeam: Boolean,
 ) {
-    object V1 : PacketConverter<DDITeamSyncPacket> {
-        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_team_sync")!!
+    object V2 : PacketConverter<DDITeamSyncPacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_team_sync_v2")!!
 
         override fun fromPacketBuf(buf: IPacketBuf): DDITeamSyncPacket {
             return DDITeamSyncPacket(
                 teamId = buf.readString(),
                 teamName = buf.readString(),
+                teamColor = runCatching { Formatting.valueOf(buf.readString()) }
+                    .getOrDefault(Formatting.WHITE),
                 memberNames = buf.readList(buf::readString),
                 wordText = buf.readString(),
                 hearts = buf.readInt(),
@@ -139,6 +143,7 @@ class DDITeamSyncPacket(
         override fun toPacketBuf(source: DDITeamSyncPacket, dest: IPacketBuf) {
             dest.writeString(source.teamId)
             dest.writeString(source.teamName)
+            dest.writeString(source.teamColor.name)
             dest.writeList(source.memberNames, dest::writeString)
             dest.writeString(source.wordText)
             dest.writeInt(source.hearts)

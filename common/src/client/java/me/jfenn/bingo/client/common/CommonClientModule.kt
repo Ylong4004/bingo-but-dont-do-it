@@ -9,6 +9,7 @@ import me.jfenn.bingo.client.common.hud.card.ClientCardBufferRenderer
 import me.jfenn.bingo.client.common.hud.card.ClientCardManager
 import me.jfenn.bingo.client.common.hud.card.ClientCardRenderer
 import me.jfenn.bingo.client.common.hud.screen.BingoCardPlacementScreen
+import me.jfenn.bingo.client.common.hud.screen.DDIHudPlacementScreen
 import me.jfenn.bingo.client.common.hud.screen.BingoHudScreen
 import me.jfenn.bingo.client.common.packet.ClientPacketEvents
 import me.jfenn.bingo.client.common.settings.ClientSettingsController
@@ -43,6 +44,7 @@ val commonClientModule = module {
     singleOf(::ReadyHudRenderer)
     singleOf(BingoHudScreen::Factory)
     singleOf(BingoCardPlacementScreen::Factory)
+    singleOf(DDIHudPlacementScreen::Factory)
     singleOf(::BingoHudController) withOptions { createdAtStart() }
     singleOf(::BingoCardImageController) withOptions { createdAtStart() }
 

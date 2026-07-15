@@ -20,5 +20,10 @@ dependencies {
     clientCompileOnly this.project(":platform").sourceSets.client.output
     clientCompileOnly this.project(":common").sourceSets.client.output
 
+    // Main sources intentionally compile against the shared module without
+    // packaging it here, while unit tests execute DDI helpers that use
+    // BingoTeamKey and therefore need the shared classes at runtime.
+    testRuntimeOnly project(path: ":common", configuration: "namedElements")
+
     modCompileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }

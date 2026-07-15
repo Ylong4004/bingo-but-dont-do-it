@@ -7,6 +7,7 @@ import dev.isxander.yacl3.api.controller.FloatSliderControllerBuilder
 import dev.isxander.yacl3.api.controller.IntegerSliderControllerBuilder
 import me.jfenn.bingo.client.common.event.ClientConfigChangedEvent
 import me.jfenn.bingo.client.common.hud.screen.BingoCardPlacementScreen
+import me.jfenn.bingo.client.common.hud.screen.DDIHudPlacementScreen
 import me.jfenn.bingo.client.common.settings.ClientSettingsService
 import me.jfenn.bingo.client.common.sound.ClientSounds
 import me.jfenn.bingo.client.common.sound.SoundService
@@ -40,10 +41,11 @@ internal interface YetAnotherConfigLibIntegration {
             eventBus: IEventBus,
             drawServiceFactory: IDrawServiceFactory,
             cardPlacementScreenFactory: BingoCardPlacementScreen.Factory,
+            ddiHudPlacementScreenFactory: DDIHudPlacementScreen.Factory,
             client: IClient,
         ): YetAnotherConfigLibIntegration {
             return if (hasYACL(environment))
-                YetAnotherConfigLibIntegrationImpl(configService, config, clientSettings, soundService, text, eventBus, drawServiceFactory, cardPlacementScreenFactory, client)
+                YetAnotherConfigLibIntegrationImpl(configService, config, clientSettings, soundService, text, eventBus, drawServiceFactory, cardPlacementScreenFactory, ddiHudPlacementScreenFactory, client)
             else YetAnotherConfigLibIntegrationDummy()
         }
     }
@@ -64,6 +66,7 @@ internal class YetAnotherConfigLibIntegrationImpl(
     private val eventBus: IEventBus,
     private val drawServiceFactory: IDrawServiceFactory,
     private val cardPlacementScreenFactory: BingoCardPlacementScreen.Factory,
+    private val ddiHudPlacementScreenFactory: DDIHudPlacementScreen.Factory,
     private val client: IClient,
 ) : YetAnotherConfigLibIntegration {
 
@@ -166,6 +169,98 @@ internal class YetAnotherConfigLibIntegrationImpl(
                 IntegerSliderControllerBuilder.create(it)
                     .range(0, drawServiceFactory.window.scaledWindowHeight/2)
                     .step(1)
+            }
+            .build()
+
+        val configDdiHudScale = Option.createBuilder<Float>()
+            .name(text.string(StringKey.ConfigDdiHudScale).value)
+            .description(OptionDescription.of(text.string(StringKey.ConfigDdiHudScaleDescription).value))
+            .binding(
+                defaultConfig.client.ddiHudScale,
+                { config.client.ddiHudScale },
+                {
+                    config.client.ddiHudScale = it
+                    configService.writeConfig(config)
+                }
+            )
+            .controller {
+                FloatSliderControllerBuilder.create(it)
+                    .formatValue { value -> Text.literal(String.format("%.0f%%", value * 100)) }
+                    .range(0.5f, 2.5f)
+                    .step(0.05f)
+            }
+            .build()
+
+        val configDdiHudAlignment = Option.createBuilder<CardAlignment>()
+            .name(text.string(StringKey.ConfigDdiHudAlignment).value)
+            .description(OptionDescription.of(text.string(StringKey.ConfigDdiHudAlignmentDescription).value))
+            .binding(
+                defaultConfig.client.ddiHudAlignment,
+                { config.client.ddiHudAlignment },
+                {
+                    config.client.ddiHudAlignment = it
+                    configService.writeConfig(config)
+                }
+            )
+            .controller {
+                EnumControllerBuilder.create(it)
+                    .enumClass(CardAlignment::class.java)
+                    .formatValue { value -> text.string(value.string).value }
+            }
+            .build()
+
+        val configDdiHudOffsetX = Option.createBuilder<Int>()
+            .name(text.string(StringKey.ConfigDdiHudOffsetX).value)
+            .description(OptionDescription.of(text.string(StringKey.ConfigDdiHudOffsetXDescription).value))
+            .binding(
+                defaultConfig.client.ddiHudOffsetX,
+                { config.client.ddiHudOffsetX },
+                {
+                    config.client.ddiHudOffsetX = it
+                    configService.writeConfig(config)
+                }
+            )
+            .controller {
+                IntegerSliderControllerBuilder.create(it)
+                    .range(0, drawServiceFactory.window.scaledWindowWidth / 2)
+                    .step(1)
+            }
+            .build()
+
+        val configDdiHudOffsetY = Option.createBuilder<Int>()
+            .name(text.string(StringKey.ConfigDdiHudOffsetY).value)
+            .description(OptionDescription.of(text.string(StringKey.ConfigDdiHudOffsetYDescription).value))
+            .binding(
+                defaultConfig.client.ddiHudOffsetY,
+                { config.client.ddiHudOffsetY },
+                {
+                    config.client.ddiHudOffsetY = it
+                    configService.writeConfig(config)
+                }
+            )
+            .controller {
+                IntegerSliderControllerBuilder.create(it)
+                    .range(0, drawServiceFactory.window.scaledWindowHeight / 2)
+                    .step(1)
+            }
+            .build()
+
+        val configDdiHudOpacity = Option.createBuilder<Float>()
+            .name(text.string(StringKey.ConfigDdiHudOpacity).value)
+            .description(OptionDescription.of(text.string(StringKey.ConfigDdiHudOpacityDescription).value))
+            .binding(
+                defaultConfig.client.ddiHudBackgroundOpacity,
+                { config.client.ddiHudBackgroundOpacity },
+                {
+                    config.client.ddiHudBackgroundOpacity = it
+                    configService.writeConfig(config)
+                }
+            )
+            .controller {
+                FloatSliderControllerBuilder.create(it)
+                    .formatValue { value -> Text.literal(String.format("%.0f%%", value * 100)) }
+                    .range(0f, 0.9f)
+                    .step(0.05f)
             }
             .build()
 
@@ -359,6 +454,56 @@ internal class YetAnotherConfigLibIntegrationImpl(
                     )
                     .group(
                         OptionGroup.createBuilder()
+                            .name(text.string(StringKey.ConfigDdiHudSettings).value)
+                            .options(listOf(
+                                Option.createBuilder<Boolean>()
+                                    .name(text.string(StringKey.ConfigEnableDdiHud).value)
+                                    .description(OptionDescription.of(
+                                        text.string(StringKey.ConfigEnableDdiHudDescription).value
+                                    ))
+                                    .binding(
+                                        defaultConfig.client.enableDdiHud,
+                                        { config.client.enableDdiHud },
+                                        {
+                                            config.client.enableDdiHud = it
+                                            configService.writeConfig(config)
+                                        }
+                                    )
+                                    .controller { BooleanControllerBuilder.create(it).coloured(true) }
+                                    .build(),
+                                ButtonOption.createBuilder()
+                                    .name(text.string(StringKey.ConfigDdiHudPosition).value)
+                                    .text(text.string(StringKey.ConfigDdiHudPositionEdit).value)
+                                    .description(OptionDescription.of(
+                                        text.string(StringKey.ConfigDdiHudPositionDescription).value,
+                                        text.string(StringKey.ConfigDdiHudPositionHelpMove).value,
+                                        text.string(StringKey.ConfigDdiHudPositionHelpResize).value,
+                                    ))
+                                    .action { parent, _ ->
+                                        client.screen = ddiHudPlacementScreenFactory.create { result ->
+                                            if (result is DDIHudPlacementScreen.Result.Ok) {
+                                                config.client.ddiHudScale = result.scale
+                                                config.client.ddiHudAlignment = result.alignment
+                                                config.client.ddiHudOffsetX = result.offsetX
+                                                config.client.ddiHudOffsetY = result.offsetY
+                                                configService.writeConfig(config)
+                                            }
+                                            client.screen = parent
+                                            if (result is DDIHudPlacementScreen.Result.Ok) {
+                                                configDdiHudScale.forgetPendingValue()
+                                                configDdiHudAlignment.forgetPendingValue()
+                                                configDdiHudOffsetX.forgetPendingValue()
+                                                configDdiHudOffsetY.forgetPendingValue()
+                                            }
+                                        }
+                                    }
+                                    .build(),
+                                configDdiHudOpacity,
+                            ))
+                            .build()
+                    )
+                    .group(
+                        OptionGroup.createBuilder()
                             .collapsed(false)
                             .name(text.string(StringKey.PlayerSettingsMessages).value)
                             .option(
@@ -488,6 +633,18 @@ internal class YetAnotherConfigLibIntegrationImpl(
                             .collapsed(true)
                             .name(text.string(StringKey.ConfigCardPositionManual).value)
                             .options(listOf(configCardScale, configCardAlignment, configCardOffsetX, configCardOffsetY))
+                            .build()
+                    )
+                    .group(
+                        OptionGroup.createBuilder()
+                            .collapsed(true)
+                            .name(text.string(StringKey.ConfigDdiHudPositionManual).value)
+                            .options(listOf(
+                                configDdiHudScale,
+                                configDdiHudAlignment,
+                                configDdiHudOffsetX,
+                                configDdiHudOffsetY,
+                            ))
                             .build()
                     )
                     .build()

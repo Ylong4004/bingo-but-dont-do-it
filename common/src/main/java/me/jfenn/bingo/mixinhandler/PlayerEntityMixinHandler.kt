@@ -30,13 +30,15 @@ class PlayerEntityMixinHandler(
     }
 
     fun getPlayerListName(uuid: UUID, name: IText): IText? {
-        return if (readyTimerState.isRunning && readyTimerState.isReady(uuid)) {
+        val readyName = if (readyTimerState.isRunning && readyTimerState.isReady(uuid)) {
             text.empty()
                 .append(text.literal("✔ ").formatted(Formatting.GREEN))
                 .append(name)
         } else {
             null
         }
+        val decoratedName = PlayerListNameDecorators.apply(uuid, readyName ?: name)
+        return decoratedName ?: readyName
     }
 
     init {

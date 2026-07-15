@@ -16,6 +16,7 @@ val ddiModule = module {
     scope<BingoScope> {
         scopedOf(::DDIWordPool)
         scopedOf(::DDITriggerDetector)
+        scopedOf(::DDITabLivesService)
         scopedOf(::DDIObjectiveManager)
         scopedOf(::DDIGameController)
     }

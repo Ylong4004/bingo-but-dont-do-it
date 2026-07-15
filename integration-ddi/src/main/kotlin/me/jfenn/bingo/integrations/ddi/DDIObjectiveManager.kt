@@ -9,6 +9,7 @@ import me.jfenn.bingo.platform.player.PlayerProfile
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
+import net.minecraft.util.Formatting
 import net.minecraft.world.GameMode
 import org.slf4j.Logger
 import java.util.UUID
@@ -36,6 +37,7 @@ data class DDIParticipant(
     val profile: PlayerProfile,
     val teamKey: BingoTeamKey,
     val teamName: String = teamKey.label,
+    val teamColor: Formatting = Formatting.WHITE,
 )
 
 /** Immutable diagnostic projection of one player- or team-owned objective. */
@@ -85,6 +87,7 @@ class DDIObjectiveManager(
     private val wordPool: DDIWordPool,
     private val triggerDetector: DDITriggerDetector,
     private val packets: DDIServerPackets,
+    private val tabLivesService: DDITabLivesService,
     private val historyService: DDIGameHistoryService,
     private val log: Logger,
 ) {
@@ -99,6 +102,7 @@ class DDIObjectiveManager(
     private var roundConfig: DDIRoundConfig? = null
     private var roundCompleted = false
     private var winnerAnnounced = false
+    private val teamWordHistory = DDITeamWordHistory()
 
     var onCompletedHandler: ((DDIRoundResult) -> Unit)? = null
 
@@ -196,6 +200,7 @@ class DDIObjectiveManager(
         objectiveStates.clear()
         playerObjectiveIds.clear()
         inactivePlayerIds.clear()
+        teamWordHistory.reset()
         historyService.reset()
 
         roster.forEach { participant ->
@@ -227,6 +232,7 @@ class DDIObjectiveManager(
                 objectiveName = if (isTeamShared) first.teamName else first.profile.name,
                 teamKey = first.teamKey,
                 teamName = first.teamName,
+                teamColor = first.teamColor,
                 memberIds = memberIds,
                 memberNames = memberNames,
                 isTeamShared = isTeamShared,
@@ -247,15 +253,13 @@ class DDIObjectiveManager(
         sendResetToClients(server)
         triggerDetector.register()
 
-        val initialWords = if (objectives.size <= wordPool.size()) {
-            wordPool.drawWords(objectives.size)
-        } else {
-            objectives.indices.map { wordPool.drawSingle() }
-        }
-        objectives.forEachIndexed { index, objective ->
-            assignResolvedWord(objective, initialWords[index], announceInstant = true)
+        objectives.forEach { objective ->
+            val initialWord = drawNextWord(objective, previous = null)
+                ?: error("DDI word pool has no rule available for ${objective.objectiveId}")
+            assignResolvedWord(objective, initialWord, announceInstant = true)
         }
 
+        tabLivesService.start(::tabLivesFor)
         syncAllToAll()
         log.info(
             "[DDI] Started game {} in {} mode with {} objectives, {} participants and {} Bingo teams",
@@ -275,10 +279,12 @@ class DDIObjectiveManager(
         if (sendReset && server != null) sendResetToClients(server)
 
         triggerDetector.unregister()
+        tabLivesService.stop()
         playerStates.clear()
         objectiveStates.clear()
         playerObjectiveIds.clear()
         inactivePlayerIds.clear()
+        teamWordHistory.reset()
         historyService.reset()
         currentServer = null
         currentGameId = null
@@ -315,6 +321,7 @@ class DDIObjectiveManager(
             return
         }
 
+        teamWordHistory.record(objective.teamKey, currentWord)
         val eliminated = objective.loseHeart()
         historyService.recordDamage(
             teamKey = objective.teamKey,
@@ -334,11 +341,12 @@ class DDIObjectiveManager(
         )
 
         if (objective.isAlive) {
-            assignResolvedWord(
-                objective,
-                wordPool.drawReplacement(currentWord),
-                announceInstant = true,
-            )
+            val nextWord = drawNextWord(objective, currentWord)
+            if (nextWord == null) {
+                completeByPoolExhaustion(objective)
+            } else {
+                assignResolvedWord(objective, nextWord, announceInstant = true)
+            }
         } else {
             clearWord(objective)
         }
@@ -350,6 +358,9 @@ class DDIObjectiveManager(
     /** Called once per server second while the controller is Active. */
     fun tickWordTimers() {
         if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return
+        // Besides updating values, this notices if another system has claimed
+        // the vanilla LIST slot and switches DDI to its name-suffix fallback.
+        tabLivesService.refresh()
 
         // Complete all timer mutations before checking the winner so iteration
         // order cannot decide a same-second multi-team elimination.
@@ -357,11 +368,15 @@ class DDIObjectiveManager(
             if (!objective.isAlive || objective.currentWord == null) continue
             objective.wordTimerSeconds = (objective.wordTimerSeconds - 1).coerceAtLeast(0)
             if (objective.wordTimerSeconds == 0) {
-                assignResolvedWord(
-                    objective,
-                    wordPool.drawReplacement(objective.currentWord),
-                    announceInstant = true,
-                )
+                val previous = objective.currentWord
+                val nextWord = drawNextWord(objective, previous)
+                if (nextWord == null) {
+                    completeByPoolExhaustion(objective)
+                    syncObjectiveToAll(objective)
+                    return
+                } else {
+                    assignResolvedWord(objective, nextWord, announceInstant = true)
+                }
                 syncObjectiveToAll(objective)
             }
         }
@@ -402,7 +417,7 @@ class DDIObjectiveManager(
         eliminate(objective)
         clearWord(objective)
         val message = if (objective.isTeamShared) {
-            "§c${displayTeamName(objective)}队 §f已全员离线，按 DDI 规则淘汰。"
+            "§c${displayTeamName(objective)} §f已全员离线，按 DDI 规则淘汰。"
         } else {
             "§c${participant.playerName} §f已断线，按 DDI 规则淘汰。"
         }
@@ -446,6 +461,7 @@ class DDIObjectiveManager(
             memberId !in inactivePlayerIds && currentServer?.playerManager?.getPlayer(memberId) != null
         }
         if (sharedTeamStillActive) {
+            tabLivesService.refresh()
             log.info(
                 "[DDI] {} left snapshot team {}; shared objective remains active",
                 participant.playerName,
@@ -455,7 +471,7 @@ class DDIObjectiveManager(
         }
 
         val message = if (objective.isTeamShared) {
-            "§c${displayTeamName(objective)}队 §f已无有效成员，按 DDI 规则淘汰。"
+            "§c${displayTeamName(objective)} §f已无有效成员，按 DDI 规则淘汰。"
         } else {
             "§c${participant.playerName} §f已离开开局队伍，按 DDI 规则淘汰。"
         }
@@ -484,12 +500,17 @@ class DDIObjectiveManager(
         val config = roundConfig ?: return
         var nextWord = firstWord
 
-        repeat(MAX_CONSECUTIVE_INSTANT_WORDS) {
+        // Every instant rule is written to hard history before drawing again,
+        // so at most one pass over the pool can be required. Basing the bound
+        // on the pool size also keeps future instant-heavy pools from leaving
+        // a live objective with no word after an arbitrary fixed limit.
+        repeat(wordPool.size().coerceAtLeast(1)) {
             objective.assignWord(nextWord, config.wordTimerSeconds)
             resetObjectiveDetection(objective)
 
             when (nextWord.triggerType) {
                 DDITriggerType.INSTANT_LOSE_HEART -> {
+                    teamWordHistory.record(objective.teamKey, nextWord)
                     val eliminated = objective.loseHeart()
                     historyService.recordDamage(
                         teamKey = objective.teamKey,
@@ -510,6 +531,7 @@ class DDIObjectiveManager(
                 }
 
                 DDITriggerType.INSTANT_GAIN_HEART -> {
+                    teamWordHistory.record(objective.teamKey, nextWord)
                     objective.addHeart()
                     if (announceInstant) {
                         broadcastTrigger(objective, nextWord, null, isElimination = false, isGain = true)
@@ -519,24 +541,17 @@ class DDIObjectiveManager(
                 else -> return
             }
 
-            nextWord = wordPool.drawReplacement(nextWord)
+            nextWord = drawNextWord(objective, nextWord) ?: run {
+                completeByPoolExhaustion(objective)
+                return
+            }
         }
 
-        val fallback = wordPool.getAllWords()
-            .filterNot { it.triggerType.isInstant() }
-            .randomOrNull()
-
-        if (fallback == null) {
-            log.error("[DDI] No non-instant word is available for {}", objective.objectiveId)
-            clearWord(objective)
-        } else {
-            log.warn(
-                "[DDI] Reached the instant-word chain limit for {}; assigning a normal fallback",
-                objective.objectiveId,
-            )
-            objective.assignWord(fallback, config.wordTimerSeconds)
-            resetObjectiveDetection(objective)
-        }
+        // Reaching this line would mean the pool changed while it was being
+        // resolved or violated the stable repeat-key invariant. End cleanly
+        // instead of leaving an immortal objective with a null word.
+        log.error("[DDI] Instant-word resolution exceeded the pool bound for {}", objective.objectiveId)
+        completeByPoolExhaustion(objective)
     }
 
     private fun clearWord(objective: DDIObjectiveState) {
@@ -576,8 +591,46 @@ class DDIObjectiveManager(
     private fun objectiveFor(playerId: UUID): DDIObjectiveState? =
         playerObjectiveIds[playerId]?.let(objectiveStates::get)
 
-    private fun DDITriggerType.isInstant(): Boolean =
-        this == DDITriggerType.INSTANT_LOSE_HEART || this == DDITriggerType.INSTANT_GAIN_HEART
+    private fun drawNextWord(
+        objective: DDIObjectiveState,
+        previous: DDIWordPool.WordEntry?,
+    ): DDIWordPool.WordEntry? {
+        val activeTeammateRules = objectiveStates.values.asSequence()
+            .filter { it.objectiveId != objective.objectiveId }
+            .filter { it.teamKey == objective.teamKey && it.isAlive }
+            .mapNotNull { it.currentWord?.repeatKey }
+            .toSet()
+        return wordPool.drawAvailable(
+            previous = previous,
+            triggeredRepeatKeys = teamWordHistory.get(objective.teamKey),
+            softRepeatKeys = activeTeammateRules,
+        )
+    }
+
+    internal fun tabLivesFor(playerId: UUID): Int? {
+        if (!hasRound) return null
+        val objective = objectiveFor(playerId) ?: return null
+        return if (playerId in inactivePlayerIds || objective.isEliminated) 0 else objective.hearts
+    }
+
+    private fun completeByPoolExhaustion(objective: DDIObjectiveState) {
+        if (roundCompleted || winnerAnnounced) return
+        clearWord(objective)
+        roundCompleted = true
+        winnerAnnounced = true
+        triggerDetector.unregister()
+        currentServer?.playerManager?.broadcast(
+            Text.literal(
+                "§a★ ${displayTeamName(objective)} §f已触发本局全部可用词条，完成不要做挑战！"
+            ),
+            false,
+        )
+        log.info(
+            "[DDI] Team {} exhausted every unique repeat key and wins the round",
+            objective.teamKey.id,
+        )
+        onCompletedHandler?.invoke(DDIRoundResult.Winner(objective.teamKey))
+    }
 
     private fun checkWinCondition() {
         if (!hasRound || roundCompleted || winnerAnnounced) return
@@ -602,6 +655,7 @@ class DDIObjectiveManager(
         packets.stateReset.send(target, DDIStateResetPacket())
         if (!hasRound) return
         syncSnapshotTo(target)
+        tabLivesService.refresh()
     }
 
     private fun syncSnapshotTo(target: ServerPlayerEntity) {
@@ -621,11 +675,13 @@ class DDIObjectiveManager(
         // start() clears every client projection immediately before calling
         // this method, so another reset per target would only duplicate work.
         for (target in server.playerManager.playerList) syncSnapshotTo(target)
+        tabLivesService.refresh()
     }
 
     private fun syncObjectiveToAll(objective: DDIObjectiveState) {
         val server = currentServer ?: return
         for (target in server.playerManager.playerList) syncObjectiveTo(target, objective)
+        tabLivesService.refresh()
     }
 
     private fun syncObjectiveTo(target: ServerPlayerEntity, objective: DDIObjectiveState) {
@@ -636,6 +692,7 @@ class DDIObjectiveManager(
                 DDITeamSyncPacket(
                     teamId = objective.teamKey.id,
                     teamName = displayTeamName(objective),
+                    teamColor = objective.teamColor,
                     memberNames = objective.memberNames,
                     // A shared word is hidden from every member of that team,
                     // not just from the member who caused this synchronization.
@@ -680,7 +737,7 @@ class DDIObjectiveManager(
 
         if (objective.isTeamShared) {
             val teamName = displayTeamName(objective)
-            val actorPrefix = actorName?.let { "$it 代表$teamName 队" } ?: "$teamName 队"
+            val actorPrefix = actorName?.let { "$it 代表$teamName " } ?: "$teamName "
             val message = when {
                 isElimination -> "§c💀 $actorPrefix §f触发了「§b${word.displayText}§f」，全队淘汰！"
                 isGain -> "§a💚 $actorPrefix §f抽到了「§b${word.displayText}§f」，共享生命 +1！❤×§c${objective.hearts}"
@@ -731,6 +788,5 @@ class DDIObjectiveManager(
 
     private companion object {
         const val MINIMUM_TEAMS = 2
-        const val MAX_CONSECUTIVE_INSTANT_WORDS = 32
     }
 }
