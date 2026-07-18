@@ -9,11 +9,14 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.jfenn.bingo.platform.IModEnvironment
+import me.jfenn.bingo.common.options.DDIVoiceKeywordOptions
+import java.security.MessageDigest
+import java.util.HexFormat
 import kotlin.random.Random
 
 /**
  * DDI 词条池 — 管理所有可用词条，支持随机抽取。
- * 移植自 Dont_do_it mod。
+ * 移植自 Dont_do_it 模组。
  */
 class DDIWordPool(
     private val environment: IModEnvironment? = null,
@@ -23,7 +26,7 @@ class DDIWordPool(
         val id: String,
         val displayText: String,
         val triggerType: DDITriggerType,
-        /** Stable gameplay rule identity used for per-team no-repeat history. */
+        /** 用于队伍不重复历史记录的稳定玩法规则标识。 */
         val repeatKey: String = triggerType.name,
         val displayKey: String? = null,
         val category: String = "legacy",
@@ -39,6 +42,7 @@ class DDIWordPool(
     }
 
     private val allWords = mutableListOf<WordEntry>()
+    private var customVoiceWords: List<WordEntry> = emptyList()
     private val random = Random.Default
 
     init {
@@ -67,18 +71,16 @@ class DDIWordPool(
     }
 
     /**
-     * Draws a replacement that differs from the previous rule whenever the
-     * pool has an alternative. This prevents an apparent no-op timer reroll
-     * and avoids immediately dealing the same continuous trigger again.
+     * 只要词池中存在替代项，就抽取一条与上一条规则不同的词条。
+     * 这样可避免计时器看似重抽却没有变化，也可避免立即再次发放同一持续触发规则。
      */
     fun drawReplacement(previous: WordEntry?): WordEntry {
         return drawAvailable(previous, emptySet(), emptySet()) ?: drawSingle()
     }
 
     /**
-     * Draws without ever relaxing [triggeredRepeatKeys]. [softRepeatKeys]
-     * prevents duplicate live rules within a team when the pool has room, but
-     * may be relaxed before declaring the team's unique rule pool exhausted.
+     * 抽取时绝不放宽 [triggeredRepeatKeys]。[softRepeatKeys] 会在词池空间充足时
+     * 防止同一队伍出现重复的当前规则，但在判定该队独立规则池耗尽前可以放宽。
      */
     fun drawAvailable(
         previous: WordEntry?,
@@ -104,22 +106,59 @@ class DDIWordPool(
 
     /** 根据显示文本查找词条 */
     fun findByDisplayText(displayText: String): WordEntry? {
-        return allWords.find { it.displayText == displayText }
+        return (allWords + customVoiceWords).find { it.displayText == displayText }
     }
 
     /** 根据 ID 查找词条 */
     fun findById(id: String): WordEntry? {
-        return allWords.find { it.id == id }
+        return (allWords + customVoiceWords).find { it.id == id }
     }
 
-    fun getAllWords(): List<WordEntry> = allWords.toList()
+    fun getAllWords(): List<WordEntry> = allWords.toList() + customVoiceWords
 
-    fun size(): Int = allWords.size
+    fun size(): Int = allWords.size + customVoiceWords.size
 
     fun availableSize(): Int = availableWords().size
 
-    private fun availableWords(): List<WordEntry> = allWords.filter { word ->
+    private fun availableWords(): List<WordEntry> = (allWords + customVoiceWords).filter { word ->
         word.rule.isAvailable { modId -> environment?.isModLoaded(modId) == true }
+    }
+
+    /**
+     * 替换运行时定义的语音词条。静态条目仍仅来自 words_v1.json；
+     * 此列表是单局选项的不可变投影。
+     */
+    fun setCustomVoiceKeywords(values: Iterable<String>): List<WordEntry> {
+        val builtInRecognitionKeys = allWords.asSequence()
+            .filter { it.category == VOICE_CATEGORY }
+            .flatMap { it.rule.subjectIds.asSequence() }
+            .map { it.removePrefix(VOICE_SUBJECT_PREFIX) }
+            .map(DDIVoiceKeywordOptions::recognitionKey)
+            .toSet()
+
+        customVoiceWords = DDIVoiceKeywordOptions.normalizeList(values)
+            .filterNot { DDIVoiceKeywordOptions.recognitionKey(it) in builtInRecognitionKeys }
+            .map(::customVoiceWord)
+        return customVoiceWords.toList()
+    }
+
+    private fun customVoiceWord(keyword: String): WordEntry {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(DDIVoiceKeywordOptions.recognitionKey(keyword).toByteArray(Charsets.UTF_8))
+        val suffix = HexFormat.of().formatHex(digest).take(16)
+        return WordEntry(
+            id = "voice_custom_$suffix",
+            displayText = "说出“$keyword”",
+            triggerType = DDITriggerType.SPEAK_KEYWORD,
+            repeatKey = "voice:custom:$suffix",
+            category = VOICE_CATEGORY,
+            weight = VOICE_WEIGHT,
+            rule = DDIRuleDefinition(
+                signalKind = DDISignalKind.VOICE_KEYWORD_SPOKEN,
+                subjectIds = setOf("$VOICE_SUBJECT_PREFIX$keyword"),
+                requiredMods = setOf("voicechat"),
+            ),
+        )
     }
 
     private fun weightedRandom(candidates: List<WordEntry>): WordEntry {
@@ -185,8 +224,8 @@ class DDIWordPool(
     private fun validatePool() {
         val duplicateIds = allWords.groupBy(WordEntry::id).filterValues { it.size > 1 }.keys
         check(duplicateIds.isEmpty()) { "Duplicate DDI word IDs: $duplicateIds" }
-        // Legacy synonyms intentionally share enum-based repeat keys. New
-        // parameterized definitions must describe one stable gameplay rule.
+        // 旧版同义词有意共享基于枚举的重复键。
+        // 新增参数化定义必须描述一条稳定的玩法规则。
         val duplicateRepeatKeys = allWords
             .filter { it.category != "legacy" }
             .groupBy(WordEntry::repeatKey)
@@ -210,12 +249,15 @@ class DDIWordPool(
     private fun JsonObject.stringSet(name: String): Set<String> =
         get(name)?.jsonArray?.mapTo(linkedSetOf()) { it.jsonPrimitive.content } ?: emptySet()
 
-    private companion object {
+    companion object {
         const val WORDS_SCHEMA = 1
         const val WORDS_RESOURCE =
             "/data/yet-another-minecraft-bingo/ddi/words_v1.json"
         const val LEGACY_CATEGORY = "legacy"
+        const val VOICE_CATEGORY = "voice"
+        const val VOICE_SUBJECT_PREFIX = "voice:"
         const val DEFAULT_EXPANSION_WEIGHT = 0.3
+        const val VOICE_WEIGHT = 0.45
         const val LEGACY_WEIGHT = 1.0
     }
 }

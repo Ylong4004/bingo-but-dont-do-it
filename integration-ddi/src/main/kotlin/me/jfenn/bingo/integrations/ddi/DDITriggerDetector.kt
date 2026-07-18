@@ -3,6 +3,7 @@ package me.jfenn.bingo.integrations.ddi
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents
@@ -109,7 +110,7 @@ class DDITriggerDetector(
             )
         }
 
-        /** Called only after vanilla has completed consuming a food item. */
+        /** 仅在原版完成食物消耗后调用。 */
         @JvmStatic
         fun reportConsumed(player: ServerPlayerEntity, itemId: String) {
             val detector = detectorFor(player) ?: return
@@ -119,7 +120,7 @@ class DDITriggerDetector(
             }
         }
 
-        /** Called from the authoritative JUMP statistic, not from airborne state. */
+        /** 根据权威的 JUMP 统计调用，而非根据腾空状态调用。 */
         @JvmStatic
         fun reportJump(player: ServerPlayerEntity) {
             val detector = detectorFor(player) ?: return
@@ -198,9 +199,8 @@ class DDITriggerDetector(
         @JvmStatic
         fun reportContainerOpened(player: ServerPlayerEntity) {
             val detector = detectorFor(player) ?: return
-            // OPEN_CONTAINER includes entity inventories (minecarts/horses)
-            // and other successfully opened handled screens. The narrower
-            // chest/furnace/table rules still require a clicked vanilla block.
+            // OPEN_CONTAINER 包括实体物品栏（矿车/马）以及其他成功打开的容器界面。
+            // 范围更窄的箱子、熔炉和工作台规则仍要求点击对应的原版方块。
             detector.fire(player, DDITriggerType.OPEN_CONTAINER)
             val blockId = detector.interactingBlockIds[player.uuid] ?: return
             vanillaPath(blockId)?.let { detector.detectOpenContainer(player, it) }
@@ -217,10 +217,8 @@ class DDITriggerDetector(
         }
 
         /**
-         * Reports damage after vanilla has applied its shield/cooldown damage
-         * adjustments. Non-fatal calls come from Fabric AFTER_DAMAGE; fatal
-         * calls use the same final method-local value immediately before
-         * LivingEntity.onDeath.
+         * 报告原版应用盾牌和伤害冷却调整后的伤害。非致命调用来自 Fabric AFTER_DAMAGE；
+         * 致命调用则使用紧邻 LivingEntity.onDeath 之前、同一方法内的最终值。
          */
         @JvmStatic
         fun reportDamage(entity: LivingEntity, source: DamageSource, damageTaken: Float) {
@@ -246,9 +244,9 @@ class DDITriggerDetector(
         }
 
         /**
-         * Reports the one final damage result emitted by the RETURN mixin.
-         * Health loss preserves the old five-damage rule; absorption consumed
-         * also makes an enemy-player hit effective for the new interaction rules.
+         * 报告 RETURN Mixin 发出的唯一最终伤害结果。
+         * 生命损失沿用原有的五点伤害规则；消耗伤害吸收生命也会让敌对玩家的攻击
+         * 对新的交互规则视为有效。
          */
         @JvmStatic
         fun reportFinalDamage(
@@ -364,7 +362,7 @@ class DDITriggerDetector(
         DDISignalKind.DISTANCE_BOAT_CM to DDITriggerType.BOAT_DISTANCE,
     )
 
-    // ---- block name constants ----
+    // ---- 方块名称常量 ----
     private val stoneNames = setOf("stone", "cobblestone", "mossy_cobblestone")
     private val deepslateBlockNames = setOf("deepslate")
     private val mineSingleNames = linkedMapOf(
@@ -462,13 +460,25 @@ class DDITriggerDetector(
         }
 
         ServerLivingEntityEvents.AFTER_DAMAGE.register { entity, source, _, damageTaken, _ ->
+            if (entity is ServerPlayerEntity && damageTaken > 0f) {
+                DDISpecialEventHooks.reportPlayerDamaged(entity, source)
+            }
             reportDamage(entity, source, damageTaken)
+        }
+
+        ServerEntityEvents.ENTITY_LOAD.register { entity, world ->
+            world.server?.let { DDISpecialEventHooks.reportEntityLoaded(it, entity) }
         }
 
         PlayerBlockBreakEvents.AFTER.register { world, player, pos, state, _ ->
             val detector = if (player is ServerPlayerEntity && world is ServerWorld) world.server?.let(::detectorFor) else null
             if (detector != null && player is ServerPlayerEntity) {
                 val blockId = Registries.BLOCK.getId(state.block)
+                if (blockId.namespace == Identifier.DEFAULT_NAMESPACE &&
+                    (blockId.path == "diamond_ore" || blockId.path == "deepslate_diamond_ore")
+                ) {
+                    DDISpecialEventHooks.reportDiamondOreMined(player)
+                }
                 val aliases = linkedSetOf(DDITriggerType.BLOCK_BREAK)
                 if (blockId.namespace == Identifier.DEFAULT_NAMESPACE) {
                     val id = blockId.path
@@ -502,9 +512,8 @@ class DDITriggerDetector(
                 if (source.isIn(DamageTypeTags.IS_EXPLOSION))
                     detector?.fire(entity, DDITriggerType.DEATH_BY_EXPLOSION)
 
-                // Keep this after every death trigger. A successful trigger
-                // resets per-word state, so writing earlier would erase the
-                // timer when the newly assigned word is NOT_RESPAWN_*.
+                // 必须在每个死亡触发器之后执行。成功触发会重置每词条状态，
+                // 若提前写入，则新分配的词条为 NOT_RESPAWN_* 时会清除该计时器。
                 if (detector != null) detector.deathTick[id] = detector.server.ticks.toLong()
                 detector?.notRespawn3sTriggered?.remove(id)
                 detector?.notRespawn5sTriggered?.remove(id)
@@ -611,15 +620,12 @@ class DDITriggerDetector(
             if (id !in activePlayerIds) continue
             val currentRule = currentRule(player) ?: continue
             val currentTrigger = currentTrigger(player)
-            // An action callback may already have changed this player's word
-            // earlier in the same server tick. Do not preheat the freshly reset
-            // edge/progress maps with the remainder of this tick.
+            // 动作回调可能已在同一服务端游戏刻稍早时更换该玩家的词条。
+            // 不要用本刻剩余数据预热刚刚重置的边沿/进度映射。
             if (lastTriggeredTick[id] == tick) continue
 
-            // Vanilla owns the movement classification and excludes teleports,
-            // respawns and dimension changes from these centimetre statistics.
-            // A movement rule has no other matching signal, so skip the legacy
-            // per-tick checks after sampling its one relevant statistic.
+            // 移动分类由原版负责，这些厘米统计会排除传送、重生和维度切换。
+            // 移动规则没有其他匹配信号，因此采样其唯一相关统计后跳过旧版逐刻检查。
             val travelStat = travelStats[currentRule.signalKind]
             if (travelStat != null) {
                 val travelledCentimetres = travelStatSampler.sample(
@@ -650,7 +656,7 @@ class DDITriggerDetector(
             if (sprinting && (prevSprint == null || !prevSprint)) fire(player, DDITriggerType.SPRINT)
             if (lastTriggeredTick[id] == tick) continue
 
-            // look direction
+            // 注视方向
             val lookingDown = player.pitch > 60
             val previousLookingDown = wasLookingDown.put(id, lookingDown)
             if (lookingDown && previousLookingDown != true) fire(player, DDITriggerType.LOOK_DOWN)
@@ -676,9 +682,8 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // stand still: compare the whole five-second window against one
-            // anchor. Comparing adjacent ticks would let slow walking count as
-            // standing still indefinitely.
+            // 保持静止：以同一锚点比较完整的五秒窗口。
+            // 若比较相邻游戏刻，缓慢行走会被无限期误判为保持静止。
             if (currentTrigger == DDITriggerType.STAND_STILL_5S) {
                 val cx = player.x; val cy = player.y; val cz = player.z
                 val ax = lastX[id]; val ay = lastY[id]; val az = lastZ[id]
@@ -700,8 +705,7 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // Same principle for looking: use the start of the window as the
-            // anchor so a player cannot rotate a few degrees every tick.
+            // 注视检测同理：以窗口起点为锚点，防止玩家每刻旋转几度来规避检测。
             if (currentTrigger == DDITriggerType.LOOK_SAME_DIR_5S) {
                 val cyaw = player.yaw; val cp = player.pitch
                 val anchorYaw = lastYaw[id]; val anchorPitch = lastPitch[id]
@@ -723,7 +727,7 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // enclosed
+            // 密闭状态
             if (currentTrigger == DDITriggerType.ENCLOSED_1X2) {
                 val enclosed = isPlayerEnclosed(player)
                 val previousEnclosed = wasEnclosed.put(id, enclosed)
@@ -731,7 +735,7 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // submerged
+            // 浸没状态
             if (currentTrigger == DDITriggerType.SUBMERGED) {
                 val submerged = player.isSubmergedInWater
                 val previousSubmerged = wasSubmerged.put(id, submerged)
@@ -739,7 +743,7 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // floating
+            // 漂浮状态
             if (currentTrigger == DDITriggerType.FLOATING) {
                 val floating = player.entityWorld.getBlockState(player.blockPos.down()).isAir
                 val previousFloating = wasFloating.put(id, floating)
@@ -747,8 +751,8 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // Use the collision support selected by vanilla. blockPos.down()
-            // misclassifies slabs, stairs, beds, carpets and block boundaries.
+            // 使用原版选定的碰撞支撑方块。blockPos.down() 会错误判断台阶、楼梯、
+            // 床、地毯和方块边界。
             if ((currentRule.signalKind == DDISignalKind.BLOCK_STOOD_ON ||
                     currentTrigger in standingBlockTriggers) &&
                 player.isOnGround && !player.hasVehicle()
@@ -769,7 +773,7 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // block above head
+            // 头顶方块
             if (currentTrigger == DDITriggerType.BLOCK_ABOVE_HEAD ||
                 currentTrigger == DDITriggerType.NO_BLOCK_ABOVE_HEAD
             ) {
@@ -782,7 +786,7 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // death timer
+            // 死亡计时器
             val dt = deathTick[id]
             if (dt != null && player.isDead) {
                 val elapsed = server.ticks - dt
@@ -792,7 +796,7 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // hunger / height
+            // 饥饿值/高度
             val hunger = player.hungerManager.foodLevel
             if (hunger < 18) fire(player, DDITriggerType.HUNGER_BELOW_18)
             if (hunger > 18) fire(player, DDITriggerType.HUNGER_ABOVE_18)
@@ -800,7 +804,7 @@ class DDITriggerDetector(
             if (player.y < 70) fire(player, DDITriggerType.Y_BELOW_70)
             if (lastTriggeredTick[id] == tick) continue
 
-            // distance
+            // 距离
             if (currentTrigger == DDITriggerType.FAR_FROM_ALL_15M ||
                 currentTrigger == DDITriggerType.TOO_CLOSE_TO_PLAYER
             ) {
@@ -816,14 +820,14 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // sustained behaviors
+            // 持续行为
             if (sprinting) { sprintStartTick.putIfAbsent(id, tick); if ((tick - sprintStartTick[id]!!) / 20 >= 30 && sprint30sTriggered.getOrDefault(id, false).not()) { sprint30sTriggered[id] = true; fire(player, DDITriggerType.SPRINT_30S) } }
             else { sprintStartTick.remove(id); sprint30sTriggered.remove(id) }
             if (sneaking) { sneakStartTick.putIfAbsent(id, tick); if ((tick - sneakStartTick[id]!!) / 20 >= 5 && sneak5sTriggered.getOrDefault(id, false).not()) { sneak5sTriggered[id] = true; fire(player, DDITriggerType.SNEAK_5S) } }
             else { sneakStartTick.remove(id); sneak5sTriggered.remove(id) }
             if (lastTriggeredTick[id] == tick) continue
 
-            // experience
+            // 经验值
             val cl = player.experienceLevel; val cpr = player.experienceProgress
             val pl = prevExperienceLevel.put(id, cl)
             val previousProgress = prevExperienceProgress.put(id, cpr)
@@ -832,14 +836,14 @@ class DDITriggerDetector(
                 fire(player, DDITriggerType.GAIN_EXPERIENCE)
             if (lastTriggeredTick[id] == tick) continue
 
-            // armor
+            // 盔甲
             if (currentTrigger == DDITriggerType.WEAR_ARMOR) {
                 val armorSlots = arrayOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)
                 if (armorSlots.any { !player.getEquippedStack(it).isEmpty }) fire(player, DDITriggerType.WEAR_ARMOR)
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // held item (the established semantics are either hand)
+            // 手持物品（既定语义为任意一只手）
             if (currentRule.signalKind == DDISignalKind.ITEM_HELD ||
                 currentTrigger in heldItemTriggers.values
             ) {
@@ -862,17 +866,17 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // hotbar
+            // 快捷栏
             if (player.inventory.selectedSlot == 0) fire(player, DDITriggerType.SELECT_SLOT_FIRST)
             if (player.inventory.selectedSlot == 8) fire(player, DDITriggerType.SELECT_SLOT_LAST)
             if (lastTriggeredTick[id] == tick) continue
 
-            // Vanilla fallDistance tracks distance from the airborne apex and
-            // excludes walking off a ledge from being misclassified as a jump.
+            // 原版 fallDistance 记录从腾空最高点开始的距离，
+            // 可避免将走下边缘错误判断为跳跃。
             if (player.fallDistance >= 5.0) fire(player, DDITriggerType.FALL_5_BLOCKS)
             if (lastTriggeredTick[id] == tick) continue
 
-            // inventory
+            // 物品栏
             if (currentTrigger in inventoryStateTriggers) {
                 val inventoryIds = buildSet {
                     for (slot in 0 until player.inventory.size()) {
@@ -902,10 +906,9 @@ class DDITriggerDetector(
             }
             if (lastTriggeredTick[id] == tick) continue
 
-            // no-action timers
+            // 无动作计时器
             lastJumpTick.putIfAbsent(id, tick); lastSneakActionTick.putIfAbsent(id, tick); lastSprintActionTick.putIfAbsent(id, tick)
-            // These words describe continuously *not* doing the action. Holding
-            // sneak/sprint must therefore keep resetting the timer every tick.
+            // 这些词条描述持续“不做”该动作，因此持续潜行/疾跑时必须每刻重置计时器。
             if (sneaking) lastSneakActionTick[id] = tick
             if (sprinting) lastSprintActionTick[id] = tick
             val sj = (tick - lastJumpTick[id]!!) / 20; val ss = (tick - lastSneakActionTick[id]!!) / 20; val sp = (tick - lastSprintActionTick[id]!!) / 20

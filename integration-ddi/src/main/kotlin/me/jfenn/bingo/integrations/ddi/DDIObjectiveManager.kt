@@ -1,12 +1,19 @@
 package me.jfenn.bingo.integrations.ddi
 
 import me.jfenn.bingo.common.game.DDIGameHistoryService
+import me.jfenn.bingo.common.config.PlayerSettingsService
 import me.jfenn.bingo.common.event.model.BingoTileCapturedEvent
 import me.jfenn.bingo.common.options.DDIObjectiveMode
+import me.jfenn.bingo.common.options.DDISpecialEventType
 import me.jfenn.bingo.common.state.BingoState
 import me.jfenn.bingo.common.state.GameState
 import me.jfenn.bingo.common.team.BingoTeamKey
 import me.jfenn.bingo.platform.player.PlayerProfile
+import me.jfenn.bingo.integrations.voice.VoiceKeywordBridge
+import me.jfenn.bingo.integrations.voice.VoiceKeywordDetection
+import me.jfenn.bingo.integrations.voice.VoiceKeywordTarget
+import me.jfenn.bingo.integrations.ddi.special.DDISpecialEventCatalog
+import me.jfenn.bingo.integrations.ddi.special.DDISpecialHeartAdjustment
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.text.Text
@@ -41,7 +48,7 @@ data class DDIParticipant(
     val teamColor: Formatting = Formatting.WHITE,
 )
 
-/** Immutable diagnostic projection of one player- or team-owned objective. */
+/** 单个玩家或队伍所拥有目标的不可变诊断投影。 */
 data class DDIObjectiveSnapshot(
     val objectiveId: String,
     val objectiveName: String,
@@ -58,9 +65,10 @@ data class DDIObjectiveSnapshot(
     val timerSeconds: Int,
     val maxTimerSeconds: Int,
     val isEliminated: Boolean,
+    val assignmentRevision: Long,
 )
 
-/** Immutable diagnostic projection of the current authoritative DDI round. */
+/** 当前权威 DDI 回合的不可变诊断投影。 */
 data class DDIRuntimeSnapshot(
     val gameId: UUID?,
     val config: DDIRoundConfig?,
@@ -77,12 +85,34 @@ sealed interface DDIRoundResult {
     data object Draw : DDIRoundResult
 }
 
+/** 管理员调试操作的结构化结果。 */
+data class DDIDebugActionResult(
+    val success: Boolean,
+    val message: String,
+)
+
+/** 指定玩家当前语音词条资格链的隐私安全快照。 */
+data class DDIVoicePlayerDebugSnapshot(
+    val hasRound: Boolean,
+    val isParticipant: Boolean,
+    val isActiveParticipant: Boolean,
+    val objectiveId: String?,
+    val objectiveName: String?,
+    val assignmentRevision: Long?,
+    val wordId: String?,
+    val wordText: String?,
+    val isVoiceWord: Boolean,
+    val hasConsent: Boolean,
+    val isVoiceConnected: Boolean,
+    val isTargetPublished: Boolean,
+)
+
 /**
- * Authoritative server-side DDI round state.
+ * 服务端权威 DDI 回合状态。
  *
- * In individual mode each participant owns one objective. In team-shared mode
- * each Bingo team owns exactly one objective, word, timer and heart pool.
- * Mutations happen only on the server thread.
+ * 在个人模式中，每位参与者拥有一个目标。在队伍共享模式中，
+ * 每支 Bingo 队伍只拥有一个目标、一条词条、一个计时器和一个生命池。
+ * 所有状态变更都只发生在服务端线程。
  */
 class DDIObjectiveManager(
     private val state: BingoState,
@@ -91,6 +121,7 @@ class DDIObjectiveManager(
     private val packets: DDIServerPackets,
     private val tabLivesService: DDITabLivesService,
     private val historyService: DDIGameHistoryService,
+    private val playerSettingsService: PlayerSettingsService,
     private val log: Logger,
 ) {
 
@@ -105,6 +136,8 @@ class DDIObjectiveManager(
     private var roundCompleted = false
     private var winnerAnnounced = false
     private val teamWordHistory = DDITeamWordHistory()
+    /** 仅保存在当前服务端进程中，并在下一局成功启动时一次性消费。 */
+    private var debugNextRoundWordId: String? = null
 
     var onCompletedHandler: ((DDIRoundResult) -> Unit)? = null
 
@@ -112,8 +145,8 @@ class DDIObjectiveManager(
         get() = currentServer != null && currentGameId != null
 
     /**
-     * Returns detached immutable values for diagnostics. Commands must use this
-     * instead of retaining references to the mutable authoritative maps.
+     * 返回与内部状态分离的不可变诊断数据。命令必须使用此方法，
+     * 而不能持有指向可变权威映射的引用。
      */
     fun snapshot(): DDIRuntimeSnapshot {
         val objectives = objectiveStates.values
@@ -135,6 +168,7 @@ class DDIObjectiveManager(
                     timerSeconds = objective.wordTimerSeconds,
                     maxTimerSeconds = objective.maxWordTimerSeconds,
                     isEliminated = objective.isEliminated,
+                    assignmentRevision = objective.assignmentRevision,
                 )
             }
             .sortedWith(
@@ -150,6 +184,65 @@ class DDIObjectiveManager(
             inactiveParticipantCount = inactivePlayerIds.size,
             isCompleted = roundCompleted,
             objectives = objectives,
+        )
+    }
+
+    /** 为 Brigadier 补全和调试查询返回稳定排序的全部词条 ID。 */
+    internal fun debugWordIds(): List<String> {
+        if (!hasRound) wordPool.setCustomVoiceKeywords(state.options.ddiVoiceCustomKeywords)
+        return wordPool.getAllWords().map { it.id }.distinct().sorted()
+    }
+
+    internal fun debugWord(id: String): DDIWordPool.WordEntry? {
+        if (!hasRound) wordPool.setCustomVoiceKeywords(state.options.ddiVoiceCustomKeywords)
+        return wordPool.findById(id)
+    }
+
+    internal fun debugNextRoundWordId(): String? = debugNextRoundWordId
+
+    /** 仅允许在大厅中指定下一局所有目标的首个词条。 */
+    internal fun configureDebugNextRoundWord(id: String): DDIDebugActionResult {
+        if (state.state != GameState.PREGAME || hasRound) {
+            return DDIDebugActionResult(false, "只能在 Bingo 大厅中指定下一局首词条。")
+        }
+        val word = debugWord(id)
+            ?: return DDIDebugActionResult(false, "未知词条 ID：$id")
+        debugNextRoundWordId = word.id
+        return DDIDebugActionResult(
+            true,
+            "下一局所有 DDI 目标的首词条已指定为 ${word.id}（${word.displayText}）。",
+        )
+    }
+
+    internal fun clearDebugNextRoundWord(): DDIDebugActionResult {
+        if (state.state != GameState.PREGAME || hasRound) {
+            return DDIDebugActionResult(false, "只能在 Bingo 大厅中清除下一局首词条。")
+        }
+        val previous = debugNextRoundWordId
+        debugNextRoundWordId = null
+        return DDIDebugActionResult(
+            true,
+            previous?.let { "已清除下一局首词条：$it。" } ?: "当前没有指定下一局首词条。",
+        )
+    }
+
+    internal fun debugVoiceState(playerId: UUID): DDIVoicePlayerDebugSnapshot {
+        val objective = objectiveFor(playerId)
+        val word = objective?.currentWord
+        return DDIVoicePlayerDebugSnapshot(
+            hasRound = hasRound && !roundCompleted,
+            isParticipant = playerStates.containsKey(playerId),
+            isActiveParticipant = hasRound && !roundCompleted &&
+                playerId !in inactivePlayerIds && objective?.isAlive == true,
+            objectiveId = objective?.objectiveId,
+            objectiveName = objective?.objectiveName,
+            assignmentRevision = objective?.assignmentRevision,
+            wordId = word?.id,
+            wordText = word?.displayText,
+            isVoiceWord = word?.category == DDIWordPool.VOICE_CATEGORY,
+            hasConsent = playerSettingsService.getPlayer(playerId).ddiVoiceConsent,
+            isVoiceConnected = VoiceKeywordBridge.isPlayerConnected(playerId),
+            isTargetPublished = voiceTargets().containsKey(playerId),
         )
     }
 
@@ -189,7 +282,7 @@ class DDIObjectiveManager(
         triggerDetector.onEnemyPlayerDamageHandler = ::onEnemyPlayerDamage
     }
 
-    /** Starts a new round. The roster, ownership mode and options are fixed for that round. */
+    /** 开始新回合。该回合的参赛名单、归属模式和选项均会固定。 */
     fun start(
         server: MinecraftServer,
         gameId: UUID,
@@ -223,6 +316,10 @@ class DDIObjectiveManager(
         inactivePlayerIds.clear()
         teamWordHistory.reset()
         historyService.reset()
+        wordPool.setCustomVoiceKeywords(state.options.ddiVoiceCustomKeywords)
+        val forcedInitialWordId = debugNextRoundWordId
+        val forcedInitialWord = forcedInitialWordId?.let(wordPool::findById)
+        debugNextRoundWordId = null
 
         roster.forEach { participant ->
             val profile = participant.profile
@@ -270,13 +367,23 @@ class DDIObjectiveManager(
             .distinctBy { it.teamKey }
             .forEach { historyService.registerTeam(it.teamKey, displayTeamName(it)) }
 
-        // Clear a previous projection before any initial instant-word notices.
+        // 在发送任何初始即时词条通知前，先清除之前的客户端投影。
         sendResetToClients(server)
         triggerDetector.register()
 
         objectives.forEach { objective ->
-            val initialWord = drawNextWord(objective, previous = null)
+            val initialWord = forcedInitialWord
+                ?.takeIf { isWordAvailableForObjective(objective, it) }
+                ?: drawNextWord(objective, previous = null)
                 ?: error("DDI word pool has no rule available for ${objective.objectiveId}")
+            if (forcedInitialWordId != null && initialWord.id != forcedInitialWordId) {
+                log.warn(
+                    "[DDI Debug] Forced first word {} was unavailable for {}; used {}",
+                    forcedInitialWordId,
+                    objective.objectiveId,
+                    initialWord.id,
+                )
+            }
             assignResolvedWord(objective, initialWord, announceInstant = true)
         }
 
@@ -294,7 +401,7 @@ class DDIObjectiveManager(
         return true
     }
 
-    /** Stops the current round. Safe to call more than once. */
+    /** 停止当前回合。可安全重复调用。 */
     fun stop(sendReset: Boolean = true) {
         val server = currentServer
         if (sendReset && server != null) sendResetToClients(server)
@@ -317,6 +424,236 @@ class DDIObjectiveManager(
 
     internal fun onSignal(player: ServerPlayerEntity, signal: DDISignal): Boolean {
         return applyPlayerSignal(player, signal, finalizeWinCheck = true)
+    }
+
+    /** 供进程级语音桥接器使用的不可变投影。 */
+    internal fun voiceTargets(): Map<UUID, VoiceKeywordTarget> {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return emptyMap()
+        if (!state.options.ddiVoiceKeywordsEnabled || !VoiceKeywordBridge.status().isReady) {
+            return emptyMap()
+        }
+        val gameId = currentGameId ?: return emptyMap()
+        return buildMap {
+            objectiveStates.values.forEach { objective ->
+                val word = objective.currentWord ?: return@forEach
+                if (word.category != DDIWordPool.VOICE_CATEGORY ||
+                    !isVoiceWordAvailable(objective, word)
+                ) return@forEach
+
+                val target = VoiceKeywordTarget(
+                    gameId = gameId,
+                    objectiveId = objective.objectiveId,
+                    revision = objective.assignmentRevision,
+                    wordId = word.id,
+                    subjectIds = word.rule.subjectIds,
+                )
+                activeOnlineMemberIds(objective).forEach { put(it, target) }
+            }
+        }
+    }
+
+    /** 在桥接器令牌和作用域令牌均验证通过后，由服务端线程进行结算。 */
+    internal fun onVoiceKeywordDetection(detection: VoiceKeywordDetection): Boolean {
+        val expected = voiceTargets()[detection.playerId] ?: return false
+        if (expected != detection.target || detection.matchedSubjectId !in expected.subjectIds) {
+            return false
+        }
+        val player = currentServer?.playerManager?.getPlayer(detection.playerId) ?: return false
+        return applyPlayerSignal(
+            player,
+            DDISignal(
+                kind = DDISignalKind.VOICE_KEYWORD_SPOKEN,
+                subjectId = detection.matchedSubjectId,
+            ),
+            finalizeWinCheck = true,
+        )
+    }
+
+    /** 应用大厅或局内的自定义关键词变更，同时不修改静态词条。 */
+    internal fun updateCustomVoiceKeywords(keywords: Iterable<String>) {
+        wordPool.setCustomVoiceKeywords(keywords)
+        rerollUnavailableVoiceObjectives()
+    }
+
+    internal fun refreshVoiceAvailability() {
+        rerollUnavailableVoiceObjectives()
+    }
+
+    /** 不可变 DDI 名单中在线且未被淘汰的成员。 */
+    internal fun activePlayers(): List<ServerPlayerEntity> {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return emptyList()
+        val server = currentServer ?: return emptyList()
+        return server.playerManager.playerList.filter { player ->
+            player.uuid !in inactivePlayerIds && objectiveFor(player.uuid)?.isAlive == true
+        }
+    }
+
+    internal fun activeObjectiveId(playerId: UUID): String? {
+        if (!hasRound || roundCompleted || playerId in inactivePlayerIds) return null
+        return objectiveFor(playerId)?.takeIf { it.isAlive }?.objectiveId
+    }
+
+    /** 强制发放指定词条；调试操作有意绕过“已触发词条不再随机抽取”的历史。 */
+    internal fun debugForceWord(playerId: UUID, wordId: String): DDIDebugActionResult {
+        val objective = debugActiveObjective(playerId)
+            ?: return DDIDebugActionResult(false, "该玩家当前没有存活的 DDI 目标。")
+        val word = wordPool.findById(wordId)
+            ?: return DDIDebugActionResult(false, "未知词条 ID：$wordId")
+        if (!isWordAvailableForObjective(objective, word)) {
+            return DDIDebugActionResult(
+                false,
+                "词条 $wordId 当前不可用；语音词条请先检查模型、授权、连接与目标发布状态。",
+            )
+        }
+
+        assignResolvedWord(objective, word, announceInstant = true)
+        syncObjectiveToAll(objective)
+        if (!roundCompleted) checkWinCondition()
+        val current = objective.currentWord
+        val suffix = if (current?.id == word.id) {
+            ""
+        } else {
+            " 该词条属于即时规则，结算后当前词条为 ${current?.id ?: "无"}。"
+        }
+        return DDIDebugActionResult(
+            true,
+            "已为 ${displayTeamName(objective)} 强制发放 $wordId。$suffix",
+        )
+    }
+
+    /** 无惩罚重抽，并继续遵守本队已触发词条的硬去重历史。 */
+    internal fun debugRerollWord(playerId: UUID): DDIDebugActionResult {
+        val objective = debugActiveObjective(playerId)
+            ?: return DDIDebugActionResult(false, "该玩家当前没有存活的 DDI 目标。")
+        val previous = objective.currentWord
+        val next = drawNextWord(objective, previous)
+            ?: return DDIDebugActionResult(false, "没有符合当前限制且未被本队触发过的替代词条。")
+        assignResolvedWord(objective, next, announceInstant = true)
+        syncObjectiveToAll(objective)
+        if (!roundCompleted) checkWinCondition()
+        return DDIDebugActionResult(
+            true,
+            "已为 ${displayTeamName(objective)} 无惩罚换词：${previous?.id ?: "无"} → ${objective.currentWord?.id ?: "无"}。",
+        )
+    }
+
+    internal fun debugRerollAllWords(): DDIDebugActionResult {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) {
+            return DDIDebugActionResult(false, "当前没有正在进行的 DDI 回合。")
+        }
+        var changed = 0
+        var skipped = 0
+        objectiveStates.values
+            .filter { it.isAlive }
+            .sortedBy { it.objectiveId }
+            .forEach { objective ->
+                if (roundCompleted) return@forEach
+                val next = drawNextWord(objective, objective.currentWord)
+                if (next == null) {
+                    skipped++
+                } else {
+                    assignResolvedWord(objective, next, announceInstant = true)
+                    syncObjectiveToAll(objective)
+                    changed++
+                }
+            }
+        if (changed > 0 && !roundCompleted) checkWinCondition()
+        return DDIDebugActionResult(
+            changed > 0,
+            "已无惩罚换词 $changed 个目标，跳过 $skipped 个无可用候选目标。",
+        )
+    }
+
+    /**
+     * 跳过音频和 Vosk，直接构造当前目标的合法检测结果，
+     * 用于确认识别后的服务端校验、触发与扣血链路。
+     */
+    internal fun debugSimulateVoiceDetection(playerId: UUID): DDIDebugActionResult {
+        val target = voiceTargets()[playerId]
+            ?: return DDIDebugActionResult(
+                false,
+                "该玩家当前没有已发布的语音目标；请先运行 voice debug <玩家> 查看资格链。",
+            )
+        val subjectId = target.subjectIds.sorted().first()
+        val accepted = onVoiceKeywordDetection(
+            VoiceKeywordDetection(
+                playerId = playerId,
+                target = target,
+                matchedSubjectId = subjectId,
+                confidence = 1.0,
+            )
+        )
+        return DDIDebugActionResult(
+            accepted,
+            if (accepted) {
+                "模拟检测已被 DDI 接受并完成结算；故障位于音频/ASR/桥接阶段。"
+            } else {
+                "模拟检测被 DDI 拒绝；请检查对局状态、分配版本和同刻重复触发保护。"
+            },
+        )
+    }
+
+    private fun debugActiveObjective(playerId: UUID): DDIObjectiveState? {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return null
+        if (playerId in inactivePlayerIds) return null
+        return objectiveFor(playerId)?.takeIf { it.isAlive }
+    }
+
+    /**
+     * 应用一次特殊事件造成的生命变化，但暂不判定胜者。
+     * 事件桥接器会在整个事件回调结算完毕后调用 [finalizeSpecialHeartAdjustments]，
+     * 因此多个目标同时归零时，不会由映射或玩家的迭代顺序决定胜者。
+     */
+    internal fun adjustSpecialHeart(
+        objectiveId: String,
+        delta: Int,
+        eventType: DDISpecialEventType,
+        actorId: UUID?,
+    ): DDISpecialHeartAdjustment {
+        val objective = objectiveStates[objectiveId]
+        val before = objective?.hearts ?: 0
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING ||
+            objective == null || !objective.isAlive || delta == 0
+        ) {
+            return DDISpecialHeartAdjustment(
+                requestedDelta = delta,
+                appliedDelta = 0,
+                hearts = before,
+                maxHearts = objective?.maxHearts ?: 0,
+                eliminated = objective?.isEliminated == true,
+            )
+        }
+
+        objective.hearts = (before + delta).coerceIn(0, objective.maxHearts)
+        val applied = objective.hearts - before
+        val eliminated = objective.hearts <= 0
+        if (applied < 0) {
+            historyService.recordDamage(
+                teamKey = objective.teamKey,
+                teamName = displayTeamName(objective),
+                wordText = "特殊事件：${DDISpecialEventCatalog[eventType].displayName}",
+                actorName = actorId?.let { playerStates[it]?.playerName },
+                heartsRemaining = objective.hearts,
+                maxHearts = objective.maxHearts,
+            )
+        }
+        if (eliminated) {
+            eliminate(objective)
+            clearWord(objective)
+        }
+        syncObjectiveToAll(objective)
+        tabLivesService.refresh()
+        return DDISpecialHeartAdjustment(
+            requestedDelta = delta,
+            appliedDelta = applied,
+            hearts = objective.hearts,
+            maxHearts = objective.maxHearts,
+            eliminated = eliminated,
+        )
+    }
+
+    internal fun finalizeSpecialHeartAdjustments() {
+        checkWinCondition()
     }
 
     private fun applyPlayerSignal(
@@ -356,7 +693,7 @@ class DDIObjectiveManager(
         return attackerAccepted to victimAccepted
     }
 
-    /** Consumes only score transactions emitted by the current Bingo game. */
+    /** 只处理当前 Bingo 游戏发出的计分事务。 */
     internal fun onBingoTileCaptured(event: BingoTileCapturedEvent): Boolean {
         if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return false
         if (event.gameId != currentGameId || event.x !in 0..4 || event.y !in 0..4) return false
@@ -382,9 +719,9 @@ class DDIObjectiveManager(
                 finalizeWinCheck = true,
             )
         } ?: false
-        // In individual mode a teammate can claim the fixed tile selected by
-        // another player's word. That word is now impossible for the owner, so
-        // replace it immediately without recording a trigger or deducting life.
+        // 在个人模式中，队友可能占领另一名玩家词条所指定的固定格子。
+        // 此时该词条对其拥有者已无法完成，因此立即更换词条，
+        // 且不记录触发，也不扣除生命。
         if (!roundCompleted) rerollUnavailableBingoObjectives(event.team)
         return accepted
     }
@@ -426,9 +763,8 @@ class DDIObjectiveManager(
         if (objective.lastAcceptedTriggerTick == triggerTick) return false
         objective.ruleProgress = progress.progress
         if (!progress.completed) return false
-        // This value deliberately survives word changes, preventing two
-        // teammates' callbacks from settling two words in one physical tick,
-        // without swallowing legitimate actions on the newly assigned word.
+        // 此值会特意跨词条变更保留，防止两名队友的回调在同一个实际游戏刻内
+        // 结算两条词条，同时又不会吞掉对新分配词条的合法操作。
         objective.lastAcceptedTriggerTick = triggerTick
 
         if (currentWord.rule.matchBehavior == DDIMatchBehavior.SATISFY_DEADLINE) {
@@ -436,8 +772,8 @@ class DDIObjectiveManager(
             return true
         }
 
-        // Instant entries normally settle while being dealt. Keep this branch
-        // as a safety net if a future word provider assigns one directly.
+        // 即时词条通常会在发放时完成结算。保留此分支作为保险，
+        // 以防未来的词条提供器直接分配即时词条。
         if (currentWord.triggerType == DDITriggerType.INSTANT_LOSE_HEART ||
             currentWord.triggerType == DDITriggerType.INSTANT_GAIN_HEART
         ) {
@@ -453,15 +789,13 @@ class DDIObjectiveManager(
         return true
     }
 
-    /** Called once per server second while the controller is Active. */
+    /** 控制器激活期间每个服务端秒调用一次。 */
     fun tickWordTimers() {
         if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return
-        // Besides updating values, this notices if another system has claimed
-        // the vanilla LIST slot and switches DDI to its name-suffix fallback.
-        tabLivesService.refresh()
+        rerollUnavailableVoiceObjectives()
 
-        // Complete all timer mutations before checking the winner so iteration
-        // order cannot decide a same-second multi-team elimination.
+        // 先完成所有计时器状态变更，再检查胜者，避免同一秒内多队淘汰时
+        // 由迭代顺序决定结果。
         for (objective in objectiveStates.values) {
             if (!objective.isAlive || objective.currentWord == null) continue
             objective.wordTimerSeconds = (objective.wordTimerSeconds - 1).coerceAtLeast(0)
@@ -474,7 +808,7 @@ class DDIObjectiveManager(
         checkWinCondition()
     }
 
-    /** Shared by the server timer loop and a focused deadline contract test. */
+    /** 由服务端计时循环和专门的截止时间契约测试共同使用。 */
     internal fun handleExpiredObjective(objective: DDIObjectiveState) {
         val previous = objective.currentWord ?: return
         if (previous.rule.deadlineBehavior == DDIDeadlineBehavior.TRIGGER_ON_EXPIRY) {
@@ -493,18 +827,17 @@ class DDIObjectiveManager(
     }
 
     /**
-     * Individual mode forfeits the leaving player's objective. Team-shared
-     * mode keeps the team alive while another roster member remains online;
-     * the final disconnect forfeits the team to avoid an immortal empty team.
+     * 个人模式下，离线玩家的目标会直接判负。队伍共享模式下，只要名单中
+     * 还有其他成员在线，队伍就会继续存活；最后一名成员断开连接时队伍判负，
+     * 以免出现永远不会淘汰的空队伍。
      */
     fun onPlayerDisconnect(playerId: UUID) {
         if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return
         val participant = playerStates[playerId] ?: return
         val objective = objectiveFor(playerId)?.takeIf { it.isAlive } ?: return
 
-        // A disconnected shared-team member does not forfeit the team's
-        // objective, but their edge/progress state must never survive a quick
-        // reconnect or count offline time toward a continuous-condition word.
+        // 共享队伍成员断开连接不会使队伍目标判负，但其边沿和进度状态
+        // 绝不能在快速重连后继续保留，也不能把离线时间计入连续条件词条。
         triggerDetector.resetPlayerState(playerId)
 
         val server = currentServer ?: return
@@ -536,24 +869,24 @@ class DDIObjectiveManager(
     }
 
     /**
-     * Removes a fixed-roster participant from active DDI play when they leave
-     * their snapshot Bingo team. A surviving shared team may continue; an empty
-     * shared team and every individual objective forfeit immediately.
+     * 固定名单中的参与者离开其快照记录的 Bingo 队伍时，
+     * 将其移出当前 DDI 游戏。仍有成员的共享队伍可以继续；
+     * 空的共享队伍以及所有个人目标会立即判负。
      */
     fun onPlayerTeamChanged(playerId: UUID, newTeamKey: BingoTeamKey?) {
         if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return
 
         val participant = playerStates[playerId]
         if (participant == null) {
-            // A privileged late join is outside the immutable DDI roster.
+            // 获得特权而后加入的玩家不属于不可变 DDI 名单。
             currentServer?.playerManager?.getPlayer(playerId)?.changeGameMode(GameMode.SPECTATOR)
             return
         }
         val objective = objectiveFor(playerId) ?: return
 
         if (newTeamKey == participant.teamKey) {
-            // A roster member may rejoin their original shared team only while
-            // that team is still alive. Individual elimination is irreversible.
+            // 只有原共享队伍仍存活时，名单成员才能重新加入该队伍。
+            // 个人淘汰不可逆转。
             if (objective.isTeamShared && objective.isAlive) {
                 inactivePlayerIds.remove(playerId)
                 triggerDetector.resetPlayerState(playerId)
@@ -587,7 +920,7 @@ class DDIObjectiveManager(
         forfeit(objective, message)
     }
 
-    /** Re-assert spectator after respawn/reconnect for every eliminated objective member. */
+    /** 对所有已淘汰目标的成员，在重生或重连后重新强制设为旁观者。 */
     fun enforceEliminatedSpectators() {
         if (!hasRound || state.state != GameState.PLAYING) return
         val server = currentServer ?: return
@@ -600,7 +933,7 @@ class DDIObjectiveManager(
         }
     }
 
-    /** Deals a word and immediately resolves bounded gain/lose-heart chains. */
+    /** 发放词条，并立即解析有界的增减生命连锁。 */
     private fun assignResolvedWord(
         objective: DDIObjectiveState,
         firstWord: DDIWordPool.WordEntry,
@@ -609,10 +942,9 @@ class DDIObjectiveManager(
         val config = roundConfig ?: return
         var nextWord = firstWord
 
-        // Every instant rule is written to hard history before drawing again,
-        // so at most one pass over the pool can be required. Basing the bound
-        // on the pool size also keeps future instant-heavy pools from leaving
-        // a live objective with no word after an arbitrary fixed limit.
+        // 每条即时规则都会在再次抽取前写入硬历史，因此最多只需遍历词池一次。
+        // 以词池大小作为上限，也可以防止未来即时词条较多的词池因任意固定上限
+        // 而留下一个没有词条却仍存活的目标。
         repeat(wordPool.size().coerceAtLeast(1)) {
             objective.assignWord(nextWord, config.wordTimerSeconds)
             resetObjectiveDetection(objective)
@@ -656,22 +988,19 @@ class DDIObjectiveManager(
             }
         }
 
-        // Reaching this line would mean the pool changed while it was being
-        // resolved or violated the stable repeat-key invariant. End cleanly
-        // instead of leaving an immortal objective with a null word.
+        // 执行到此处意味着词池在解析过程中发生了变化，
+        // 或违反了稳定重复键的不变量。此时应干净地结束回合，
+        // 而不是留下一个词条为空且永远不会淘汰的目标。
         log.error("[DDI] Instant-word resolution exceeded the pool bound for {}", objective.objectiveId)
         completeByPoolExhaustion(objective)
     }
 
     private fun clearWord(objective: DDIObjectiveState) {
-        objective.currentWord = null
-        objective.wordTimerSeconds = 0
-        objective.ruleProgress = 0
-        objective.deadlineSatisfied = false
+        objective.clearWord()
         resetObjectiveDetection(objective)
     }
 
-    /** Applies one action/deadline violation and deals the next available word. */
+    /** 结算一次动作或截止时间违规，并发放下一条可用词条。 */
     private fun settleViolation(
         objective: DDIObjectiveState,
         word: DDIWordPool.WordEntry,
@@ -760,6 +1089,9 @@ class DDIObjectiveManager(
         objective: DDIObjectiveState,
         word: DDIWordPool.WordEntry,
     ): Boolean {
+        if (word.category == DDIWordPool.VOICE_CATEGORY) {
+            return isVoiceWordAvailable(objective, word)
+        }
         if (word.rule.signalKind != DDISignalKind.BINGO_TILE_CAPTURED) return true
         val team = state.teams[objective.teamKey] ?: return false
         val card = state.getCard(team) ?: return false
@@ -770,10 +1102,60 @@ class DDIObjectiveManager(
         }
     }
 
+    private fun isVoiceWordAvailable(
+        objective: DDIObjectiveState,
+        word: DDIWordPool.WordEntry,
+    ): Boolean {
+        if (!state.options.ddiVoiceKeywordsEnabled || !VoiceKeywordBridge.status().isReady) {
+            return false
+        }
+        if (word.rule.signalKind != DDISignalKind.VOICE_KEYWORD_SPOKEN ||
+            word.rule.subjectIds.isEmpty() ||
+            wordPool.findById(word.id) == null
+        ) return false
+        val activeMembers = activeOnlineMemberIds(objective)
+        return activeMembers.isNotEmpty() && activeMembers.all { playerId ->
+            playerSettingsService.getPlayer(playerId).ddiVoiceConsent &&
+                VoiceKeywordBridge.isPlayerConnected(playerId)
+        }
+    }
+
+    private fun activeOnlineMemberIds(objective: DDIObjectiveState): List<UUID> {
+        val server = currentServer ?: return emptyList()
+        return objective.memberIds.filter { playerId ->
+            playerId !in inactivePlayerIds && server.playerManager.getPlayer(playerId) != null
+        }
+    }
+
+    /** 模型丢失、撤销同意或自定义词条被删除后，绝不能再造成惩罚。 */
+    private fun rerollUnavailableVoiceObjectives() {
+        if (!hasRound || roundCompleted) return
+        var changed = false
+        objectiveStates.values
+            .filter { it.isAlive && it.currentWord?.category == DDIWordPool.VOICE_CATEGORY }
+            .forEach { objective ->
+                val word = objective.currentWord ?: return@forEach
+                if (isVoiceWordAvailable(objective, word)) return@forEach
+                val nextWord = drawNextWord(objective, word)
+                if (nextWord == null) {
+                    completeByPoolExhaustion(objective)
+                } else {
+                    assignResolvedWord(objective, nextWord, announceInstant = true)
+                    syncObjectiveToAll(objective)
+                }
+                changed = true
+            }
+        if (changed && !roundCompleted) checkWinCondition()
+    }
+
     internal fun tabLivesFor(playerId: UUID): Int? {
-        if (!hasRound) return null
-        val objective = objectiveFor(playerId) ?: return null
-        return if (playerId in inactivePlayerIds || objective.isEliminated) 0 else objective.hearts
+        return DDITabLivesProjection.resolve(
+            playerId = playerId,
+            roundActive = hasRound && !roundCompleted,
+            inactivePlayerIds = inactivePlayerIds,
+            playerObjectiveIds = playerObjectiveIds,
+            objectiveStates = objectiveStates,
+        )
     }
 
     private fun completeByPoolExhaustion(objective: DDIObjectiveState) {
@@ -782,6 +1164,7 @@ class DDIObjectiveManager(
         roundCompleted = true
         winnerAnnounced = true
         triggerDetector.unregister()
+        tabLivesService.refresh()
         currentServer?.playerManager?.broadcast(
             Text.literal(
                 "§a★ ${displayTeamName(objective)} §f已触发本局全部可用词条，完成不要做挑战！"
@@ -806,6 +1189,7 @@ class DDIObjectiveManager(
         roundCompleted = true
         winnerAnnounced = true
         triggerDetector.unregister()
+        tabLivesService.refresh()
 
         val winnerKey = aliveTeams.singleOrNull()
         onCompletedHandler?.invoke(
@@ -813,7 +1197,7 @@ class DDIObjectiveManager(
         )
     }
 
-    /** Sends the current projection after clearing every potentially stale entry. */
+    /** 清除所有可能过期的条目后，发送当前状态投影。 */
     fun resyncTo(target: ServerPlayerEntity) {
         packets.stateReset.send(target, DDIStateResetPacket())
         if (!hasRound) return
@@ -835,8 +1219,8 @@ class DDIObjectiveManager(
 
     private fun syncAllToAll() {
         val server = currentServer ?: return
-        // start() clears every client projection immediately before calling
-        // this method, so another reset per target would only duplicate work.
+        // 调用此方法前，start() 会立即清除所有客户端投影，
+        // 因此再逐个重置目标只会造成重复工作。
         for (target in server.playerManager.playerList) syncSnapshotTo(target)
         tabLivesService.refresh()
     }
@@ -857,8 +1241,8 @@ class DDIObjectiveManager(
                     teamName = displayTeamName(objective),
                     teamColor = objective.teamColor,
                     memberNames = objective.memberNames,
-                    // A shared word is hidden from every member of that team,
-                    // not just from the member who caused this synchronization.
+                    // 共享词条会对该队伍的每一名成员隐藏，
+                    // 而不只是对触发本次同步的成员隐藏。
                     wordText = if (isOwnTeam) "" else objective.currentWord?.displayText.orEmpty(),
                     hearts = objective.hearts,
                     maxHearts = objective.maxHearts,

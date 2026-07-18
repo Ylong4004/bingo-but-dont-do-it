@@ -133,4 +133,29 @@ class DDIRuleEngineTest {
         assertThat(rule.isAvailable { false }).isFalse()
         assertThat(rule.deadlineBehavior).isEqualTo(DDIDeadlineBehavior.TRIGGER_ON_EXPIRY)
     }
+
+    @Test
+    fun `voice keyword rules match only reviewed aliases`() {
+        val rule = DDIRuleDefinition(
+            signalKind = DDISignalKind.VOICE_KEYWORD_SPOKEN,
+            subjectIds = setOf("voice:等一下", "voice:等等"),
+            requiredMods = setOf("voicechat"),
+        )
+
+        assertThat(
+            rule.matches(
+                DDISignal(DDISignalKind.VOICE_KEYWORD_SPOKEN, subjectId = "voice:等等")
+            )
+        ).isTrue()
+        assertThat(
+            rule.matches(
+                DDISignal(DDISignalKind.VOICE_KEYWORD_SPOKEN, subjectId = "voice:快点")
+            )
+        ).isFalse()
+        assertThat(
+            rule.matches(
+                DDISignal(DDISignalKind.LEGACY, subjectId = "voice:等等")
+            )
+        ).isFalse()
+    }
 }

@@ -10,7 +10,7 @@ import net.minecraft.util.Formatting
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
-/** Renders individual or team-shared status, visible forbidden words and notices. */
+/** 绘制个人/队伍共享状态、可见的禁做词以及通知。 */
 class DDIHudRenderer(
     private val state: DDIHudState,
     private val text: ITextFactory,

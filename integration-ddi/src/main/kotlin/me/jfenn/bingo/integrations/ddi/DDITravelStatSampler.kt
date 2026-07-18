@@ -4,11 +4,10 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Converts vanilla's cumulative travel statistics into per-tick progress.
+ * 将原版累计移动统计转换为每刻进度。
  *
- * A changed signal kind, a newly assigned word, or a statistic reset only
- * establishes a new baseline. This means persisted lifetime statistics can
- * never be mistaken for progress earned during the current DDI word.
+ * 信号类型变化、新词条分配或统计值重置时只会建立新的基线。
+ * 因此，持久化的生涯统计不会被误认为当前 DDI 词条期间取得的进度。
  */
 internal class DDITravelStatSampler {
 

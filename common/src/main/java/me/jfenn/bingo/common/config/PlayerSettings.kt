@@ -18,6 +18,7 @@ data class PlayerSettings(
     val scoreMessages: Boolean = true,
     val itemMessages: Boolean = scoreMessages,
     val nightVision: Boolean = true,
+    val ddiVoiceConsent: Boolean = false,
 ) {
     object V1_S2C : PacketConverter<PlayerSettings> {
         override val id: Identifier = Identifier.of("bingo", "update_settings_s2c")!!

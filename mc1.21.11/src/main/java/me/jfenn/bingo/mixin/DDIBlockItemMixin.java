@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-/** Reports only block placements accepted by vanilla on the server. */
+/** 只上报服务端原版逻辑已经接受的方块放置操作。 */
 @Mixin(BlockItem.class)
 public class DDIBlockItemMixin {
 

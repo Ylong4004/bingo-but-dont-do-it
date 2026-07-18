@@ -5,10 +5,10 @@ import me.jfenn.bingo.platform.event.IEvent
 import java.util.UUID
 
 /**
- * Emitted after Bingo has authoritatively accepted a tile capture.
+ * 在 Bingo 权威确认一次格子占领后发送。
  *
- * Coordinates are zero-based to match [me.jfenn.bingo.common.card.BingoCard.entry].
- * [playerId] is null when the objective cannot be attributed to one player.
+ * 坐标从零开始，以匹配 [me.jfenn.bingo.common.card.BingoCard.entry]。
+ * 无法把 objective 归属到某一名玩家时，[playerId] 为空。
  */
 data class BingoTileCapturedEvent(
     val gameId: UUID,

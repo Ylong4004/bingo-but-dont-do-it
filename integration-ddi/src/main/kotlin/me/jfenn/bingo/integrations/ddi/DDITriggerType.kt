@@ -259,5 +259,8 @@ enum class DDITriggerType(val displayName: String) {
     SWIM_DISTANCE("累计游泳距离"),
     BOAT_DISTANCE("累计乘船距离"),
     DAMAGE_ENEMY_PLAYER("伤害敌队玩家"),
-    DAMAGED_BY_ENEMY_PLAYER("受到敌队玩家伤害");
+    DAMAGED_BY_ENEMY_PLAYER("受到敌队玩家伤害"),
+
+    // ---- 可选的本地语音识别 ----
+    SPEAK_KEYWORD("说出语音关键词");
 }

@@ -2,7 +2,7 @@ package me.jfenn.bingo.integrations.ddi
 
 import me.jfenn.bingo.common.team.BingoTeamKey
 
-/** Per-round history shared by every DDI objective belonging to a Bingo team. */
+/** 同一 Bingo 队伍下所有 DDI 目标共享的单局历史记录。 */
 internal class DDITeamWordHistory {
     private val triggeredRepeatKeys = mutableMapOf<BingoTeamKey, MutableSet<String>>()
 

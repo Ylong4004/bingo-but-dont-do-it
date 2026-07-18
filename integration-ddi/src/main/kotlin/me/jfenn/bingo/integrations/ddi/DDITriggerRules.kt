@@ -3,9 +3,9 @@ package me.jfenn.bingo.integrations.ddi
 import java.util.UUID
 import kotlin.math.abs
 
-/** Pure threshold rules kept separate so edge semantics can be unit-tested. */
+/** 独立保存的纯阈值规则，便于对边界语义进行单元测试。 */
 internal object DDITriggerRules {
-    private const val STATIONARY_RADIUS_SQUARED = 0.01 // 0.1 blocks from the window anchor
+    private const val STATIONARY_RADIUS_SQUARED = 0.01 // 距窗口锚点 0.1 格
     private const val LOOK_TOLERANCE_DEGREES = 10f
 
     fun isWithinStationaryAnchor(
@@ -35,7 +35,7 @@ internal object DDITriggerRules {
         return if (raw > 180f) 360f - raw else raw
     }
 
-    /** Damage that survived mitigation, including absorption hearts consumed. */
+    /** 经减伤后仍生效的伤害，包括消耗的伤害吸收生命。 */
     fun effectiveDamageLoss(healthLost: Float, absorptionLost: Float): Float =
         healthLost.coerceAtLeast(0f) + absorptionLost.coerceAtLeast(0f)
 

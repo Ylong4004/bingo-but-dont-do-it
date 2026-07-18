@@ -107,6 +107,7 @@ private fun MenuComponent.registerBackButton(
         text = text.literal("⬅"),
         textScale = 3.5f,
         brightness = MENU_BRIGHTNESS_ALT,
+        affectsOptions = false,
     ) {
         state.menu.page = targetPage
     }
@@ -160,6 +161,44 @@ private fun createDDIPage(
     )
     pos.add(MENU_DDI_ENABLE_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
 
+    registerDDISectionLink(
+        position = pos + Vector3d(2.35/2, 0.0, 0.0),
+        width = 2.35,
+        title = StringKey.DdiMenuBasic,
+        targetPage = MenuPage.DDI_BASIC,
+        icon = "⚙",
+    )
+    pos.add(2.35 + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDISectionLink(
+        position = pos + Vector3d(2.55/2, 0.0, 0.0),
+        width = 2.55,
+        title = StringKey.DdiMenuSpecialEvents,
+        targetPage = MenuPage.DDI_SPECIAL_EVENTS,
+        icon = "⚡",
+    )
+    pos.add(2.55 + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDISectionLink(
+        position = pos + Vector3d(2.5/2, 0.0, 0.0),
+        width = 2.5,
+        title = StringKey.DdiMenuVoiceKeywords,
+        targetPage = MenuPage.DDI_VOICE_KEYWORDS,
+        icon = "♫",
+    )
+}
+
+private fun createDDIBasicPage(
+    koinScope: Scope,
+    position: Vector3d,
+) = component(koinScope) {
+    val pos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, 0.0, 0.0)
+    registerBackButton(
+        position = pos + Vector3d(MENU_BACK_WIDTH/2, 0.0, 0.0),
+        targetPage = MenuPage.DDI,
+    )
+    pos.add(MENU_BACK_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
     registerDDIMode(
         position = pos + Vector3d(MENU_DDI_MODE_WIDTH/2, 0.0, 0.0),
     )
@@ -172,6 +211,81 @@ private fun createDDIPage(
 
     registerDDITimer(
         position = pos + Vector3d(MENU_DDI_TIMER_WIDTH/2, 0.0, 0.0),
+    )
+}
+
+private fun createDDISpecialEventsPage(
+    koinScope: Scope,
+    position: Vector3d,
+) = component(koinScope) {
+    val pos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, 0.0, 0.0)
+    registerBackButton(
+        position = pos + Vector3d(MENU_BACK_WIDTH/2, 0.0, 0.0),
+        targetPage = MenuPage.DDI,
+    )
+    pos.add(MENU_BACK_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDISpecialEventEnable(
+        position = pos + Vector3d(MENU_DDI_EVENT_ENABLE_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_EVENT_ENABLE_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDISpecialEventInterval(
+        position = pos + Vector3d(MENU_DDI_EVENT_INTERVAL_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_EVENT_INTERVAL_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDISpecialEventPresets(
+        position = pos + Vector3d(MENU_DDI_EVENT_PRESET_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_EVENT_PRESET_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDISpecialEventSelectorLink(
+        position = pos + Vector3d(MENU_DDI_EVENT_SELECT_LINK_WIDTH/2, 0.0, 0.0),
+    )
+}
+
+private fun createDDISpecialEventSelectPage(
+    koinScope: Scope,
+    position: Vector3d,
+) = component(koinScope) {
+    val pos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, 0.0, 0.0)
+    registerBackButton(
+        position = pos + Vector3d(MENU_BACK_WIDTH/2, 0.0, 0.0),
+        targetPage = MenuPage.DDI_SPECIAL_EVENTS,
+    )
+    pos.add(MENU_BACK_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    val selectorWidth = 9.7
+    registerDDISpecialEventSelector(
+        position = pos + Vector3d(selectorWidth/2, 0.0, 0.0),
+        width = selectorWidth,
+    )
+}
+
+private fun createDDIVoiceKeywordsPage(
+    koinScope: Scope,
+    position: Vector3d,
+) = component(koinScope) {
+    val pos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, 0.0, 0.0)
+    registerBackButton(
+        position = pos + Vector3d(MENU_BACK_WIDTH/2, 0.0, 0.0),
+        targetPage = MenuPage.DDI,
+    )
+    pos.add(MENU_BACK_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDIVoiceEnable(
+        position = pos + Vector3d(MENU_DDI_VOICE_ENABLE_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_VOICE_ENABLE_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDIVoiceKeywordEditor(
+        position = pos + Vector3d(MENU_DDI_VOICE_KEYWORDS_WIDTH/2, 0.0, 0.0),
+    )
+    pos.add(MENU_DDI_VOICE_KEYWORDS_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDIVoiceConsentHelp(
+        position = pos + Vector3d(MENU_DDI_VOICE_HELP_WIDTH/2, 0.0, 0.0),
     )
 }
 
@@ -240,13 +354,27 @@ internal fun MenuComponent.registerMenuPage(
             MenuPage.ROOT -> createRootPage(koinScope, position)
             MenuPage.FEATURES -> createFeaturesPage(koinScope, position)
             MenuPage.DDI -> createDDIPage(koinScope, position)
+            MenuPage.DDI_BASIC -> createDDIBasicPage(koinScope, position)
+            MenuPage.DDI_SPECIAL_EVENTS -> createDDISpecialEventsPage(koinScope, position)
+            MenuPage.DDI_SPECIAL_EVENT_SELECT -> createDDISpecialEventSelectPage(koinScope, position)
+            MenuPage.DDI_VOICE_KEYWORDS -> createDDIVoiceKeywordsPage(koinScope, position)
             MenuPage.GOAL -> createGoalPage(koinScope, position)
             MenuPage.ITEMS -> createItemsPage(koinScope, position)
         }
     }
 
+    var activePage: MenuPage? = null
+
     onTick { instance ->
-        pages[menuState.page]?.tick(instance)
+        val requestedPage = menuState.page
+        if (activePage != requestedPage) {
+            // 导航只属于界面操作：重绘外层页面切换器，但不发送 OptionsChanged，
+            // 否则会清除玩家的准备状态。
+            activePage = requestedPage
+            markDirty()
+        } else {
+            pages[requestedPage]?.tick(instance)
+        }
     }
 
     onUpdate { instance ->

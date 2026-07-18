@@ -1,148 +1,76 @@
 package me.jfenn.bingo.integrations.ddi
 
-import me.jfenn.bingo.mixinhandler.PlayerListNameDecorators
 import me.jfenn.bingo.common.text.TextProvider
+import me.jfenn.bingo.mixinhandler.PlayerListNameDecorators
 import me.jfenn.bingo.platform.IPlayerManager
-import net.minecraft.scoreboard.ScoreboardCriterion
-import net.minecraft.scoreboard.ScoreboardDisplaySlot
-import net.minecraft.scoreboard.ScoreboardObjective
-import net.minecraft.scoreboard.number.StyledNumberFormat
-import net.minecraft.server.MinecraftServer
-import net.minecraft.text.Text
+import me.jfenn.bingo.platform.text.IText
 import net.minecraft.util.Formatting
-import org.slf4j.Logger
 import java.util.UUID
 
-/** Publishes authoritative remaining DDI lives in the vanilla Tab player list. */
+/** 将当前 DDI 状态投影为某个玩家应在 Tab 中看到的生命数。 */
+internal object DDITabLivesProjection {
+    fun resolve(
+        playerId: UUID,
+        roundActive: Boolean,
+        inactivePlayerIds: Set<UUID>,
+        playerObjectiveIds: Map<UUID, String>,
+        objectiveStates: Map<String, DDIObjectiveState>,
+    ): Int? {
+        if (!roundActive) return null
+        val objectiveId = playerObjectiveIds[playerId] ?: return null
+        val objective = objectiveStates[objectiveId] ?: return null
+        return if (playerId in inactivePlayerIds || objective.isEliminated) 0 else objective.hearts
+    }
+}
+
+/** 在原有 Tab 玩家名后追加服务端权威的 DDI 剩余生命。 */
 class DDITabLivesService(
-    private val server: MinecraftServer,
     private val playerManager: IPlayerManager,
     private val text: TextProvider,
-    private val log: Logger,
 ) {
     private var livesProvider: ((UUID) -> Int?)? = null
-    private var objective: ScoreboardObjective? = null
     private var decoratorHandle: AutoCloseable? = null
 
+    /** 开始显示生命；整个过程不会创建、占用或修改计分板目标。 */
     fun start(provider: (UUID) -> Int?) {
-        stop()
+        clearDecorator(refreshNames = false)
         livesProvider = provider
-        selectDisplayMode()
+        decoratorHandle = PlayerListNameDecorators.register(::decoratePlayerName)
         refresh()
     }
 
-    /** Refreshes scores and also notices if another mod has taken over the LIST slot. */
+    /** 在生命或玩家状态变化后，向所有在线玩家重发显示名。 */
     fun refresh() {
-        if (livesProvider == null) return
-        val scoreboard = server.scoreboard
-        val activeObjective = objective
-        if (activeObjective != null) {
-            if (scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.LIST) !== activeObjective) {
-                switchToNameSuffix()
-                return
-            }
-            for (player in server.playerManager.playerList) {
-                val lives = livesProvider?.invoke(player.uuid)
-                if (lives == null) {
-                    scoreboard.removeScore(player, activeObjective)
-                } else {
-                    scoreboard.getOrCreateScore(player, activeObjective).score = lives.coerceAtLeast(0)
-                }
-            }
-            return
-        }
-
-        if (scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.LIST) == null) {
-            decoratorHandle?.close()
-            decoratorHandle = null
-            claimListObjective()
-            refreshPlayerNames()
-            refresh()
-        } else {
-            refreshPlayerNames()
-        }
+        if (decoratorHandle == null) return
+        refreshPlayerNames()
     }
 
+    /** 移除 DDI 后缀，并立即恢复原始玩家列表显示名。 */
     fun stop() {
-        val scoreboard = server.scoreboard
-        val activeObjective = objective
-        if (activeObjective != null) {
-            if (scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.LIST) === activeObjective) {
-                scoreboard.setObjectiveSlot(ScoreboardDisplaySlot.LIST, null)
-            }
-            if (scoreboard.getNullableObjective(activeObjective.name) === activeObjective) {
-                scoreboard.removeObjective(activeObjective)
-            }
-        }
-        objective = null
+        clearDecorator(refreshNames = true)
+    }
+
+    private fun decoratePlayerName(playerId: UUID, current: IText): IText? {
+        val lives = livesProvider?.invoke(playerId) ?: return null
+        val safeLives = lives.coerceAtLeast(0)
+        return text.empty()
+            .append(current)
+            .append(" ")
+            .append(
+                text.literal("$safeLives♥").formatted(
+                    if (safeLives > 0) Formatting.RED else Formatting.DARK_GRAY
+                )
+            )
+    }
+
+    private fun clearDecorator(refreshNames: Boolean) {
         livesProvider = null
         decoratorHandle?.close()
         decoratorHandle = null
-        refreshPlayerNames()
-    }
-
-    private fun selectDisplayMode() {
-        val existing = server.scoreboard.getObjectiveForSlot(ScoreboardDisplaySlot.LIST)
-        if (existing == null) {
-            claimListObjective()
-        } else {
-            log.info(
-                "[DDI] Player-list slot is owned by {}; appending lives to player names instead",
-                existing.name,
-            )
-            switchToNameSuffix()
-        }
-    }
-
-    private fun claimListObjective() {
-        val scoreboard = server.scoreboard
-        val objectiveName = generateSequence(0) { it + 1 }
-            .map { index -> if (index == 0) OBJECTIVE_NAME else "bingo_ddi_lv$index" }
-            .first { scoreboard.getNullableObjective(it) == null }
-        val created = scoreboard.addObjective(
-            objectiveName,
-            ScoreboardCriterion.DUMMY,
-            Text.literal("DDI ❤"),
-            ScoreboardCriterion.RenderType.INTEGER,
-            false,
-            StyledNumberFormat.RED,
-        )
-        created.displayName = Text.literal("DDI ❤")
-        created.renderType = ScoreboardCriterion.RenderType.INTEGER
-        created.numberFormat = StyledNumberFormat.RED
-        scoreboard.setObjectiveSlot(ScoreboardDisplaySlot.LIST, created)
-        objective = created
-        log.debug("[DDI] Showing remaining lives in the player-list score column")
-    }
-
-    private fun switchToNameSuffix() {
-        objective?.let { oldObjective ->
-            if (server.scoreboard.getNullableObjective(oldObjective.name) === oldObjective) {
-                server.scoreboard.removeObjective(oldObjective)
-            }
-        }
-        objective = null
-        if (decoratorHandle == null) {
-            decoratorHandle = PlayerListNameDecorators.register { uuid, current ->
-                val lives = livesProvider?.invoke(uuid) ?: return@register null
-                text.empty()
-                    .append(current)
-                    .append("  ")
-                    .append(
-                        text.literal("${lives.coerceAtLeast(0)}♥").formatted(
-                            if (lives > 0) Formatting.RED else Formatting.DARK_GRAY
-                        )
-                    )
-            }
-        }
-        refreshPlayerNames()
+        if (refreshNames) refreshPlayerNames()
     }
 
     private fun refreshPlayerNames() {
         playerManager.getPlayers().forEach(playerManager::updatePlayerListName)
-    }
-
-    private companion object {
-        const val OBJECTIVE_NAME = "bingo_ddi_lives"
     }
 }

@@ -16,8 +16,7 @@ import me.jfenn.bingo.platform.event.IEventBus
 import net.minecraft.client.gui.screen.ChatScreen
 
 /**
- * Registers DDI packet receivers before connecting and projects packets into
- * the client HUD state.
+ * 在建立连接前注册 DDI 数据包接收器，并把数据包映射到客户端 HUD 状态。
  */
 class DDIClientController(
     clientNetworking: IClientNetworking,
@@ -39,8 +38,7 @@ class DDIClientController(
         eventBus.register(wordSyncV1) { clientPacket ->
             val packet = clientPacket.packet
             if (packet.isSelf) {
-                // Never retain the local forbidden word, even when an older
-                // server accidentally includes it in the V1 packet.
+                // 即使旧版服务端意外在 V1 数据包中包含本地禁做词，也绝不能保留它。
                 state.updateSelf(
                     hearts = packet.hearts,
                     maxHearts = packet.maxHearts,
@@ -83,8 +81,8 @@ class DDIClientController(
                 teamName = packet.teamName,
                 teamColor = packet.teamColor,
                 memberNames = packet.memberNames,
-                // DDIHudState ignores this field for the local team. Keeping
-                // the value here makes the privacy boundary explicit at both ends.
+                // DDIHudState 会忽略本队的此字段；这里仍主动清空，使服务端和
+                // 客户端两端的隐私边界都清晰可见。
                 wordText = if (packet.isOwnTeam) "" else packet.wordText,
                 hearts = packet.hearts,
                 maxHearts = packet.maxHearts,

@@ -1,7 +1,7 @@
 # DDI 新词条扩展计划与实施记录
 
 > 方案日期：2026-07-16
-> 状态：v0.4 已完成规则引擎及前三个玩法批次；默认词池已统一为单一 JSON，共 316 条。构建与真实双客户端验收状态见本文实施记录。
+> 状态：v0.5 已完成规则引擎、前四个玩法批次与特殊事件适配；默认词池统一为单一 JSON，共 356 条，其中 40 条为语音关键词。真实多人语音仍需在目标服务器做实机验收。
 > 审查重点：公平性、可检测性、性能、语音隐私，以及每批词条的具体文案。
 
 ## 0. v0.3 实施结果（规则引擎 + 第一批物品/方块）
@@ -67,6 +67,27 @@
 - JAR 共 4,360 个条目、0 个重复路径；内置目录实测为 316 条、316 个唯一 ID，Bingo 事件与移动采样类均存在；
 - SHA-256：`B3BAC025D6C866EF98AD74E710409B824BE11C336CD6852F64524B8CC8798C8F`；
 - 运行要求：Minecraft 1.21.11、Java 21。推荐 Fabric Loader 0.18.4（元数据最低 0.16.9）和 Fabric API 0.140.2+1.21.11（元数据最低 0.140.0+1.21.11）；Fabric Language Kotlin 1.13.7+kotlin.2.2.21 已内嵌。
+
+## 0.2 v0.5 实施结果（第四批语音关键词 + 特殊事件）
+
+- 在同一 `words_v1.json` 中新增 40 条协调、Bingo、Minecraft 资源和战斗常用语音词，
+  默认词池共 356 条；局内还可增加最多 32 条自定义关键词；
+- 通过 Simple Voice Chat 的服务端麦克风事件接收 Opus 包，按玩家有界串行处理，
+  解码、48 kHz→16 kHz 重采样并交给本地 Vosk 中文小模型识别；
+- 语音玩法和玩家同意均默认关闭。只处理当前持有语音词且明确同意的玩家；队伍
+  共享模式要求在线有效队员全部同意并连接语音后，语音词才进入候选池；
+- 模型只在语音开关已打开且语音后端可用时自动准备；后端、模型或 native 不可用
+  时安全降级，不影响 Bingo/DDI，也不会抽到不可完成的语音词；
+- 原 `Dont_do_it` 的 30 种特殊事件已经适配 Bingo 生命周期，并在设置墙提供独立
+  开关、间隔、预设和完整事件池选择；临时实体、方块、状态和玩家物品统一清理；
+- `common`、`integration-voicechat`、`integration-ddi` 共 87 项测试通过，
+  0 failure、0 error；`:mc1.21.11:build` 成功；
+- 成品：`mc1.21.11/build/libs/bingo-but-dont-do-it-1.21.11-v0.5.jar`，
+  59,281,133 bytes；共 4,500 个 JAR 条目、0 个重复路径；SHA-256：
+  `0BF758271C14129693F645085D571C9FFA3F2C204180FD90671AB18FBC8780B6`。
+- 运行要求：Minecraft 1.21.11、Java 21；推荐 Fabric Loader 0.18.4 与 Fabric API
+  0.140.2+1.21.11。普通玩法不要求语音模组；启用语音关键词时，服务端与参与客户端
+  需安装 Minecraft 1.21.11 对应且 API ≥ 2.6.20 的 Simple Voice Chat Fabric 版。
 
 ## 1. 先改“规则模型”，再扩数量
 
@@ -181,11 +202,13 @@ DDI 只消费已经被 Bingo 接受的得分事件，不能自行扫描背包推
 
 ## 5. 第四批：语音关键词（独立可选实验功能）
 
-仓库已有 `integration-voicechat` 和 Simple Voice Chat 分组能力。语音词条建议在这个集成边界上增加独立桥接，但把 ASR、本地模型和同意机制做成可关闭组件；依赖或模型不可用时，所有语音规则从词池排除。
+本批已在 v0.5 完成。实现沿用 `integration-voicechat` 和 Simple Voice Chat 集成边界，
+把 ASR、本地模型和同意机制做成可关闭组件；依赖或模型不可用时，所有语音规则
+都会从词池排除。以下内容保留为实现依据与后续审查标准。
 
 Simple Voice Chat 官方 API 提供服务端 `MicrophonePacketEvent`，可取得玩家连接和 Opus 数据；官方列出的 [Voice Chat Interaction 示例项目](https://modrepo.de/minecraft/voicechat/api/example_projects) 也使用这一事件处理麦克风包。接入应依据 [官方 API 入门](https://modrepo.de/minecraft/voicechat/api/getting_started)、[事件注册说明](https://modrepo.de/minecraft/voicechat/api/registering_events)、[`MicrophonePacketEvent` Javadoc](https://voicechat.modrepo.de/de/maxhenkel/voicechat/api/events/MicrophonePacketEvent.html) 和 [`MicrophonePacket` Javadoc](https://voicechat.modrepo.de/de/maxhenkel/voicechat/api/packets/MicrophonePacket.html)，不要通过网络抓包绕过语音模组 API。
 
-推荐数据流：
+已实现的数据流：
 
 ```text
 MicrophonePacketEvent
@@ -198,9 +221,9 @@ MicrophonePacketEvent
   -> server.execute { 再核对 gameId、objectiveId、assignmentToken 后提交 DDISignal }
 ```
 
-首版建议评估 [Vosk 官方项目](https://github.com/alphacep/vosk-api)：它有 Java 绑定、离线流式识别和可重配词表，适合只识别当前有效的有限关键词。后续可把 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 作为高精度可选后端；其官方项目支持 CPU/多种硬件后端和 VAD，但原生库、模型分发、内存与延迟成本更高。
+v0.5 已采用 [Vosk 官方项目](https://github.com/alphacep/vosk-api) Java `0.3.45` 绑定和离线流式识别，并按当前有效关键词生成有限语法。后续可把 [whisper.cpp](https://github.com/ggml-org/whisper.cpp) 作为高精度可选后端；其官方项目支持 CPU/多种硬件后端和 VAD，但原生库、模型分发、内存与延迟成本更高。
 
-上线前的硬性条件：
+已落实的硬性条件：
 
 - 默认关闭，管理员显式开启，开局向所有玩家提示“语音会在本机/服务器本地即时识别”；
 - 玩家可拒绝；拒绝者不能抽到或参与语音词条；
@@ -220,6 +243,6 @@ MicrophonePacketEvent
 3. **常用方块 B 包（v0.3 已完成）**：新增站立 12、破坏 15、放置 10、持有 18 条，优先使用标签化对象。
 4. **Bingo 事件包（v0.4 已完成核心包）**：已实现“任意格、无格、中心/四角、指定坐标”；领先、连线、难度和类别等状态词留待后续审查。
 5. **移动交互包（v0.4 已完成核心包）**：已实现四种累计距离和任意敌队玩家有效伤害；指定目标、交换物品和其他实体交互留待后续审查。
-6. **语音实验包**：单独开关、单独性能预算、单独隐私验收，不与普通词条批次捆绑发布。
+6. **语音实验包（v0.5 已完成）**：独立开关、玩家显式同意、本地离线识别、有界异步队列、旧分配拒绝和安全降级均已落地；真实多人环境的识别率和性能仍需实机验收。
 
 每一批合入前必须提供：词条 ID/中文文案/触发语义表、不可用时的处理、成功与反例测试、8/32 玩家性能结果，以及“同队触发后不再抽取”的自动化验证。

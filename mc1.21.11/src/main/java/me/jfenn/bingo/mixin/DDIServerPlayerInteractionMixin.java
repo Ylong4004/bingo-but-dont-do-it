@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Carries the clicked block into the post-success screen-open hook. */
+/** 把被点击方块传递给确认成功后的界面打开钩子。 */
 @Mixin(ServerPlayerInteractionManager.class)
 public class DDIServerPlayerInteractionMixin {
 

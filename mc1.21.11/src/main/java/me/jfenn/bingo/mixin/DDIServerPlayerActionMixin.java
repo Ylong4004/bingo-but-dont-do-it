@@ -2,6 +2,7 @@ package me.jfenn.bingo.mixin;
 
 import me.jfenn.bingo.integrations.ddi.DDITriggerDetector;
 import me.jfenn.bingo.integrations.ddi.DDITriggerType;
+import me.jfenn.bingo.integrations.ddi.DDISpecialEventHooks;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
@@ -22,13 +23,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.OptionalInt;
 
 /**
- * Reports actions for which Fabric has no reliable post-success callback.
+ * 上报 Fabric 没有可靠成功后回调的操作。
  */
 @Mixin(ServerPlayerEntity.class)
 public class DDIServerPlayerActionMixin {
 
     @Unique
     private String bingo$ddiConsumedFoodId;
+
+    @Unique
+    private boolean bingo$halveDDIFoodGain;
+
+    @Unique
+    private int bingo$ddiFoodBefore;
+
+    @Unique
+    private float bingo$ddiSaturationBefore;
 
     @Inject(method = "openHandledScreen", at = @At("RETURN"))
     private void bingo$reportDDIContainerOpen(
@@ -42,17 +52,36 @@ public class DDIServerPlayerActionMixin {
 
     @Inject(method = "consumeItem()V", at = @At("HEAD"))
     private void bingo$captureDDIConsumedFood(CallbackInfo ci) {
-        ItemStack activeItem = ((ServerPlayerEntity) (Object) this).getActiveItem();
+        ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
+        ItemStack activeItem = player.getActiveItem();
         bingo$ddiConsumedFoodId = !activeItem.isEmpty() && activeItem.contains(DataComponentTypes.FOOD)
                 ? Registries.ITEM.getId(activeItem.getItem()).toString()
                 : null;
+        bingo$halveDDIFoodGain = bingo$ddiConsumedFoodId != null
+                && DDISpecialEventHooks.hasHungerDisease(player);
+        if (bingo$halveDDIFoodGain) {
+            bingo$ddiFoodBefore = player.getHungerManager().getFoodLevel();
+            bingo$ddiSaturationBefore = player.getHungerManager().getSaturationLevel();
+        }
     }
 
     @Inject(method = "consumeItem()V", at = @At("RETURN"))
     private void bingo$reportDDIConsumedFood(CallbackInfo ci) {
+        ServerPlayerEntity player = (ServerPlayerEntity) (Object) this;
+        if (bingo$halveDDIFoodGain) {
+            int foodAfter = player.getHungerManager().getFoodLevel();
+            float saturationAfter = player.getHungerManager().getSaturationLevel();
+            int foodGain = Math.max(0, foodAfter - bingo$ddiFoodBefore);
+            float saturationGain = Math.max(0F, saturationAfter - bingo$ddiSaturationBefore);
+            player.getHungerManager().setFoodLevel(bingo$ddiFoodBefore + foodGain / 2);
+            player.getHungerManager().setSaturationLevel(
+                    bingo$ddiSaturationBefore + saturationGain / 2F
+            );
+        }
+        bingo$halveDDIFoodGain = false;
         if (bingo$ddiConsumedFoodId != null) {
             DDITriggerDetector.reportConsumed(
-                    (ServerPlayerEntity) (Object) this,
+                    player,
                     bingo$ddiConsumedFoodId
             );
             bingo$ddiConsumedFoodId = null;
@@ -73,9 +102,8 @@ public class DDIServerPlayerActionMixin {
             );
         }
 
-        // This statistic is emitted for every successful player-owned drop,
-        // including Q/Ctrl+Q and THROW actions from an inventory screen. Death
-        // drops do not use the retained-ownership statistic path.
+        // 每次由玩家成功执行的丢弃都会产生此统计，包括 Q/Ctrl+Q 和背包界面的
+        // THROW 操作。死亡掉落不会经过保留所有权的统计路径。
         if (stat.getType() == Stats.DROPPED && value instanceof Item item) {
             DDITriggerDetector.reportDropped(
                     player,

@@ -10,7 +10,7 @@ import me.jfenn.bingo.platform.text.IText
 import net.minecraft.util.Formatting
 import org.koin.core.Koin
 
-/** Game-over tab listing only words that actually reduced a team's hearts. */
+/** 赛后标签页，只列出确实导致队伍扣血的词条。 */
 internal class BingoEndDDIWidget(
     koin: Koin,
     private val gameOver: BingoHudState.GameOver,

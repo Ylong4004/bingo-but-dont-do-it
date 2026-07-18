@@ -506,7 +506,7 @@ data class GameOverPacket(
         }
     }
 
-    /** Adds the per-team DDI heart-loss history shown on the game-over screen. */
+    /** 附加赛后界面显示的各队 DDI 扣血记录。 */
     object V9 : PacketConverter<GameOverPacket> {
         override val id = Identifier.of(MOD_ID_BINGO, "game_over_v9")!!
 

@@ -18,7 +18,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Drag/resize editor for the DDI status panel, modelled after the Bingo card editor. */
+/** 参照 Bingo 棋盘编辑器实现的 DDI 状态面板拖动及缩放编辑器。 */
 internal class DDIHudPlacementScreen(
     private val onCloseCallback: (Result) -> Unit,
     private val text: TextProvider,

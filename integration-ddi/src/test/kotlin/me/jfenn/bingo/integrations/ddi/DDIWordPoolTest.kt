@@ -21,8 +21,8 @@ class DDIWordPoolTest {
     fun `expanded pool has unique ids and preserves every legacy trigger`() {
         val words = pool.getAllWords()
 
-        assertThat(words).hasSize(316)
-        assertThat(words.map { it.id }.toSet()).hasSize(316)
+        assertThat(words).hasSize(356)
+        assertThat(words.map { it.id }.toSet()).hasSize(356)
         assertThat(words.map { it.triggerType }.toSet())
             .isEqualTo(DDITriggerType.entries.toSet())
     }
@@ -62,6 +62,32 @@ class DDIWordPoolTest {
                 "player_interaction" to 4,
             )
         )
+    }
+
+    @Test
+    fun `voice batch has reviewed aliases and remains optional`() {
+        val voiceWords = pool.getAllWords().filter { it.category == "voice" }
+
+        assertThat(voiceWords).hasSize(40)
+        assertThat(voiceWords.all { it.rule.signalKind == DDISignalKind.VOICE_KEYWORD_SPOKEN })
+            .isEqualTo(true)
+        assertThat(voiceWords.all { "voicechat" in it.rule.requiredMods })
+            .isEqualTo(true)
+        assertThat(pool.availableSize()).isEqualTo(316)
+        assertThat(pool.findById("voice_diamond")?.rule?.subjectIds)
+            .isEqualTo(setOf("voice:钻石", "voice:钻石矿"))
+    }
+
+    @Test
+    fun `custom voice words are normalized stable and do not duplicate built-ins`() {
+        val first = pool.setCustomVoiceKeywords(listOf("  远古残骸  ", "远古残骸", "钻石"))
+        val firstId = first.single().id
+        val second = pool.setCustomVoiceKeywords(listOf("远古残骸"))
+
+        assertThat(first.single().displayText).isEqualTo("说出“远古残骸”")
+        assertThat(first.single().rule.subjectIds).isEqualTo(setOf("voice:远古残骸"))
+        assertThat(second.single().id).isEqualTo(firstId)
+        assertThat(pool.findById(firstId)).isEqualTo(second.single())
     }
 
     @Test

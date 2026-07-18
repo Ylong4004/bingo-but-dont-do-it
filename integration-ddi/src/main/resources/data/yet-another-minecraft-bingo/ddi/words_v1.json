@@ -2267,7 +2267,9 @@
       "category": "bingo",
       "rule": {
         "signal": "BINGO_TILE_CAPTURED",
-        "subjectTags": ["bingo:any_tile"]
+        "subjectTags": [
+          "bingo:any_tile"
+        ]
       }
     },
     {
@@ -2278,7 +2280,9 @@
       "category": "bingo",
       "rule": {
         "signal": "BINGO_TILE_CAPTURED",
-        "subjectTags": ["bingo:any_tile"],
+        "subjectTags": [
+          "bingo:any_tile"
+        ],
         "deadlineBehavior": "TRIGGER_ON_EXPIRY",
         "matchBehavior": "SATISFY_DEADLINE"
       }
@@ -2291,7 +2295,9 @@
       "category": "bingo",
       "rule": {
         "signal": "BINGO_TILE_CAPTURED",
-        "subjectTags": ["bingo:center"]
+        "subjectTags": [
+          "bingo:center"
+        ]
       }
     },
     {
@@ -2302,172 +2308,908 @@
       "category": "bingo",
       "rule": {
         "signal": "BINGO_TILE_CAPTURED",
-        "subjectTags": ["bingo:corner"]
+        "subjectTags": [
+          "bingo:corner"
+        ]
       }
     },
     {
-      "id": "bingo_capture_tile_1_1", "displayText": "完成 Bingo 棋盘格（列1，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_1", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_1"]}
+      "id": "bingo_capture_tile_1_1",
+      "displayText": "完成 Bingo 棋盘格（列1，行1）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_1_1",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_1_1"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_2_1", "displayText": "完成 Bingo 棋盘格（列2，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_1", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_1"]}
+      "id": "bingo_capture_tile_2_1",
+      "displayText": "完成 Bingo 棋盘格（列2，行1）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_2_1",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_2_1"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_3_1", "displayText": "完成 Bingo 棋盘格（列3，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_1", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_1"]}
+      "id": "bingo_capture_tile_3_1",
+      "displayText": "完成 Bingo 棋盘格（列3，行1）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_3_1",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_3_1"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_4_1", "displayText": "完成 Bingo 棋盘格（列4，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_1", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_1"]}
+      "id": "bingo_capture_tile_4_1",
+      "displayText": "完成 Bingo 棋盘格（列4，行1）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_4_1",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_4_1"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_5_1", "displayText": "完成 Bingo 棋盘格（列5，行1）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_1", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_1"]}
+      "id": "bingo_capture_tile_5_1",
+      "displayText": "完成 Bingo 棋盘格（列5，行1）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_5_1",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_5_1"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_1_2", "displayText": "完成 Bingo 棋盘格（列1，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_2", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_2"]}
+      "id": "bingo_capture_tile_1_2",
+      "displayText": "完成 Bingo 棋盘格（列1，行2）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_1_2",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_1_2"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_2_2", "displayText": "完成 Bingo 棋盘格（列2，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_2", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_2"]}
+      "id": "bingo_capture_tile_2_2",
+      "displayText": "完成 Bingo 棋盘格（列2，行2）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_2_2",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_2_2"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_3_2", "displayText": "完成 Bingo 棋盘格（列3，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_2", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_2"]}
+      "id": "bingo_capture_tile_3_2",
+      "displayText": "完成 Bingo 棋盘格（列3，行2）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_3_2",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_3_2"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_4_2", "displayText": "完成 Bingo 棋盘格（列4，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_2", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_2"]}
+      "id": "bingo_capture_tile_4_2",
+      "displayText": "完成 Bingo 棋盘格（列4，行2）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_4_2",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_4_2"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_5_2", "displayText": "完成 Bingo 棋盘格（列5，行2）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_2", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_2"]}
+      "id": "bingo_capture_tile_5_2",
+      "displayText": "完成 Bingo 棋盘格（列5，行2）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_5_2",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_5_2"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_1_3", "displayText": "完成 Bingo 棋盘格（列1，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_3", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_3"]}
+      "id": "bingo_capture_tile_1_3",
+      "displayText": "完成 Bingo 棋盘格（列1，行3）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_1_3",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_1_3"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_2_3", "displayText": "完成 Bingo 棋盘格（列2，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_3", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_3"]}
+      "id": "bingo_capture_tile_2_3",
+      "displayText": "完成 Bingo 棋盘格（列2，行3）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_2_3",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_2_3"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_3_3", "displayText": "完成 Bingo 棋盘格（列3，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_3", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_3"]}
+      "id": "bingo_capture_tile_3_3",
+      "displayText": "完成 Bingo 棋盘格（列3，行3）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_3_3",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_3_3"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_4_3", "displayText": "完成 Bingo 棋盘格（列4，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_3", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_3"]}
+      "id": "bingo_capture_tile_4_3",
+      "displayText": "完成 Bingo 棋盘格（列4，行3）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_4_3",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_4_3"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_5_3", "displayText": "完成 Bingo 棋盘格（列5，行3）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_3", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_3"]}
+      "id": "bingo_capture_tile_5_3",
+      "displayText": "完成 Bingo 棋盘格（列5，行3）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_5_3",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_5_3"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_1_4", "displayText": "完成 Bingo 棋盘格（列1，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_4", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_4"]}
+      "id": "bingo_capture_tile_1_4",
+      "displayText": "完成 Bingo 棋盘格（列1，行4）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_1_4",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_1_4"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_2_4", "displayText": "完成 Bingo 棋盘格（列2，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_4", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_4"]}
+      "id": "bingo_capture_tile_2_4",
+      "displayText": "完成 Bingo 棋盘格（列2，行4）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_2_4",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_2_4"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_3_4", "displayText": "完成 Bingo 棋盘格（列3，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_4", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_4"]}
+      "id": "bingo_capture_tile_3_4",
+      "displayText": "完成 Bingo 棋盘格（列3，行4）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_3_4",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_3_4"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_4_4", "displayText": "完成 Bingo 棋盘格（列4，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_4", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_4"]}
+      "id": "bingo_capture_tile_4_4",
+      "displayText": "完成 Bingo 棋盘格（列4，行4）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_4_4",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_4_4"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_5_4", "displayText": "完成 Bingo 棋盘格（列5，行4）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_4", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_4"]}
+      "id": "bingo_capture_tile_5_4",
+      "displayText": "完成 Bingo 棋盘格（列5，行4）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_5_4",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_5_4"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_1_5", "displayText": "完成 Bingo 棋盘格（列1，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_1_5", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_1_5"]}
+      "id": "bingo_capture_tile_1_5",
+      "displayText": "完成 Bingo 棋盘格（列1，行5）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_1_5",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_1_5"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_2_5", "displayText": "完成 Bingo 棋盘格（列2，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_2_5", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_2_5"]}
+      "id": "bingo_capture_tile_2_5",
+      "displayText": "完成 Bingo 棋盘格（列2，行5）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_2_5",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_2_5"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_3_5", "displayText": "完成 Bingo 棋盘格（列3，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_3_5", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_3_5"]}
+      "id": "bingo_capture_tile_3_5",
+      "displayText": "完成 Bingo 棋盘格（列3，行5）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_3_5",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_3_5"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_4_5", "displayText": "完成 Bingo 棋盘格（列4，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_4_5", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_4_5"]}
+      "id": "bingo_capture_tile_4_5",
+      "displayText": "完成 Bingo 棋盘格（列4，行5）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_4_5",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_4_5"
+        ]
+      }
     },
     {
-      "id": "bingo_capture_tile_5_5", "displayText": "完成 Bingo 棋盘格（列5，行5）", "triggerType": "COMPLETE_BINGO_TILE", "repeatKey": "bingo_tile_captured:tile_5_5", "category": "bingo", "weight": 0.12,
-      "rule": {"signal": "BINGO_TILE_CAPTURED", "subjectIds": ["bingo:tile_5_5"]}
+      "id": "bingo_capture_tile_5_5",
+      "displayText": "完成 Bingo 棋盘格（列5，行5）",
+      "triggerType": "COMPLETE_BINGO_TILE",
+      "repeatKey": "bingo_tile_captured:tile_5_5",
+      "category": "bingo",
+      "weight": 0.12,
+      "rule": {
+        "signal": "BINGO_TILE_CAPTURED",
+        "subjectIds": [
+          "bingo:tile_5_5"
+        ]
+      }
     },
     {
-      "id": "move_walk_25_blocks", "displayText": "累计步行25格", "triggerType": "WALK_DISTANCE", "repeatKey": "distance_walked_cm:2500", "category": "movement",
-      "rule": {"signal": "DISTANCE_WALKED_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+      "id": "move_walk_25_blocks",
+      "displayText": "累计步行25格",
+      "triggerType": "WALK_DISTANCE",
+      "repeatKey": "distance_walked_cm:2500",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_WALKED_CM",
+        "requiredProgress": 2500,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_walk_50_blocks", "displayText": "累计步行50格", "triggerType": "WALK_DISTANCE", "repeatKey": "distance_walked_cm:5000", "category": "movement",
-      "rule": {"signal": "DISTANCE_WALKED_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+      "id": "move_walk_50_blocks",
+      "displayText": "累计步行50格",
+      "triggerType": "WALK_DISTANCE",
+      "repeatKey": "distance_walked_cm:5000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_WALKED_CM",
+        "requiredProgress": 5000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_walk_100_blocks", "displayText": "累计步行100格", "triggerType": "WALK_DISTANCE", "repeatKey": "distance_walked_cm:10000", "category": "movement",
-      "rule": {"signal": "DISTANCE_WALKED_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+      "id": "move_walk_100_blocks",
+      "displayText": "累计步行100格",
+      "triggerType": "WALK_DISTANCE",
+      "repeatKey": "distance_walked_cm:10000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_WALKED_CM",
+        "requiredProgress": 10000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_sprint_25_blocks", "displayText": "累计疾跑25格", "triggerType": "SPRINT_DISTANCE", "repeatKey": "distance_sprinted_cm:2500", "category": "movement",
-      "rule": {"signal": "DISTANCE_SPRINTED_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+      "id": "move_sprint_25_blocks",
+      "displayText": "累计疾跑25格",
+      "triggerType": "SPRINT_DISTANCE",
+      "repeatKey": "distance_sprinted_cm:2500",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_SPRINTED_CM",
+        "requiredProgress": 2500,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_sprint_50_blocks", "displayText": "累计疾跑50格", "triggerType": "SPRINT_DISTANCE", "repeatKey": "distance_sprinted_cm:5000", "category": "movement",
-      "rule": {"signal": "DISTANCE_SPRINTED_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+      "id": "move_sprint_50_blocks",
+      "displayText": "累计疾跑50格",
+      "triggerType": "SPRINT_DISTANCE",
+      "repeatKey": "distance_sprinted_cm:5000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_SPRINTED_CM",
+        "requiredProgress": 5000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_sprint_100_blocks", "displayText": "累计疾跑100格", "triggerType": "SPRINT_DISTANCE", "repeatKey": "distance_sprinted_cm:10000", "category": "movement",
-      "rule": {"signal": "DISTANCE_SPRINTED_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+      "id": "move_sprint_100_blocks",
+      "displayText": "累计疾跑100格",
+      "triggerType": "SPRINT_DISTANCE",
+      "repeatKey": "distance_sprinted_cm:10000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_SPRINTED_CM",
+        "requiredProgress": 10000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_swim_25_blocks", "displayText": "累计游泳25格", "triggerType": "SWIM_DISTANCE", "repeatKey": "distance_swum_cm:2500", "category": "movement",
-      "rule": {"signal": "DISTANCE_SWUM_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+      "id": "move_swim_25_blocks",
+      "displayText": "累计游泳25格",
+      "triggerType": "SWIM_DISTANCE",
+      "repeatKey": "distance_swum_cm:2500",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_SWUM_CM",
+        "requiredProgress": 2500,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_swim_50_blocks", "displayText": "累计游泳50格", "triggerType": "SWIM_DISTANCE", "repeatKey": "distance_swum_cm:5000", "category": "movement",
-      "rule": {"signal": "DISTANCE_SWUM_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+      "id": "move_swim_50_blocks",
+      "displayText": "累计游泳50格",
+      "triggerType": "SWIM_DISTANCE",
+      "repeatKey": "distance_swum_cm:5000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_SWUM_CM",
+        "requiredProgress": 5000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_swim_100_blocks", "displayText": "累计游泳100格", "triggerType": "SWIM_DISTANCE", "repeatKey": "distance_swum_cm:10000", "category": "movement",
-      "rule": {"signal": "DISTANCE_SWUM_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+      "id": "move_swim_100_blocks",
+      "displayText": "累计游泳100格",
+      "triggerType": "SWIM_DISTANCE",
+      "repeatKey": "distance_swum_cm:10000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_SWUM_CM",
+        "requiredProgress": 10000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_boat_25_blocks", "displayText": "累计乘船移动25格", "triggerType": "BOAT_DISTANCE", "repeatKey": "distance_boat_cm:2500", "category": "movement",
-      "rule": {"signal": "DISTANCE_BOAT_CM", "requiredProgress": 2500, "progressMode": "QUANTITY"}
+      "id": "move_boat_25_blocks",
+      "displayText": "累计乘船移动25格",
+      "triggerType": "BOAT_DISTANCE",
+      "repeatKey": "distance_boat_cm:2500",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_BOAT_CM",
+        "requiredProgress": 2500,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_boat_50_blocks", "displayText": "累计乘船移动50格", "triggerType": "BOAT_DISTANCE", "repeatKey": "distance_boat_cm:5000", "category": "movement",
-      "rule": {"signal": "DISTANCE_BOAT_CM", "requiredProgress": 5000, "progressMode": "QUANTITY"}
+      "id": "move_boat_50_blocks",
+      "displayText": "累计乘船移动50格",
+      "triggerType": "BOAT_DISTANCE",
+      "repeatKey": "distance_boat_cm:5000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_BOAT_CM",
+        "requiredProgress": 5000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "move_boat_100_blocks", "displayText": "累计乘船移动100格", "triggerType": "BOAT_DISTANCE", "repeatKey": "distance_boat_cm:10000", "category": "movement",
-      "rule": {"signal": "DISTANCE_BOAT_CM", "requiredProgress": 10000, "progressMode": "QUANTITY"}
+      "id": "move_boat_100_blocks",
+      "displayText": "累计乘船移动100格",
+      "triggerType": "BOAT_DISTANCE",
+      "repeatKey": "distance_boat_cm:10000",
+      "category": "movement",
+      "rule": {
+        "signal": "DISTANCE_BOAT_CM",
+        "requiredProgress": 10000,
+        "progressMode": "QUANTITY"
+      }
     },
     {
-      "id": "combat_damage_enemy_player_01", "displayText": "对任意敌队玩家造成有效伤害", "triggerType": "DAMAGE_ENEMY_PLAYER", "repeatKey": "enemy_player_damaged:1", "category": "player_interaction",
-      "rule": {"signal": "ENEMY_PLAYER_DAMAGED"}
+      "id": "combat_damage_enemy_player_01",
+      "displayText": "对任意敌队玩家造成有效伤害",
+      "triggerType": "DAMAGE_ENEMY_PLAYER",
+      "repeatKey": "enemy_player_damaged:1",
+      "category": "player_interaction",
+      "rule": {
+        "signal": "ENEMY_PLAYER_DAMAGED"
+      }
     },
     {
-      "id": "combat_damage_enemy_player_03", "displayText": "对敌队玩家造成3次有效伤害", "triggerType": "DAMAGE_ENEMY_PLAYER", "repeatKey": "enemy_player_damaged:3", "category": "player_interaction",
-      "rule": {"signal": "ENEMY_PLAYER_DAMAGED", "requiredProgress": 3, "progressMode": "ACTIONS"}
+      "id": "combat_damage_enemy_player_03",
+      "displayText": "对敌队玩家造成3次有效伤害",
+      "triggerType": "DAMAGE_ENEMY_PLAYER",
+      "repeatKey": "enemy_player_damaged:3",
+      "category": "player_interaction",
+      "rule": {
+        "signal": "ENEMY_PLAYER_DAMAGED",
+        "requiredProgress": 3,
+        "progressMode": "ACTIONS"
+      }
     },
     {
-      "id": "combat_damaged_by_enemy_player_01", "displayText": "受到任意敌队玩家的有效伤害", "triggerType": "DAMAGED_BY_ENEMY_PLAYER", "repeatKey": "damaged_by_enemy_player:1", "category": "player_interaction",
-      "rule": {"signal": "DAMAGED_BY_ENEMY_PLAYER"}
+      "id": "combat_damaged_by_enemy_player_01",
+      "displayText": "受到任意敌队玩家的有效伤害",
+      "triggerType": "DAMAGED_BY_ENEMY_PLAYER",
+      "repeatKey": "damaged_by_enemy_player:1",
+      "category": "player_interaction",
+      "rule": {
+        "signal": "DAMAGED_BY_ENEMY_PLAYER"
+      }
     },
     {
-      "id": "combat_damaged_by_enemy_player_03", "displayText": "受到敌队玩家3次有效伤害", "triggerType": "DAMAGED_BY_ENEMY_PLAYER", "repeatKey": "damaged_by_enemy_player:3", "category": "player_interaction",
-      "rule": {"signal": "DAMAGED_BY_ENEMY_PLAYER", "requiredProgress": 3, "progressMode": "ACTIONS"}
+      "id": "combat_damaged_by_enemy_player_03",
+      "displayText": "受到敌队玩家3次有效伤害",
+      "triggerType": "DAMAGED_BY_ENEMY_PLAYER",
+      "repeatKey": "damaged_by_enemy_player:3",
+      "category": "player_interaction",
+      "rule": {
+        "signal": "DAMAGED_BY_ENEMY_PLAYER",
+        "requiredProgress": 3,
+        "progressMode": "ACTIONS"
+      }
+    },
+    {
+      "id": "voice_wait",
+      "displayText": "说出“等一下”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:wait",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:等一下", "voice:等等", "voice:等会儿", "voice:等一会"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_hurry",
+      "displayText": "说出“快一点”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:hurry",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:快一点", "voice:快点", "voice:赶紧"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_come_here",
+      "displayText": "说出“过来”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:come_here",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:过来", "voice:来我这", "voice:到我这里"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_gather",
+      "displayText": "说出“集合”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:gather",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:集合", "voice:集合一下", "voice:汇合"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_split_up",
+      "displayText": "说出“分开”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:split_up",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:分开", "voice:分头行动"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_help_me",
+      "displayText": "说出“帮我”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:help_me",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:帮我", "voice:帮一下", "voice:来帮我"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_save_me",
+      "displayText": "说出“救我”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:save_me",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:救我", "voice:救一下", "voice:快救我"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_done",
+      "displayText": "说出“完成了”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:done",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:完成了", "voice:做好了", "voice:搞定了"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_one_left",
+      "displayText": "说出“差一个”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:one_left",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:差一个", "voice:还差一个", "voice:只差一个"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_be_careful",
+      "displayText": "说出“小心”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:be_careful",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:小心", "voice:小心点", "voice:注意安全"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_give_me",
+      "displayText": "说出“给我”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:give_me",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:给我", "voice:给我一个", "voice:给一下"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_what_missing",
+      "displayText": "说出“缺什么”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:what_missing",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:缺什么", "voice:还缺什么", "voice:需要什么"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_board",
+      "displayText": "说出“棋盘”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:board",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:棋盘", "voice:bingo棋盘"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_tile",
+      "displayText": "说出“格子”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:tile",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:格子", "voice:棋盘格", "voice:目标格"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_countdown",
+      "displayText": "说出“倒计时”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:countdown",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:倒计时", "voice:时间不多", "voice:快到时间"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_complete_tile",
+      "displayText": "说出“完成格子”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:complete_tile",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:完成格子", "voice:做完格子", "voice:拿下格子"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_center_tile",
+      "displayText": "说出“中间格”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:center_tile",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:中间格", "voice:中心格", "voice:正中间"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_line",
+      "displayText": "说出“连线”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:line",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:连线", "voice:成线", "voice:bingo"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_overworld",
+      "displayText": "说出“主世界”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:overworld",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:主世界", "voice:地表"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_nether",
+      "displayText": "说出“下界”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:nether",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:下界", "voice:地狱"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_end",
+      "displayText": "说出“末地”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:end",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:末地", "voice:末影之地"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_village",
+      "displayText": "说出“村庄”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:village",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:村庄", "voice:村子"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_cave",
+      "displayText": "说出“矿洞”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:cave",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:矿洞", "voice:洞穴"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_fortress",
+      "displayText": "说出“堡垒”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:fortress",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:堡垒", "voice:下界堡垒"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_stronghold",
+      "displayText": "说出“要塞”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:stronghold",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:要塞", "voice:末地要塞"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_crafting_table",
+      "displayText": "说出“工作台”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:crafting_table",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:工作台", "voice:合成台"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_furnace",
+      "displayText": "说出“熔炉”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:furnace",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:熔炉", "voice:炉子"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_diamond",
+      "displayText": "说出“钻石”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:diamond",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:钻石", "voice:钻石矿"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_redstone",
+      "displayText": "说出“红石”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:redstone",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:红石", "voice:红石矿"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_emerald",
+      "displayText": "说出“绿宝石”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:emerald",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:绿宝石", "voice:绿宝石矿"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_netherite",
+      "displayText": "说出“下界合金”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:netherite",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:下界合金", "voice:合金"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_obsidian",
+      "displayText": "说出“黑曜石”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:obsidian",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:黑曜石"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_creeper",
+      "displayText": "说出“苦力怕”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:creeper",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:苦力怕", "voice:爬行者"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_enderman",
+      "displayText": "说出“末影人”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:enderman",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:末影人", "voice:小黑"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_blaze",
+      "displayText": "说出“烈焰人”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:blaze",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:烈焰人", "voice:烈焰怪"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_ghast",
+      "displayText": "说出“恶魂”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:ghast",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:恶魂"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_enemy",
+      "displayText": "说出“敌人”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:enemy",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:敌人", "voice:对面", "voice:敌队"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_home",
+      "displayText": "说出“回家”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:home",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:回家", "voice:回基地"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_sleep",
+      "displayText": "说出“睡觉”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:sleep",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:睡觉", "voice:睡一觉"], "requiredMods": ["voicechat"]}
+    },
+    {
+      "id": "voice_portal",
+      "displayText": "说出“传送门”",
+      "triggerType": "SPEAK_KEYWORD",
+      "repeatKey": "voice:portal",
+      "category": "voice",
+      "weight": 0.45,
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:传送门", "voice:传送"], "requiredMods": ["voicechat"]}
     }
   ]
 }

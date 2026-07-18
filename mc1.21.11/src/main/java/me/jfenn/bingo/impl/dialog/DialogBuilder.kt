@@ -16,6 +16,7 @@ import net.minecraft.dialog.body.DialogBody
 import net.minecraft.dialog.body.ItemDialogBody
 import net.minecraft.dialog.body.PlainMessageDialogBody
 import net.minecraft.dialog.input.BooleanInputControl
+import net.minecraft.dialog.input.TextInputControl
 import net.minecraft.dialog.type.ConfirmationDialog
 import net.minecraft.dialog.type.DialogInput
 import net.minecraft.dialog.type.MultiActionDialog
@@ -45,6 +46,19 @@ abstract class DialogBuilder : IDialogBuilder {
                 inputs.add(DialogInput(
                     input.key,
                     BooleanInputControl(input.label.value, false, "true", "false")
+                ))
+            }
+            is IDialogInput.Text -> {
+                inputs.add(DialogInput(
+                    input.key,
+                    TextInputControl(
+                        input.width,
+                        input.label.value,
+                        true,
+                        input.initial,
+                        input.maxLength,
+                        Optional.empty(),
+                    )
                 ))
             }
         }

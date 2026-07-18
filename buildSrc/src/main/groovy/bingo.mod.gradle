@@ -12,6 +12,14 @@ dependencies {
     shade libs.insert.koin.core
     implementation libs.insert.koin.logger.slf4j
     shade libs.insert.koin.logger.slf4j
+    implementation(libs.vosk) {
+        // Minecraft 已提供 JNA。携带 Vosk 较旧的传递依赖会产生重复类，
+        // 并可能选择错误的原生 ABI。
+        exclude group: "net.java.dev.jna", module: "jna"
+    }
+    shade(libs.vosk) {
+        exclude group: "net.java.dev.jna", module: "jna"
+    }
 
     include libs.hikari
     shade libs.sqldelight.jdbc
@@ -61,10 +69,9 @@ shadowJar {
 
     configurations = [project.configurations.shade]
 
-    // Multiple integrations provide the same ServiceLoader descriptor.
-    // Shadow's normal copy policy already handles the other duplicate
-    // resources; forcing Gradle's EXCLUDE policy here removes files before
-    // Shadow's transformers see them (and can produce a directory-only JAR).
+    // 多个集成模块会提供同名 ServiceLoader 描述文件。Shadow 的常规复制策略
+    // 已能处理其他重复资源；若在此强制使用 Gradle 的 EXCLUDE 策略，会在
+    // Shadow 转换器处理前删除文件，甚至可能生成只含目录的 JAR。
     mergeServiceFiles()
 
     dependencies {
@@ -81,6 +88,7 @@ shadowJar {
         include(project(":platform"))
         include { it.moduleGroup == "io.insert-koin" }
         include { it.moduleGroup == "app.cash.sqldelight" }
+        include { it.moduleGroup == "com.alphacephei" }
     }
 
     // This should only affect usage of Kotlin features if someone tries to use the entire mod jar as a library

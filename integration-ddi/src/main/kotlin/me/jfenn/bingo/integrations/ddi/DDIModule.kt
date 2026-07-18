@@ -18,6 +18,8 @@ val ddiModule = module {
         scopedOf(::DDITriggerDetector)
         scopedOf(::DDITabLivesService)
         scopedOf(::DDIObjectiveManager)
+        scopedOf(::DDISpecialEventService)
+        scopedOf(::DDIVoiceKeywordController)
         scopedOf(::DDIGameController)
     }
 }

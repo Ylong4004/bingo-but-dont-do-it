@@ -3,7 +3,7 @@ package me.jfenn.bingo.common.game
 import kotlinx.serialization.Serializable
 import me.jfenn.bingo.common.team.BingoTeamKey
 
-/** One forbidden word that actually reduced an objective's hearts. */
+/** 一条确实导致 objective 扣除生命的禁做词。 */
 @Serializable
 data class DDIDamageHistoryEntry(
     val wordText: String,
@@ -12,7 +12,7 @@ data class DDIDamageHistoryEntry(
     val maxHearts: Int,
 )
 
-/** Ordered damage history for one Bingo team. */
+/** 一支 Bingo 队伍按发生顺序排列的扣血记录。 */
 @Serializable
 data class DDITeamDamageHistory(
     val teamKey: BingoTeamKey,
@@ -21,8 +21,8 @@ data class DDITeamDamageHistory(
 )
 
 /**
- * Scoped bridge between the optional DDI integration and the common game-over
- * pipeline. GameOverInfo snapshots this data before POSTGAME clears DDI state.
+ * 可选 DDI 集成与通用赛后流程之间的作用域桥接。
+ * GameOverInfo 会在 POSTGAME 清理 DDI 状态前保存这些数据的快照。
  */
 class DDIGameHistoryService {
     private data class MutableTeamHistory(

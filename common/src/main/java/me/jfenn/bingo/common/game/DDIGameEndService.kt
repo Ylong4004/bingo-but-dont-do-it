@@ -10,11 +10,10 @@ import org.slf4j.Logger
 import java.time.Instant
 
 /**
- * Public bridge for optional game modes that can produce a Bingo winner.
+ * 供能够产生 Bingo 胜者的可选玩法使用的公开桥接。
  *
- * [GameService] intentionally remains internal to common. This bridge keeps
- * winner mutation, the standard team-winner event and normal game shutdown in
- * one guarded operation so integrations cannot partially end a game.
+ * [GameService] 特意保持为 common 内部实现。此桥接把胜者修改、标准队伍胜利事件
+ * 和正常结束对局合并为一次受保护操作，避免集成模块只结束一部分流程。
  */
 class DDIGameEndService internal constructor(
     private val state: BingoState,
@@ -23,15 +22,14 @@ class DDIGameEndService internal constructor(
     private val log: Logger,
 ) {
     /**
-     * Ends the active game with [winnerKey], or as a draw when it is null.
-     * An existing normal Bingo winner takes priority over [winnerKey].
+     * 使用 [winnerKey] 结束当前对局；该值为空时按平局结束。
+     * 已由普通 Bingo 玩法产生的胜者优先于 [winnerKey]。
      */
     fun end(winnerKey: BingoTeamKey?): Boolean {
         if (state.state != GameState.PLAYING || state.endedAt != null) return false
 
-        // Never replace or add to a winner already produced by normal Bingo
-        // scoring. DDI may end the round, but the existing Bingo result wins
-        // the race and remains the result recorded by stats/game-over UI.
+        // 绝不替换或追加普通 Bingo 计分已经产生的胜者。DDI 可以结束本局，
+        // 但已有 Bingo 结果在竞态中优先，并继续作为统计和赛后界面记录的结果。
         if (state.getRegisteredTeams().any { it.isWinner() }) {
             log.info("[DDI] Ending via the existing Bingo winner instead of replacing it with a DDI winner")
             gameService.end(GameEndReason.Bingo)

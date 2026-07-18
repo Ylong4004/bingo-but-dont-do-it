@@ -1,6 +1,6 @@
 package me.jfenn.bingo.integrations.ddi
 
-/** Pure translation between Bingo's zero-based card coordinates and DDI selectors. */
+/** 在 Bingo 从零开始的棋盘坐标与 DDI 选择器之间进行纯转换。 */
 internal object DDIBingoSignals {
     private val exactTilePattern = Regex("^bingo:tile_([1-5])_([1-5])$")
 
@@ -26,7 +26,7 @@ internal object DDIBingoSignals {
         )
     }
 
-    /** Returns a zero-based exact coordinate when a rule selects one fixed tile. */
+    /** 当规则选中一个固定格子时，返回其从零开始的精确坐标。 */
     fun exactCoordinate(rule: DDIRuleDefinition): Pair<Int, Int>? {
         if (rule.signalKind != DDISignalKind.BINGO_TILE_CAPTURED || rule.subjectIds.size != 1) {
             return null
@@ -35,7 +35,7 @@ internal object DDIBingoSignals {
         return (match.groupValues[1].toInt() - 1) to (match.groupValues[2].toInt() - 1)
     }
 
-    /** All current-card coordinates accepted by a Bingo rule, or null for another signal kind. */
+    /** 返回 Bingo 规则接受的当前棋盘全部坐标；若为其他信号类型则返回 null。 */
     fun selectedCoordinates(rule: DDIRuleDefinition): Set<Pair<Int, Int>>? {
         if (rule.signalKind != DDISignalKind.BINGO_TILE_CAPTURED) return null
         return buildSet {

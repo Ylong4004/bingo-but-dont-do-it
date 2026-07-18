@@ -12,6 +12,10 @@ enum class MenuPage {
     ROOT,
     FEATURES,
     DDI,
+    DDI_BASIC,
+    DDI_SPECIAL_EVENTS,
+    DDI_SPECIAL_EVENT_SELECT,
+    DDI_VOICE_KEYWORDS,
     GOAL,
     ITEMS,
 }

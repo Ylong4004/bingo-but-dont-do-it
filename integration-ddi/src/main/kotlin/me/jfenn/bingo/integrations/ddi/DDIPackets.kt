@@ -13,11 +13,10 @@ import java.util.*
  */
 
 /**
- * Process-wide server packet registrations.
+ * 进程级服务端数据包注册器。
  *
- * Fabric payload codecs are global and must not be registered once per game
- * scope. Keeping the handlers in a Koin singleton makes server restarts and
- * consecutive games reuse the same registrations.
+ * Fabric 负载编解码器是全局的，不能在每个游戏作用域中重复注册。
+ * 将处理器保存在 Koin 单例中，可让服务端重启及连续多局游戏复用同一组注册。
  */
 class DDIServerPackets(serverNetworking: IServerNetworking) {
     val wordSync = serverNetworking.registerS2C(DDIWordSyncPacket.V1)
@@ -27,7 +26,7 @@ class DDIServerPackets(serverNetworking: IServerNetworking) {
     val stateReset = serverNetworking.registerS2C(DDIStateResetPacket.V1)
 }
 
-/** S2C: 同步单个玩家的 DDI 词条和心数。 */
+/** S2C：同步单个玩家的 DDI 词条和心数。 */
 class DDIWordSyncPacket(
     val playerId: UUID,
     val playerName: String,
@@ -71,7 +70,7 @@ class DDIWordSyncPacket(
     }
 }
 
-/** S2C: 通知有人触发了词条。 */
+/** S2C：通知有人触发了词条。 */
 class DDITriggeredPacket(
     val playerId: UUID,
     val playerName: String,
@@ -106,7 +105,7 @@ class DDITriggeredPacket(
     }
 }
 
-/** S2C: one authoritative shared word/heart/timer projection per Bingo team. */
+/** S2C：每个 Bingo 队伍对应一份权威的共享词条、生命和计时器投影。 */
 class DDITeamSyncPacket(
     val teamId: String,
     val teamName: String,
@@ -156,7 +155,7 @@ class DDITeamSyncPacket(
     }
 }
 
-/** S2C: a member changed the shared state of a Bingo team. */
+/** S2C：某位成员改变了 Bingo 队伍的共享状态。 */
 class DDITeamTriggeredPacket(
     val teamId: String,
     val teamName: String,
@@ -193,7 +192,7 @@ class DDITeamTriggeredPacket(
     }
 }
 
-/** S2C: 重置 DDI HUD 状态（游戏结束时）。 */
+/** S2C：重置 DDI HUD 状态（游戏结束时）。 */
 class DDIStateResetPacket {
     object V1 : PacketConverter<DDIStateResetPacket> {
         override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_state_reset")!!

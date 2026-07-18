@@ -54,6 +54,7 @@ class PlayerSettingsService(
                 scoreMessages = getSetting(PlayerSettings::scoreMessages),
                 itemMessages = getSetting(PlayerSettings::itemMessages),
                 nightVision = getSetting(PlayerSettings::nightVision),
+                ddiVoiceConsent = getSetting(PlayerSettings::ddiVoiceConsent),
             )
         }
         return cachedValue

@@ -4,7 +4,7 @@ import me.jfenn.bingo.common.team.BingoTeamKey
 import net.minecraft.util.Formatting
 import java.util.UUID
 
-/** A fixed participant in the DDI roster. Mutable gameplay state lives on an objective. */
+/** DDI 名单中的固定参与者；可变的游戏状态保存在目标上。 */
 data class DDIPlayerState(
     val playerId: UUID,
     val playerName: String,
@@ -12,10 +12,10 @@ data class DDIPlayerState(
 )
 
 /**
- * Server-authoritative state owned by either one player or one Bingo team.
+ * 由单个玩家或一支 Bingo 队伍持有的服务端权威状态。
  *
- * Team-shared mode creates exactly one objective per Bingo team, so its word,
- * timer and heart pool can never drift between teammates.
+ * 队伍共享模式会为每支 Bingo 队伍仅创建一个目标，因此队员之间的词条、
+ * 计时器和生命池始终保持一致。
  */
 data class DDIObjectiveState(
     val objectiveId: String,
@@ -32,12 +32,17 @@ data class DDIObjectiveState(
     var wordTimerSeconds: Int = 60,
     var maxWordTimerSeconds: Int = 60,
     var isEliminated: Boolean = false,
-    /** Shared progress for the currently assigned parameterized rule. */
+    /** 当前所分配参数化规则的共享进度。 */
     var ruleProgress: Int = 0,
-    /** True once an ON_DEADLINE_MISSED rule has been satisfied this assignment. */
+    /** 本次分配的 ON_DEADLINE_MISSED 规则一旦满足即为 true。 */
     var deadlineSatisfied: Boolean = false,
-    /** Kept across word changes to reject two callbacks in one server tick. */
+    /** 在词条更换时保留，用于拒绝同一服务端游戏刻内的第二次回调。 */
     var lastAcceptedTriggerTick: Long = Long.MIN_VALUE,
+    /**
+     * 供异步检测器使用的单调递增令牌。每次发放和清除时都会变化，
+     * 即使未来词池再次抽到相同的词条 ID 也不例外。
+     */
+    var assignmentRevision: Long = 0,
 ) {
     val isAlive: Boolean get() = !isEliminated && hearts > 0
 
@@ -51,9 +56,18 @@ data class DDIObjectiveState(
     }
 
     fun assignWord(word: DDIWordPool.WordEntry, timerSeconds: Int) {
+        assignmentRevision++
         currentWord = word
         wordTimerSeconds = timerSeconds
         maxWordTimerSeconds = timerSeconds
+        ruleProgress = 0
+        deadlineSatisfied = false
+    }
+
+    fun clearWord() {
+        assignmentRevision++
+        currentWord = null
+        wordTimerSeconds = 0
         ruleProgress = 0
         deadlineSatisfied = false
     }

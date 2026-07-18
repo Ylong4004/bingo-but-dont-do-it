@@ -72,6 +72,7 @@ class BingoPrefsCommand(
                 SettingEntry(PlayerSettings::scoreMessages, StringKey.PlayerSettingsMessagesLines),
                 SettingEntry(PlayerSettings::itemMessages, StringKey.PlayerSettingsMessagesItems),
                 SettingEntry(PlayerSettings::nightVision, StringKey.PlayerSettingsNightVision),
+                SettingEntry(PlayerSettings::ddiVoiceConsent, StringKey.PlayerSettingsDdiVoiceConsent),
             )
 
             for ((field, string) in fields) {

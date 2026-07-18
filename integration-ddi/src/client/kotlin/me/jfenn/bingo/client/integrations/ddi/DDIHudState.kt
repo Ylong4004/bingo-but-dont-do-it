@@ -3,7 +3,7 @@ package me.jfenn.bingo.client.integrations.ddi
 import net.minecraft.util.Formatting
 import java.util.UUID
 
-/** Client projection of the server-authoritative individual or team DDI state. */
+/** 服务端权威个人/队伍 DDI 状态在客户端的投影。 */
 class DDIHudState {
     companion object {
         private const val TICKS_PER_SECOND = 20
@@ -143,8 +143,8 @@ class DDIHudState {
             myTeamColor = teamColor
             myTeamMembers = memberNames.toList()
             otherTeams.remove(teamId)
-            // The server intentionally sends an empty own-team word. Do not
-            // accept or retain it even if a mismatched server fills the field.
+            // 服务端会有意把本队词条留空；即使版本不匹配的服务端填入该字段，
+            // 客户端也不能接受或保留它。
             updateOwnStatus(hearts, maxHearts, timerSeconds, maxTimerSeconds, isEliminated)
             return
         }
@@ -185,7 +185,7 @@ class DDIHudState {
         while (recentTriggers.size > MAX_NOTIFICATIONS) recentTriggers.removeAt(0)
     }
 
-    /** Called once at the end of each unpaused client tick. */
+    /** 每个未暂停客户端 tick 结束时调用一次。 */
     fun tick() {
         recentTriggers.forEach { it.timeAliveMs += MILLIS_PER_TICK }
         recentTriggers.removeAll { it.isExpired() }

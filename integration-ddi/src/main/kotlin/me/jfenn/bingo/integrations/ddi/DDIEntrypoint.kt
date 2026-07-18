@@ -14,9 +14,8 @@ class DDIEntrypoint : IBingoInternalPlugin {
         koin.loadModules(listOf(ddiModule))
         koin.get<DDICommands>()
 
-        // Dedicated-server payload codecs are process-wide and must be ready
-        // before a player can connect. In an integrated server the singleton
-        // is resolved when its first Bingo server scope creates the manager.
+        // 专用服务端的负载编解码器在整个进程内共享，必须在玩家连接前准备就绪。
+        // 在集成服务端中，首个 Bingo 服务端作用域创建管理器时才会解析此单例。
         if (koin.get<IModEnvironment>().envType == IModEnvironment.EnvType.SERVER) {
             koin.get<DDIServerPackets>()
         }

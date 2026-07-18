@@ -49,19 +49,44 @@ data class BingoOptions(
     var isPlayerKit: Boolean = false,
     var isTeamKit: Boolean = false,
 
-    // DDI (Don't Do It) settings
+    // DDI（不要做挑战）设置
     var enableDDI: Boolean = false,
     var ddiObjectiveMode: DDIObjectiveMode = DDIObjectiveMode.INDIVIDUAL,
     var ddiMaxHearts: Int = 3,
     var ddiWordTimerSeconds: Int = 60,
+    var ddiSpecialEventsEnabled: Boolean = false,
+    var ddiSpecialEventIntervalSeconds: Int = 300,
+    var ddiSpecialEventTypes: Set<DDISpecialEventType> = DDISpecialEventType.BALANCED,
+    var ddiVoiceKeywordsEnabled: Boolean = false,
+    var ddiVoiceCustomKeywords: List<String> = emptyList(),
 ) {
 
     fun isValid(): Boolean {
         return cards.all { it.isValid() } && hasValidDDIOptions()
     }
 
-    fun hasValidDDIOptions(): Boolean = !enableDDI ||
-        (ddiMaxHearts in 1..20 && ddiWordTimerSeconds in 10..600)
+    fun hasValidDDIOptions(): Boolean {
+        if (!enableDDI) return true
+        if (ddiMaxHearts !in 1..20 || ddiWordTimerSeconds !in 10..600) return false
+
+        if (ddiSpecialEventsEnabled && (
+                ddiSpecialEventIntervalSeconds !in DDI_SPECIAL_EVENT_INTERVAL_RANGE ||
+                    ddiSpecialEventTypes.isEmpty()
+                )
+        ) return false
+
+        if (ddiVoiceKeywordsEnabled) {
+            if (ddiVoiceCustomKeywords.size > DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS) return false
+            if (ddiVoiceCustomKeywords.any { DDIVoiceKeywordOptions.validate(it) != it }) return false
+            if (ddiVoiceCustomKeywords
+                    .map(DDIVoiceKeywordOptions::recognitionKey)
+                    .distinct()
+                    .size != ddiVoiceCustomKeywords.size
+            ) return false
+        }
+
+        return true
+    }
 
     fun formatGameMode(card: BingoCard): List<StringKey> {
         val gameMode = buildList {
@@ -150,11 +175,24 @@ data class BingoOptions(
             yield(isElytra.toString())
             yield((isPlayerKit || isTeamKit).toString()) // has starting items enabled
             if (enableDDI) {
-                // Keep hashes for existing non-DDI presets stable while making
-                // DDI games a distinct difficulty/statistics bucket.
-                // One delimited segment also prevents (1,160) from colliding
-                // with (11,60) when values are fed to the digest consecutively.
+                // 保持现有非 DDI 预设的哈希稳定，同时让 DDI 对局使用独立的
+                // 难度/统计分类。带分隔符的单段内容还能避免连续写入摘要时
+                // (1,160) 与 (11,60) 发生冲突。
                 yield("ddi:${ddiObjectiveMode.name}:$ddiMaxHearts:$ddiWordTimerSeconds")
+                if (ddiSpecialEventsEnabled) {
+                    val eventIds = ddiSpecialEventTypes
+                        .map(DDISpecialEventType::id)
+                        .sorted()
+                        .joinToString(",")
+                    yield("ddi-events:$ddiSpecialEventIntervalSeconds:$eventIds")
+                }
+                if (ddiVoiceKeywordsEnabled) {
+                    val keywordIds = ddiVoiceCustomKeywords
+                        .map(DDIVoiceKeywordOptions::recognitionKey)
+                        .sorted()
+                        .joinToString(",")
+                    yield("ddi-voice:$keywordIds")
+                }
             }
             // spawning
             yield(spawnDimension)
@@ -167,3 +205,5 @@ data class BingoOptions(
     }
 
 }
+
+internal val DDI_SPECIAL_EVENT_INTERVAL_RANGE = 30..3600

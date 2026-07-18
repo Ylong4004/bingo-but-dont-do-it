@@ -4,25 +4,25 @@ plugins {
 
 base.archivesName.set("${project.archives_base_name}-integration-ddi")
 
-// The split client outputs below are project model objects rather than a
-// published variant, so make sure those projects have created their source
-// sets before this build script reads them.
+// 下方拆分出的客户端输出属于项目模型对象而非已发布变体，因此必须先确保
+// 对应项目已经创建 source set，再由本构建脚本读取。
 evaluationDependsOn(":platform")
 evaluationDependsOn(":common")
 
 dependencies {
     compileOnly project(path: ":platform", configuration: "namedElements")
     compileOnly project(path: ":common", configuration: "namedElements")
+    compileOnly project(path: ":integration-voicechat", configuration: "namedElements")
+    testRuntimeOnly project(path: ":integration-voicechat", configuration: "namedElements")
 
-    // Loom keeps client-only output out of namedElements when environment source
-    // sets are split. DDI's client source set imports client APIs from both
-    // projects, so add those outputs to its client compile classpath explicitly.
+    // 拆分环境 source set 时，Loom 不会把纯客户端输出放入 namedElements。
+    // DDI 客户端 source set 会导入这两个项目的客户端 API，因此需要显式加入
+    // 客户端编译类路径。
     clientCompileOnly this.project(":platform").sourceSets.client.output
     clientCompileOnly this.project(":common").sourceSets.client.output
 
-    // Main sources intentionally compile against the shared module without
-    // packaging it here, while unit tests execute DDI helpers that use
-    // BingoTeamKey and therefore need the shared classes at runtime.
+    // 主源码有意只依赖共享模块进行编译而不在此重复打包；单元测试会执行使用
+    // BingoTeamKey 的 DDI 辅助逻辑，因此运行时仍需要共享类。
     testRuntimeOnly project(path: ":common", configuration: "namedElements")
 
     modCompileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"

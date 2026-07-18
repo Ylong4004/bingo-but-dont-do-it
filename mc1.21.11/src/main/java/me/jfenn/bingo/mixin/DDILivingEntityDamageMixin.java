@@ -1,16 +1,18 @@
 package me.jfenn.bingo.mixin;
 
 import me.jfenn.bingo.integrations.ddi.DDITriggerDetector;
+import me.jfenn.bingo.integrations.ddi.DDISpecialEventHooks;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.network.ServerPlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Complements Fabric AFTER_DAMAGE, which deliberately omits fatal damage. */
+/** 补充 Fabric AFTER_DAMAGE 有意忽略的致命伤害。 */
 @Mixin(LivingEntity.class)
 public class DDILivingEntityDamageMixin {
 
@@ -49,6 +51,11 @@ public class DDILivingEntityDamageMixin {
             CallbackInfoReturnable<Boolean> cir
     ) {
         LivingEntity entity = (LivingEntity) (Object) this;
+        if (entity instanceof ServerPlayerEntity player) {
+            // Fabric AFTER_DAMAGE 不包含致命伤害，因此箭雨试炼钩子需要和普通
+            // DDI 检测器一样补充仅致命伤害的路径。
+            DDISpecialEventHooks.reportPlayerDamaged(player, source);
+        }
         DDITriggerDetector.reportDamage(entity, source, damageTaken);
     }
 

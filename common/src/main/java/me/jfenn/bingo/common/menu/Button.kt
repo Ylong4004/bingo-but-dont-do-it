@@ -30,6 +30,7 @@ internal fun MenuComponent.registerButtonInteraction(
     server: MinecraftServer = koinScope.get(),
     log: Logger = koinScope.get(),
     clickSound: (() -> PlayerSoundEvent)? = null,
+    affectsOptions: Boolean = true,
     onClick: (player: IPlayerHandle) -> Unit,
 ) {
     val actualPermissionGetter = permissionGetter ?: {
@@ -65,8 +66,10 @@ internal fun MenuComponent.registerButtonInteraction(
                 )
                 // Schedule an options changed event
                 // (this clears the ready state & redraws the menu)
-                executors.createServerTaskExecutor(server).execute {
-                    eventBus.emit(OptionsChangedEvent, Unit)
+                if (affectsOptions) {
+                    executors.createServerTaskExecutor(server).execute {
+                        eventBus.emit(OptionsChangedEvent, Unit)
+                    }
                 }
             }
         }
@@ -87,6 +90,7 @@ internal fun MenuComponent.registerTileButton(
     width: Double = 1.0,
     height: Double = MENU_LINE_HEIGHT,
     permissionGetter: ((IPlayerHandle) -> Boolean)? = null,
+    affectsOptions: Boolean = true,
     onClick: (player: IPlayerHandle) -> Unit,
 ) {
     val isActive by isActiveProp
@@ -100,6 +104,7 @@ internal fun MenuComponent.registerTileButton(
         width = width.toFloat(),
         height = height.toFloat(),
         permissionGetter = permissionGetter,
+        affectsOptions = affectsOptions,
         clickSound = { if (isActive) PlayerSoundEvent.BLOCK_WOODEN_BUTTON_CLICK_ON else PlayerSoundEvent.BLOCK_WOODEN_BUTTON_CLICK_OFF },
         onClick = onClick,
     )
@@ -169,6 +174,7 @@ internal fun MenuComponent.registerIconButton(
     width: Double = 0.6,
     height: Double = 0.6,
     permissionGetter: ((IPlayerHandle) -> Boolean)? = null,
+    affectsOptions: Boolean = true,
     onClick: (player: IPlayerHandle) -> Unit,
 ) {
     val isActive by isActiveProp
@@ -182,6 +188,7 @@ internal fun MenuComponent.registerIconButton(
         width = width,
         height = height,
         permissionGetter = permissionGetter,
+        affectsOptions = affectsOptions,
         onClick = onClick,
     )
 
@@ -219,6 +226,7 @@ internal fun MenuComponent.registerToggleButton(
     textProp: Property<IText> = computedProperty { text ?: this.text.empty() },
     toggleProp: MutableProperty<Boolean>,
     tooltip: List<IText>? = null,
+    affectsOptions: Boolean = true,
     onClick: (player: IPlayerHandle) -> Unit = {},
 ) {
     var toggle by toggleProp
@@ -230,7 +238,8 @@ internal fun MenuComponent.registerToggleButton(
         text = text,
         textProp = textProp,
         tooltip = tooltip,
-        isActiveProp = toggleProp
+        isActiveProp = toggleProp,
+        affectsOptions = affectsOptions,
     ) {
         toggle = !toggle
         onClick(it)

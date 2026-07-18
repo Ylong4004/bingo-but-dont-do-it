@@ -81,18 +81,75 @@ class BingoOptionsCommands(
         ddiModeText(options.ddiObjectiveMode).formatted(Formatting.YELLOW),
         text.literal(options.ddiMaxHearts.toString()).formatted(Formatting.YELLOW),
         text.literal(options.ddiWordTimerSeconds.toString()).formatted(Formatting.YELLOW),
+    ).append("\n").append(
+        text.string(
+            StringKey.DdiCommandSpecialEventsSummary,
+            text.boolean(options.ddiSpecialEventsEnabled),
+            options.ddiSpecialEventIntervalSeconds,
+            options.ddiSpecialEventTypes.size,
+        )
+    ).append("\n").append(
+        text.string(
+            StringKey.DdiCommandVoiceKeywordsSummary,
+            text.boolean(options.ddiVoiceKeywordsEnabled),
+            options.ddiVoiceCustomKeywords.size,
+            DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
+        )
     )
 
-    private fun IExecutionContext.updateDDIOptions(update: (BingoOptions) -> Unit) {
-        val options = scope.get<BingoState>().options
-        update(options)
+    private fun IExecutionContext.updateDDIOptions(
+        update: (OptionsService, OptionsService.Context) -> Unit,
+    ) {
+        update(scope.get(), optionsContext)
         eventBus.emit(OptionsChangedEvent, Unit)
-        sendFeedback(
+    }
+
+    private fun IExecutionContext.getDDISpecialEvent(
+        arg: me.jfenn.bingo.platform.commands.CommandArgument<String>,
+    ): DDISpecialEventType {
+        val id = getArgument(arg)
+        return DDISpecialEventType.fromId(id)
+            ?: error(text.string(StringKey.DdiCommandSpecialEventUnknown, id))
+    }
+
+    private fun IExecutionContext.sendDDISpecialEventList(options: BingoOptions) {
+        sendMessage(
             text.string(
-                StringKey.DdiCommandOptionsUpdated,
-                formatDDIOptions(options),
+                StringKey.DdiCommandSpecialEventListHeader,
+                options.ddiSpecialEventTypes.size,
+                DDISpecialEventType.entries.size,
             )
         )
+        if (options.ddiSpecialEventTypes.isEmpty()) {
+            sendMessage(text.string(StringKey.DdiCommandOptionsNone))
+            return
+        }
+        options.ddiSpecialEventTypes
+            .sortedBy(DDISpecialEventType::id)
+            .forEach { eventType ->
+                sendMessage(
+                    text.literal("- ").append(
+                        text.translatable("bingo.ddi.special_event.${eventType.id}", null)
+                    )
+                )
+            }
+    }
+
+    private fun IExecutionContext.sendDDIVoiceKeywordList(options: BingoOptions) {
+        sendMessage(
+            text.string(
+                StringKey.DdiCommandVoiceKeywordListHeader,
+                options.ddiVoiceCustomKeywords.size,
+                DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
+            )
+        )
+        if (options.ddiVoiceCustomKeywords.isEmpty()) {
+            sendMessage(text.string(StringKey.DdiCommandOptionsNone))
+            return
+        }
+        options.ddiVoiceCustomKeywords.forEach { keyword ->
+            sendMessage(text.literal("- $keyword"))
+        }
     }
 
     private fun CommandBuilder.executesToggle(callback: IExecutionContext.(Boolean?) -> Unit) {
@@ -259,17 +316,17 @@ class BingoOptionsCommands(
                 }
 
                 literal("ddi") {
-                    // Querying remains available during PLAYING, while every
-                    // mutating child stays PREGAME-only because the DDI round
-                    // snapshots these values when it starts.
+                    // 对局进行中仍可查询；所有修改子命令仅限准备阶段，因为 DDI
+                    // 会在开局时保存这些选项的快照。
                     executes {
                         sendMessage(formatDDIOptions(scope.get<BingoState>().options))
                     }
                     literal("enable") {
                         requires { hasState(GameState.PREGAME) }
                         executesToggle { enabled ->
-                            updateDDIOptions { options ->
-                                options.enableDDI = enabled ?: !options.enableDDI
+                            updateDDIOptions { service, ctx ->
+                                val current = scope.get<BingoState>().options.enableDDI
+                                service.setDDIEnabled(ctx, enabled ?: !current)
                             }
                         }
                     }
@@ -277,15 +334,15 @@ class BingoOptionsCommands(
                         requires { hasState(GameState.PREGAME) }
                         literal("individual") {
                             executes {
-                                updateDDIOptions { options ->
-                                    options.ddiObjectiveMode = DDIObjectiveMode.INDIVIDUAL
+                                updateDDIOptions { service, ctx ->
+                                    service.setDDIObjectiveMode(ctx, DDIObjectiveMode.INDIVIDUAL)
                                 }
                             }
                         }
                         literal("team") {
                             executes {
-                                updateDDIOptions { options ->
-                                    options.ddiObjectiveMode = DDIObjectiveMode.TEAM_SHARED
+                                updateDDIOptions { service, ctx ->
+                                    service.setDDIObjectiveMode(ctx, DDIObjectiveMode.TEAM_SHARED)
                                 }
                             }
                         }
@@ -294,8 +351,8 @@ class BingoOptionsCommands(
                         requires { hasState(GameState.PREGAME) }
                         integer("count", min = 1, max = 20) { countArg ->
                             executes {
-                                updateDDIOptions { options ->
-                                    options.ddiMaxHearts = getArgument(countArg)
+                                updateDDIOptions { service, ctx ->
+                                    service.setDDIMaxHearts(ctx, getArgument(countArg))
                                 }
                             }
                         }
@@ -304,8 +361,147 @@ class BingoOptionsCommands(
                         requires { hasState(GameState.PREGAME) }
                         integer("seconds", min = 10, max = 600) { secondsArg ->
                             executes {
-                                updateDDIOptions { options ->
-                                    options.ddiWordTimerSeconds = getArgument(secondsArg)
+                                updateDDIOptions { service, ctx ->
+                                    service.setDDIWordTimerSeconds(ctx, getArgument(secondsArg))
+                                }
+                            }
+                        }
+                    }
+
+                    literal("events") {
+                        executes {
+                            val options = scope.get<BingoState>().options
+                            sendMessage(
+                                text.string(
+                                    StringKey.DdiCommandSpecialEventsSummary,
+                                    text.boolean(options.ddiSpecialEventsEnabled),
+                                    options.ddiSpecialEventIntervalSeconds,
+                                    options.ddiSpecialEventTypes.size,
+                                )
+                            )
+                        }
+                        literal("enable") {
+                            requires { hasState(GameState.PREGAME) }
+                            executesToggle { enabled ->
+                                updateDDIOptions { service, ctx ->
+                                    val current = scope.get<BingoState>().options.ddiSpecialEventsEnabled
+                                    service.setDDISpecialEventsEnabled(ctx, enabled ?: !current)
+                                }
+                            }
+                        }
+                        literal("interval") {
+                            requires { hasState(GameState.PREGAME) }
+                            integer(
+                                "seconds",
+                                min = DDI_SPECIAL_EVENT_INTERVAL_RANGE.first,
+                                max = DDI_SPECIAL_EVENT_INTERVAL_RANGE.last,
+                            ) { secondsArg ->
+                                executes {
+                                    updateDDIOptions { service, ctx ->
+                                        service.setDDISpecialEventIntervalSeconds(ctx, getArgument(secondsArg))
+                                    }
+                                }
+                            }
+                        }
+                        literal("preset") {
+                            requires { hasState(GameState.PREGAME) }
+                            DDISpecialEventPreset.entries.forEach { preset ->
+                                literal(preset.name.lowercase()) {
+                                    executes {
+                                        updateDDIOptions { service, ctx ->
+                                            service.setDDISpecialEventPreset(ctx, preset)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        literal("include") {
+                            requires { hasState(GameState.PREGAME) }
+                            string(
+                                "event",
+                                suggestions = { DDISpecialEventType.entries.map(DDISpecialEventType::id) },
+                            ) { eventArg ->
+                                executes {
+                                    val eventType = getDDISpecialEvent(eventArg)
+                                    updateDDIOptions { service, ctx ->
+                                        service.setDDISpecialEventEnabled(ctx, eventType, true)
+                                    }
+                                }
+                            }
+                        }
+                        literal("exclude") {
+                            requires { hasState(GameState.PREGAME) }
+                            string(
+                                "event",
+                                suggestions = { DDISpecialEventType.entries.map(DDISpecialEventType::id) },
+                            ) { eventArg ->
+                                executes {
+                                    val eventType = getDDISpecialEvent(eventArg)
+                                    updateDDIOptions { service, ctx ->
+                                        service.setDDISpecialEventEnabled(ctx, eventType, false)
+                                    }
+                                }
+                            }
+                        }
+                        literal("list") {
+                            executes { sendDDISpecialEventList(scope.get<BingoState>().options) }
+                        }
+                    }
+
+                    literal("voice") {
+                        executes {
+                            val options = scope.get<BingoState>().options
+                            sendMessage(
+                                text.string(
+                                    StringKey.DdiCommandVoiceKeywordsSummary,
+                                    text.boolean(options.ddiVoiceKeywordsEnabled),
+                                    options.ddiVoiceCustomKeywords.size,
+                                    DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
+                                )
+                            )
+                        }
+                        literal("enable") {
+                            requires { hasState(GameState.PREGAME) }
+                            executesToggle { enabled ->
+                                updateDDIOptions { service, ctx ->
+                                    val current = scope.get<BingoState>().options.ddiVoiceKeywordsEnabled
+                                    service.setDDIVoiceKeywordsEnabled(ctx, enabled ?: !current)
+                                }
+                            }
+                        }
+                        literal("keyword") {
+                            literal("add") {
+                                string("keyword", greedy = true) { keywordArg ->
+                                    executes {
+                                        updateDDIOptions { service, ctx ->
+                                            service.addDDIVoiceKeyword(ctx, getArgument(keywordArg))
+                                        }
+                                    }
+                                }
+                            }
+                            literal("remove") {
+                                string(
+                                    "keyword",
+                                    suggestions = {
+                                        scope.get<BingoState>().options.ddiVoiceCustomKeywords
+                                    },
+                                    greedy = true,
+                                ) { keywordArg ->
+                                    executes {
+                                        updateDDIOptions { service, ctx ->
+                                            service.removeDDIVoiceKeyword(ctx, getArgument(keywordArg))
+                                        }
+                                    }
+                                }
+                            }
+                            literal("list") {
+                                executes { sendDDIVoiceKeywordList(scope.get<BingoState>().options) }
+                            }
+                            literal("reset") {
+                                executes {
+                                    updateDDIOptions { service, ctx ->
+                                        service.resetDDIVoiceKeywords(ctx)
+                                    }
                                 }
                             }
                         }

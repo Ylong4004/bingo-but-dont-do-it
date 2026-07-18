@@ -34,6 +34,14 @@ sealed interface IDialogInput {
         override val key: String,
         override val label: IText,
     ) : IDialogInput
+
+    class Text(
+        override val key: String,
+        override val label: IText,
+        val initial: String = "",
+        val maxLength: Int = 32,
+        val width: Int = 200,
+    ) : IDialogInput
 }
 
 sealed interface IDialogAction {

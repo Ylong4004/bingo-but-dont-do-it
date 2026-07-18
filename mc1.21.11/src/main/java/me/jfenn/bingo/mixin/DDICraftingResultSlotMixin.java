@@ -13,15 +13,15 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Reports a completed crafting operation after the player takes its result.
- * This covers both the 2x2 inventory grid and crafting tables.
+ * 玩家取走结果后，上报一次已经完成的合成操作。
+ * 同时覆盖背包中的 2×2 合成栏和工作台。
  */
 @Mixin(CraftingResultSlot.class)
 public class DDICraftingResultSlotMixin {
 
     /**
-     * quickMove empties the live result stack before onTakeItem is called, but
-     * onQuickTransfer first invokes this overload with an intact copy.
+     * quickMove 会在调用 onTakeItem 前清空实时结果堆叠，但 onQuickTransfer
+     * 会先用完整副本调用此重载。
      */
     @Unique
     private Item bingo$ddiQuickCraftItem;

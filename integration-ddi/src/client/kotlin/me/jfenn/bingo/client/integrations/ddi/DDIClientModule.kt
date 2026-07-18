@@ -6,10 +6,10 @@ import org.koin.core.module.dsl.withOptions
 import org.koin.dsl.module
 
 /**
- * Process-wide DDI client services.
+ * 进程级 DDI 客户端服务。
  *
- * Packet codecs and receivers must be registered before a play connection is
- * established, so the controller is deliberately created when Koin starts.
+ * 数据包编解码器和接收器必须在建立游戏连接前注册，因此控制器会在 Koin
+ * 启动时主动创建。
  */
 val ddiClientModule = module {
     singleOf(::DDIHudState)

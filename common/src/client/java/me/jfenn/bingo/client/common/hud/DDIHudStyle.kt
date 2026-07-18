@@ -4,7 +4,7 @@ import me.jfenn.bingo.client.platform.renderer.IDrawService
 import me.jfenn.bingo.platform.text.IText
 import net.minecraft.util.Identifier
 
-/** Shared Bingo-themed drawing primitives for the live DDI HUD and its placement preview. */
+/** DDI 实时 HUD 及其位置预览共用的 Bingo 风格绘制组件。 */
 object DDIHudStyle {
     const val PANEL_WIDTH = 200
     const val PANEL_PADDING = 7

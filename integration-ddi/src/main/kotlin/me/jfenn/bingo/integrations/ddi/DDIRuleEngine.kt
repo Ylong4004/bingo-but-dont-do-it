@@ -1,6 +1,6 @@
 package me.jfenn.bingo.integrations.ddi
 
-/** Pure rule evaluation helpers kept separate from server lifecycle code. */
+/** 与服务端生命周期代码分离的纯规则求值辅助工具。 */
 object DDIRuleEngine {
 
     data class ProgressResult(

@@ -68,6 +68,7 @@ internal fun MenuComponent.registerCardDifficulty(
         icon = "⋯",
         text = text.string(StringKey.OptionsCustomize),
         brightness = MENU_BRIGHTNESS_ALT,
+        affectsOptions = false,
     ) {
         state.menu.page = MenuPage.ITEMS
     }

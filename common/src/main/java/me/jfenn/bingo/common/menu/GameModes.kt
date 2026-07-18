@@ -108,6 +108,7 @@ internal fun MenuComponent.registerGameModes(
         icon = "⋯",
         text = text.string(StringKey.OptionsFeatures),
         brightness = MENU_BRIGHTNESS_ALT,
+        affectsOptions = false,
     ) {
         state.menu.page = MenuPage.FEATURES
     }

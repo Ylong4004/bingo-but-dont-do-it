@@ -15,7 +15,7 @@ class SimpleVoiceApi: IVoiceApi {
     override fun createGroup(settings: VoiceGroupSettings): IGroupHandle? {
         val serverApi = SimpleVoiceEntrypoint.api ?: return null
 
-        // If the group is already created, return the existing instance
+        // 若语音组已经创建，则返回现有实例。
         serverApi.groups
             ?.find { it.name == settings.name }
             ?.let { return GroupHandle(serverApi, it.id) }

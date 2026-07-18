@@ -4,10 +4,10 @@ import me.jfenn.bingo.platform.text.IText
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 
-/** Optional scoped decorations that are composed after Bingo's built-in Ready marker. */
+/** 在 Bingo 内置准备标记之后依次组合的可选作用域显示名装饰器。 */
 object PlayerListNameDecorators {
     fun interface Decorator {
-        /** Returns null when this decorator has nothing to add for [uuid]. */
+        /** 此装饰器无需为 [uuid] 添加内容时返回空。 */
         fun decorate(uuid: UUID, current: IText): IText?
     }
 

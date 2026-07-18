@@ -1,6 +1,6 @@
 package me.jfenn.bingo.integrations.ddi
 
-/** Stable event kinds understood by the parameterized DDI rule engine. */
+/** 参数化 DDI 规则引擎所识别的稳定事件类型。 */
 enum class DDISignalKind {
     LEGACY,
     ITEM_CRAFTED,
@@ -10,49 +10,51 @@ enum class DDISignalKind {
     BLOCK_PLACED,
     BLOCK_STOOD_ON,
     ITEM_HELD,
-    /** A tile was accepted by Bingo's authoritative score transaction. */
+    /** 一个格子已被 Bingo 的权威计分事务接受。 */
     BINGO_TILE_CAPTURED,
-    /** Vanilla server travel statistics, expressed in centimetres. */
+    /** 原版服务端移动统计数据，以厘米为单位。 */
     DISTANCE_WALKED_CM,
     DISTANCE_SPRINTED_CM,
     DISTANCE_SWUM_CM,
     DISTANCE_BOAT_CM,
-    /** Final, non-zero damage dealt to a player on another Bingo team. */
+    /** 对另一支 Bingo 队伍的玩家造成的最终非零伤害。 */
     ENEMY_PLAYER_DAMAGED,
-    /** Final, non-zero damage received from a player on another Bingo team. */
+    /** 从另一支 Bingo 队伍的玩家处受到的最终非零伤害。 */
     DAMAGED_BY_ENEMY_PLAYER,
+    /** 已同意语音识别的玩家，其本地 ASR 最终语句匹配了关键词。 */
+    VOICE_KEYWORD_SPOKEN,
 }
 
-/** Defines how a matching signal contributes to a multi-action rule. */
+/** 定义匹配信号如何为多动作规则贡献进度。 */
 enum class DDIProgressMode {
     ACTIONS,
     QUANTITY,
 }
 
-/** Defines what happens when the visible word timer reaches zero. */
+/** 定义可见词条计时器归零时的行为。 */
 enum class DDIDeadlineBehavior {
-    /** The current behaviour: replace the word without deducting a heart. */
+    /** 当前行为：更换词条，但不扣除生命。 */
     REROLL,
 
-    /** The deadline itself violates the rule and deducts a heart. */
+    /** 截止时间本身即构成规则违规，并扣除一颗生命。 */
     TRIGGER_ON_EXPIRY,
 }
 
-/** Defines whether a completed match is itself forbidden or satisfies a deadline. */
+/** 定义完成匹配本身是被禁止的行为，还是满足限时要求。 */
 enum class DDIMatchBehavior {
-    /** The usual Don't Do It rule: completing the match deducts a heart. */
+    /** 常规的“不要做”规则：完成匹配会扣除一颗生命。 */
     VIOLATION,
 
-    /** Matching makes the objective safe; expiry deducts only if no match occurred. */
+    /** 匹配后目标即安全；只有到期前未匹配时才会扣除生命。 */
     SATISFY_DEADLINE,
 }
 
 /**
- * One authoritative gameplay observation.
+ * 一次权威的游戏行为观测。
  *
- * [subjectId] and [subjectTags] always contain full namespaced identifiers.
- * A physical action is represented by one signal, while [legacyAliases]
- * preserves every old enum interpretation of that action.
+ * [subjectId] 和 [subjectTags] 始终包含完整的命名空间标识符。
+ * 一个实际动作由单个信号表示，而 [legacyAliases]
+ * 会保留该动作在旧枚举中的所有解释方式。
  */
 data class DDISignal(
     val kind: DDISignalKind,
@@ -75,9 +77,9 @@ data class DDISignal(
 }
 
 /**
- * Data-oriented rule evaluated against only the current objective's signal.
- * Empty subject sets mean "any subject"; otherwise an exact ID or tag match
- * is required. This keeps event handling O(1) with respect to pool size.
+ * 面向数据的规则，仅根据当前目标收到的信号进行判定。
+ * 空主体集合表示“任意主体”；否则必须精确匹配 ID 或标签。
+ * 这样可以使事件处理相对于词池大小保持 O(1) 复杂度。
  */
 data class DDIRuleDefinition(
     val signalKind: DDISignalKind,
@@ -130,7 +132,7 @@ data class DDIRuleDefinition(
     fun isAvailable(isModLoaded: (String) -> Boolean): Boolean =
         requiredMods.all(isModLoaded)
 
-    /** Compact, non-localized representation for the operator reveal command. */
+    /** 供管理员揭示命令使用的紧凑、非本地化表示。 */
     fun diagnosticName(): String = buildString {
         append(signalKind.name)
         legacyTrigger?.let { append(':').append(it.name) }

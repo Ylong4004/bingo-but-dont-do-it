@@ -7,6 +7,7 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import me.jfenn.bingo.common.game.DDIGameHistoryService
+import me.jfenn.bingo.common.config.PlayerSettingsService
 import me.jfenn.bingo.common.options.DDIObjectiveMode
 import me.jfenn.bingo.common.state.BingoState
 import me.jfenn.bingo.common.team.BingoTeamKey
@@ -32,6 +33,7 @@ class DDIObjectiveManagerDeadlineTest {
             packets = packets,
             tabLivesService = tabLives,
             historyService = history,
+            playerSettingsService = mockk<PlayerSettingsService>(relaxed = true),
             log = log,
         )
         manager.setPrivate(
@@ -108,6 +110,7 @@ class DDIObjectiveManagerDeadlineTest {
             packets = packets,
             tabLivesService = tabLives,
             historyService = history,
+            playerSettingsService = mockk<PlayerSettingsService>(relaxed = true),
             log = mockk(relaxed = true),
         )
         manager.setPrivate(

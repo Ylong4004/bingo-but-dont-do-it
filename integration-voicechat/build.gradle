@@ -7,6 +7,11 @@ base.archivesName.set("${project.archives_base_name}-integration-voicechat")
 
 dependencies {
     modCompileOnly(libs.voicechat)
+    implementation(libs.vosk) {
+        // Minecraft 已提供较新的 JNA；若同时打包 Vosk 依赖的 5.7 版本，
+        // 成品模组中会出现重复的 com.sun.jna 类。
+        exclude(group: "net.java.dev.jna", module: "jna")
+    }
     // modCompileOnly(libs.plasmovoice) {
     //     exclude(group: "org.jetbrains.kotlin")
     //     exclude(group: "org.jetbrains.kotlinx")

@@ -41,6 +41,13 @@
     "fabric-api": ">=$fabric_api_version",
     "fabric-language-kotlin": ">=$fabric_language_kotlin_version"
   },
+  "suggests": {
+    "voicechat": ">=1.21.11-2.6.20"
+  },
+  "breaks": {
+    "voicechat_api": "<2.6.20",
+    "voicechat": "<1.21.11-2.6.20"
+  },
   "contact": {
     "homepage": "https://horrific.dev/bingo/",
     "sources": "https://gitlab.com/horrificdev/bingo/",

@@ -72,8 +72,9 @@ internal class OptionsService(
             }
     }
 
-    fun Context.error(message: IText) {
+    fun Context.error(message: IText): Nothing {
         receiveError?.invoke(message)
+        player?.sendMessage(message)
         throw IllegalArgumentException(message.toString())
     }
 
@@ -335,6 +336,131 @@ internal class OptionsService(
                 text.string(StringKey.DdiOptionTimerValue, options.ddiWordTimerSeconds),
             )
         )
+    }
+
+    fun setDDISpecialEventsEnabled(ctx: Context, enabled: Boolean) {
+        if (enabled && options.ddiSpecialEventTypes.isEmpty()) {
+            ctx.error(text.string(StringKey.DdiCommandSpecialEventsEmpty))
+        }
+        options.ddiSpecialEventsEnabled = enabled
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionSpecialEvents,
+                text.boolean(enabled),
+            )
+        )
+    }
+
+    fun setDDISpecialEventIntervalSeconds(ctx: Context, seconds: Int) {
+        if (seconds !in DDI_SPECIAL_EVENT_INTERVAL_RANGE) {
+            ctx.error(
+                text.string(
+                    StringKey.DdiCommandSpecialEventIntervalInvalid,
+                    DDI_SPECIAL_EVENT_INTERVAL_RANGE.first,
+                    DDI_SPECIAL_EVENT_INTERVAL_RANGE.last,
+                )
+            )
+        }
+        options.ddiSpecialEventIntervalSeconds = seconds
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionSpecialEventInterval,
+                text.string(StringKey.DdiOptionSpecialEventIntervalValue, seconds),
+            )
+        )
+    }
+
+    fun setDDISpecialEventPreset(ctx: Context, preset: DDISpecialEventPreset) {
+        options.ddiSpecialEventTypes = preset.eventTypes.toSet()
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionSpecialEventTypes,
+                text.translatable(
+                    "bingo.ddi.special_event.preset.${preset.name.lowercase()}",
+                    null,
+                ).formatted(Formatting.WHITE),
+            )
+        )
+    }
+
+    fun setDDISpecialEventEnabled(
+        ctx: Context,
+        eventType: DDISpecialEventType,
+        enabled: Boolean,
+    ) {
+        val newTypes = when {
+            enabled -> options.ddiSpecialEventTypes + eventType
+            else -> options.ddiSpecialEventTypes - eventType
+        }.toSet()
+        if (options.ddiSpecialEventsEnabled && newTypes.isEmpty()) {
+            ctx.error(text.string(StringKey.DdiCommandSpecialEventsEmpty))
+        }
+        options.ddiSpecialEventTypes = newTypes
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                text.translatable("bingo.ddi.special_event.${eventType.id}", null),
+                text.boolean(enabled),
+            )
+        )
+    }
+
+    fun setDDIVoiceKeywordsEnabled(ctx: Context, enabled: Boolean) {
+        options.ddiVoiceKeywordsEnabled = enabled
+        ctx.sendFeedback(
+            text.string(
+                StringKey.OptionsNotifyChanged,
+                StringKey.DdiOptionVoiceKeywords,
+                text.boolean(enabled),
+            )
+        )
+    }
+
+    fun addDDIVoiceKeyword(ctx: Context, rawKeyword: String) {
+        val keyword = DDIVoiceKeywordOptions.validate(rawKeyword)
+            ?: ctx.error(
+                text.string(
+                    StringKey.DdiCommandVoiceKeywordInvalid,
+                    DDIVoiceKeywordOptions.MAX_KEYWORD_CODE_POINTS,
+                )
+            )
+        val recognitionKey = DDIVoiceKeywordOptions.recognitionKey(keyword)
+        if (options.ddiVoiceCustomKeywords.any {
+                DDIVoiceKeywordOptions.recognitionKey(it) == recognitionKey
+            }
+        ) {
+            ctx.error(text.string(StringKey.DdiCommandVoiceKeywordDuplicate, keyword))
+        }
+        if (options.ddiVoiceCustomKeywords.size >= DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS) {
+            ctx.error(
+                text.string(
+                    StringKey.DdiCommandVoiceKeywordLimit,
+                    DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
+                )
+            )
+        }
+        options.ddiVoiceCustomKeywords = (options.ddiVoiceCustomKeywords + keyword).toList()
+        ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordAdded, keyword))
+    }
+
+    fun removeDDIVoiceKeyword(ctx: Context, rawKeyword: String) {
+        val recognitionKey = DDIVoiceKeywordOptions.recognitionKey(rawKeyword)
+        val removedKeyword = options.ddiVoiceCustomKeywords.firstOrNull {
+            DDIVoiceKeywordOptions.recognitionKey(it) == recognitionKey
+        } ?: ctx.error(text.string(StringKey.DdiCommandVoiceKeywordNotFound, rawKeyword))
+        options.ddiVoiceCustomKeywords = options.ddiVoiceCustomKeywords
+            .filterNot { DDIVoiceKeywordOptions.recognitionKey(it) == recognitionKey }
+            .toList()
+        ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordRemoved, removedKeyword))
+    }
+
+    fun resetDDIVoiceKeywords(ctx: Context) {
+        val removedCount = options.ddiVoiceCustomKeywords.size
+        options.ddiVoiceCustomKeywords = emptyList()
+        ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordReset, removedCount))
     }
 
     fun setTimeLimit(

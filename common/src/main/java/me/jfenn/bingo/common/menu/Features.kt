@@ -127,6 +127,7 @@ internal fun MenuComponent.registerFeatures(
         text = text.string(StringKey.DdiMenuOpen),
         tooltip = buildTooltip(StringKey.DdiMenuOpen),
         brightness = MENU_BRIGHTNESS_ALT,
+        affectsOptions = false,
     ) {
         state.menu.page = MenuPage.DDI
     }
