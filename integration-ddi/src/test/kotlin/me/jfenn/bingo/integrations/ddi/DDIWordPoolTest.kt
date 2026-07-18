@@ -71,6 +71,12 @@ class DDIWordPoolTest {
         assertThat(voiceWords).hasSize(40)
         assertThat(voiceWords.all { it.rule.signalKind == DDISignalKind.VOICE_KEYWORD_SPOKEN })
             .isEqualTo(true)
+        assertThat(voiceWords.all { it.triggerType == DDITriggerType.SPEAK_KEYWORD })
+            .isEqualTo(true)
+        assertThat(voiceWords.all { word ->
+            word.rule.subjectIds.isNotEmpty() &&
+                word.rule.subjectIds.all { it.startsWith(DDIWordPool.VOICE_SUBJECT_PREFIX) }
+        }).isEqualTo(true)
         assertThat(voiceWords.all { "voicechat" in it.rule.requiredMods })
             .isEqualTo(true)
         assertThat(pool.availableSize()).isEqualTo(316)
@@ -85,6 +91,8 @@ class DDIWordPoolTest {
         val second = pool.setCustomVoiceKeywords(listOf("远古残骸"))
 
         assertThat(first.single().displayText).isEqualTo("说出“远古残骸”")
+        assertThat(first.single().category).isEqualTo(DDIWordPool.VOICE_CATEGORY)
+        assertThat(first.single().rule.signalKind).isEqualTo(DDISignalKind.VOICE_KEYWORD_SPOKEN)
         assertThat(first.single().rule.subjectIds).isEqualTo(setOf("voice:远古残骸"))
         assertThat(second.single().id).isEqualTo(firstId)
         assertThat(pool.findById(firstId)).isEqualTo(second.single())

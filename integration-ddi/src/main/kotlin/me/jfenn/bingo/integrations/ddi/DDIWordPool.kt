@@ -232,6 +232,25 @@ class DDIWordPool(
             .filterValues { it.size > 1 }
             .keys
         check(duplicateRepeatKeys.isEmpty()) { "Duplicate DDI repeat keys: $duplicateRepeatKeys" }
+
+        // 语音词条必须统一进入 VoiceKeywordTarget -> VoiceKeywordGrammar，避免后续
+        // 新增 JSON 时因分类、信号或命名空间写错而静默绕过汉字/读音匹配。
+        val invalidVoiceWords = allWords.filter { word ->
+            val isVoiceCategory = word.category == VOICE_CATEGORY
+            val isVoiceSignal = word.rule.signalKind == DDISignalKind.VOICE_KEYWORD_SPOKEN
+            if (!isVoiceCategory) {
+                isVoiceSignal
+            } else {
+                !isVoiceSignal ||
+                    word.triggerType != DDITriggerType.SPEAK_KEYWORD ||
+                    word.rule.subjectIds.isEmpty() ||
+                    word.rule.subjectIds.any { !it.startsWith(VOICE_SUBJECT_PREFIX) } ||
+                    "voicechat" !in word.rule.requiredMods
+            }
+        }
+        check(invalidVoiceWords.isEmpty()) {
+            "Invalid DDI voice word definitions: ${invalidVoiceWords.map(WordEntry::id)}"
+        }
     }
 
     private fun JsonObject.requiredString(name: String): String =

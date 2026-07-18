@@ -226,6 +226,11 @@ class DDICommands(
         snapshot: VoiceKeywordDiagnosticsSnapshot,
         player: DDIVoicePlayerDebugSnapshot?,
     ): String {
+        if (snapshot.nativeStringEncoding != "未初始化" &&
+            !snapshot.nativeStringEncoding.equals("UTF-8", ignoreCase = true)
+        ) {
+            return "Vosk/JNA 字符串编码不是 UTF-8，中文语法会失效；请重新启动服务端。"
+        }
         if (player != null) {
             if (!player.hasRound) return "当前没有活动 DDI 回合。"
             if (!player.isParticipant) return "该玩家不在本局固定 DDI 名单中。"
@@ -249,6 +254,9 @@ class DDICommands(
             }
         }
         if (snapshot.decodedFrames == 0L) return "音频已入队但未解码，检查 Opus 解码器和流水线异常。"
+        if (snapshot.decodedPeakAmplitude < 128) {
+            return "解码后的 PCM 几乎无声；检查麦克风输入设备、增益和降噪设置。"
+        }
         if (snapshot.finalizedSegments == 0L) {
             return "音频已解码但尚未结段；说完后松开 PTT/停顿约 0.7 秒再查询。"
         }
@@ -299,6 +307,9 @@ class DDICommands(
                 ?: "无"
             "${String.format(Locale.ROOT, "%.3f", average)}/$minimum"
         } ?: "无"
+        val meanAmplitude = snapshot.decodedMeanAbsoluteAmplitude
+            ?.let { String.format(Locale.ROOT, "%.1f", it) }
+            ?: "无"
 
         sendMessage(text.literal("§6[DDI 语音诊断·$scopeName] §f统计窗口=${windowSeconds}s"))
         sendMessage(
@@ -312,7 +323,8 @@ class DDICommands(
             text.literal(
                 "§7入队=${snapshot.queuedPackets}，丢包=${snapshot.droppedPackets}，" +
                     "解码帧=${snapshot.decodedFrames}，PCM样本=${snapshot.decodedSamples}，" +
-                    "结段=${snapshot.finalizedSegments}"
+                    "峰值=${snapshot.decodedPeakAmplitude}，均幅=$meanAmplitude，" +
+                    "结段=${snapshot.finalizedSegments}，Vosk编码=${snapshot.nativeStringEncoding}"
             )
         )
         sendMessage(

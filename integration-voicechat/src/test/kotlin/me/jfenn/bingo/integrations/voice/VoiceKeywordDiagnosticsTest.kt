@@ -24,6 +24,8 @@ class VoiceKeywordDiagnosticsTest {
             first,
             VoiceKeywordDiagnosticStage.AUDIO_DECODED,
             samples = 320,
+            peakAmplitude = 12_345,
+            absoluteAmplitudeSum = 320L * 200L,
         )
         VoiceKeywordDiagnostics.record(second, VoiceKeywordDiagnosticStage.MICROPHONE_PACKET)
         VoiceKeywordDiagnostics.record(second, VoiceKeywordDiagnosticStage.NO_ACTIVE_TARGET)
@@ -46,6 +48,8 @@ class VoiceKeywordDiagnosticsTest {
 
         assertThat(aggregate.microphonePackets).isEqualTo(2L)
         assertThat(aggregate.decodedSamples).isEqualTo(320L)
+        assertThat(aggregate.decodedPeakAmplitude).isEqualTo(12_345)
+        assertThat(aggregate.decodedMeanAbsoluteAmplitude).isEqualTo(200.0)
         assertThat(firstSnapshot.targetedPackets).isEqualTo(1L)
         assertThat(firstSnapshot.noTargetPackets).isEqualTo(0L)
         assertThat(secondSnapshot.targetedPackets).isEqualTo(0L)

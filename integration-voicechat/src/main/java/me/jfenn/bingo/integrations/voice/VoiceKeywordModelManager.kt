@@ -1,6 +1,5 @@
 package me.jfenn.bingo.integrations.voice
 
-import org.vosk.LibVosk
 import org.vosk.Model
 import java.io.BufferedInputStream
 import java.io.IOException
@@ -134,7 +133,7 @@ internal class VoiceKeywordModelManager(
         return try {
             // 识别器输出可能包含当前 Vosk 语法；原生日志只保留警告级别，且本模块绝不
             // 主动记录识别结果。
-            LibVosk.vosk_set_log_level(-1)
+            VoskNativeEncoding.initialize()
             model = Model(directory.toString())
             update(VoiceKeywordBackendState.READY)
         } catch (error: Throwable) {

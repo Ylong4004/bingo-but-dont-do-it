@@ -49,6 +49,8 @@ data class VoiceKeywordDiagnosticsSnapshot(
     val resourceInitializations: Long,
     val decodedFrames: Long,
     val decodedSamples: Long,
+    val decodedPeakAmplitude: Int,
+    val decodedMeanAbsoluteAmplitude: Double?,
     val finalizedSegments: Long,
     val emptyResults: Long,
     val invalidResults: Long,
@@ -65,6 +67,7 @@ data class VoiceKeywordDiagnosticsSnapshot(
     val pipelineErrors: Long,
     val lastStage: VoiceKeywordDiagnosticStage?,
     val lastActivityEpochMillis: Long?,
+    val nativeStringEncoding: String,
 )
 
 /**
@@ -83,6 +86,8 @@ internal object VoiceKeywordDiagnostics {
         val resourceInitializations = AtomicLong()
         val decodedFrames = AtomicLong()
         val decodedSamples = AtomicLong()
+        val decodedPeakAmplitude = AtomicLong()
+        val decodedAbsoluteAmplitudeSum = AtomicLong()
         val finalizedSegments = AtomicLong()
         val emptyResults = AtomicLong()
         val invalidResults = AtomicLong()
@@ -103,6 +108,8 @@ internal object VoiceKeywordDiagnostics {
         fun record(
             stage: VoiceKeywordDiagnosticStage,
             samples: Int,
+            peakAmplitude: Int,
+            absoluteAmplitudeSum: Long,
             averageConfidence: Double?,
             minimumWordConfidence: Double?,
         ) {
@@ -118,6 +125,13 @@ internal object VoiceKeywordDiagnostics {
                 VoiceKeywordDiagnosticStage.AUDIO_DECODED -> {
                     decodedFrames.incrementAndGet()
                     decodedSamples.addAndGet(samples.toLong().coerceAtLeast(0L))
+                    decodedPeakAmplitude.accumulateAndGet(
+                        peakAmplitude.toLong().coerceIn(0L, 32_768L),
+                        ::maxOf,
+                    )
+                    decodedAbsoluteAmplitudeSum.addAndGet(
+                        absoluteAmplitudeSum.coerceAtLeast(0L)
+                    )
                 }
                 VoiceKeywordDiagnosticStage.SEGMENT_FINALIZED -> finalizedSegments.incrementAndGet()
                 VoiceKeywordDiagnosticStage.RESULT_EMPTY -> emptyResults.incrementAndGet()
@@ -171,6 +185,10 @@ internal object VoiceKeywordDiagnostics {
             resourceInitializations = resourceInitializations.get(),
             decodedFrames = decodedFrames.get(),
             decodedSamples = decodedSamples.get(),
+            decodedPeakAmplitude = decodedPeakAmplitude.get().toInt(),
+            decodedMeanAbsoluteAmplitude = decodedSamples.get()
+                .takeIf { it > 0L }
+                ?.let { decodedAbsoluteAmplitudeSum.get().toDouble() / it },
             finalizedSegments = finalizedSegments.get(),
             emptyResults = emptyResults.get(),
             invalidResults = invalidResults.get(),
@@ -187,6 +205,7 @@ internal object VoiceKeywordDiagnostics {
             pipelineErrors = pipelineErrors.get(),
             lastStage = lastStage.get(),
             lastActivityEpochMillis = lastActivityEpochMillis.get().takeIf { it > 0L },
+            nativeStringEncoding = VoskNativeEncoding.current(),
         )
     }
 
@@ -199,13 +218,24 @@ internal object VoiceKeywordDiagnostics {
         playerId: UUID,
         stage: VoiceKeywordDiagnosticStage,
         samples: Int = 0,
+        peakAmplitude: Int = 0,
+        absoluteAmplitudeSum: Long = 0L,
         averageConfidence: Double? = null,
         minimumWordConfidence: Double? = null,
     ) {
-        aggregate.record(stage, samples, averageConfidence, minimumWordConfidence)
+        aggregate.record(
+            stage,
+            samples,
+            peakAmplitude,
+            absoluteAmplitudeSum,
+            averageConfidence,
+            minimumWordConfidence,
+        )
         perPlayer.computeIfAbsent(playerId) { Counters() }.record(
             stage,
             samples,
+            peakAmplitude,
+            absoluteAmplitudeSum,
             averageConfidence,
             minimumWordConfidence,
         )

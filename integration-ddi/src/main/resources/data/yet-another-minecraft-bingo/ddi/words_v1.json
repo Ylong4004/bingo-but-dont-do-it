@@ -2966,7 +2966,7 @@
       "repeatKey": "voice:board",
       "category": "voice",
       "weight": 0.45,
-      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:棋盘", "voice:bingo棋盘"], "requiredMods": ["voicechat"]}
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:棋盘", "voice:宾果棋盘", "voice:bingo棋盘"], "requiredMods": ["voicechat"]}
     },
     {
       "id": "voice_tile",
@@ -3011,7 +3011,7 @@
       "repeatKey": "voice:line",
       "category": "voice",
       "weight": 0.45,
-      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:连线", "voice:成线", "voice:bingo"], "requiredMods": ["voicechat"]}
+      "rule": {"signal": "VOICE_KEYWORD_SPOKEN", "subjectIds": ["voice:连线", "voice:成线", "voice:宾果", "voice:bingo"], "requiredMods": ["voicechat"]}
     },
     {
       "id": "voice_overworld",

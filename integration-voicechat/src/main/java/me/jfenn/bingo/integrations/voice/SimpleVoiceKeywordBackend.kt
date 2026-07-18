@@ -14,6 +14,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.abs
 
 /**
  * 按玩家隔离、容量受限且串行执行的 Opus/ASR 流水线。麦克风事件只复制并提交
@@ -305,10 +306,19 @@ internal class SimpleVoiceKeywordBackend(
             val decoded = decoder?.decode(item.data) ?: return
             val pcm16k = resampler?.process(decoded) ?: return
             if (pcm16k.isEmpty()) return
+            var peakAmplitude = 0
+            var absoluteAmplitudeSum = 0L
+            pcm16k.forEach { sample ->
+                val amplitude = abs(sample.toInt())
+                peakAmplitude = maxOf(peakAmplitude, amplitude)
+                absoluteAmplitudeSum += amplitude
+            }
             VoiceKeywordDiagnostics.record(
                 playerId,
                 VoiceKeywordDiagnosticStage.AUDIO_DECODED,
                 samples = pcm16k.size,
+                peakAmplitude = peakAmplitude,
+                absoluteAmplitudeSum = absoluteAmplitudeSum,
             )
             segmentSamples += pcm16k.size
             val endpoint = recognizer?.acceptWaveForm(pcm16k, pcm16k.size) == true
@@ -368,6 +378,9 @@ internal class SimpleVoiceKeywordBackend(
                 return false
             }
             val nextRecognizer = try {
+                // Vosk 的 grammar 和 JSON 结果均要求 UTF-8；Windows 中文系统上的
+                // JNA 默认编码会让所有中文目标退化成 `[unk]`。
+                VoskNativeEncoding.initialize()
                 Recognizer(model, 16_000f, nextGrammar.grammarJson).apply {
                     setWords(true)
                     setMaxAlternatives(0)
