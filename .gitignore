@@ -46,4 +46,11 @@ crowdin.json
 *.kra
 *.log
 /docs
+# README 使用的项目图标需要随仓库发布；其余文档产物仍保持忽略。
+!/docs/
+!/docs/assets/
+/docs/*
+!/docs/assets/
+/docs/assets/*
+!/docs/assets/bingo-but-dont-do-it-logo.png
 drawing.svg

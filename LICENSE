@@ -1,3 +1,22 @@
+# Bingo × Don't Do It：组合项目授权说明
+
+本仓库是基于 Yet Another Minecraft BINGO（Bingo）与 Don't Do It 的非官方修改、移植和整合项目，并非任一上游项目的官方版本。
+
+上游来源：
+
+- Bingo：<https://gitlab.com/horrificdev/bingo/-/tree/release/2.9.7?ref_type=tags>
+- Don't Do It：<https://github.com/baiyueyue666/Dont_do_it>
+
+授权适用方式：
+
+1. Bingo 上游及本仓库基于其修改的主体代码按下方完整的 GNU Lesser General Public License v3.0（LGPL-3.0）提供。
+2. 从 Don't Do It 移植、改编或保留的代码和相关内容同时受下方 MIT License 许可约束。其版权声明必须随源代码或二进制再分发一同保留。
+3. 除非具体文件另有声明，本仓库新增的整合与修改代码按 LGPL-3.0 提供。第三方依赖、资源和模型可能具有各自的许可证；它们不因本说明而被重新授权。
+
+以下 LGPL-3.0 与 MIT 许可证文本均为原文，未作改写。
+
+---
+
                    GNU LESSER GENERAL PUBLIC LICENSE
                        Version 3, 29 June 2007
 
@@ -161,5 +180,29 @@ General Public License ever published by the Free Software Foundation.
   If the Library as you received it specifies that a proxy can decide
 whether future versions of the GNU Lesser General Public License shall
 apply, that proxy's public statement of acceptance of any version is
-permanent authorization for you to choose that version for the
-Library.
+ permanent authorization for you to choose that version for the
+ Library.
+
+---
+
+The MIT License (MIT)
+
+Copyright (c) 2026 Baiyueyue
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
