@@ -16,6 +16,8 @@ enum class VoiceKeywordBackendState {
     MODEL_MISSING,
     MODEL_AVAILABLE,
     DOWNLOADING,
+    VERIFYING,
+    EXTRACTING,
     LOADING,
     READY,
     UNSUPPORTED_PLATFORM,
@@ -28,6 +30,8 @@ data class VoiceKeywordBackendStatus(
     val voiceChatAvailable: Boolean,
     /** 稳定且不含敏感信息的诊断码；绝不包含识别出的文本。 */
     val detail: String? = null,
+    /** 模型下载、校验、解压或加载进度；就绪和错误时为空。 */
+    val progress: VoiceKeywordModelProgress? = null,
 ) {
     val isReady: Boolean
         get() = state == VoiceKeywordBackendState.READY && voiceChatAvailable
@@ -110,6 +114,7 @@ object VoiceKeywordBridge {
             state = resolved,
             voiceChatAvailable = voiceAvailable,
             detail = modelStatus.detail,
+            progress = modelStatus.progress,
         )
     }
 

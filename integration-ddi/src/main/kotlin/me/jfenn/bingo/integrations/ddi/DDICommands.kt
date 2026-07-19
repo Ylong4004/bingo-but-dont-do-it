@@ -180,14 +180,24 @@ class DDICommands(
 
     private fun IExecutionContext.showVoiceStatus() {
         val status = scope.get<DDIVoiceKeywordController>().status()
+        val progress = status.progress?.let { current ->
+            val transferred = current.totalBytes?.let { total ->
+                "${formatModelBytes(current.completedBytes)}/${formatModelBytes(total)}（${current.percent ?: 0}%）"
+            } ?: formatModelBytes(current.completedBytes)
+            "${current.phase.name.lowercase()}：$transferred"
+        } ?: "无"
         sendMessage(
             text.literal(
                 "§6[DDI 语音] §f状态=${status.state.name.lowercase()}，" +
                     "Simple Voice Chat=${status.voiceChatAvailable}，" +
+                    "进度=$progress，" +
                     "详情=${status.detail ?: "无"}"
             )
         )
     }
+
+    private fun formatModelBytes(bytes: Long): String =
+        String.format(Locale.ROOT, "%.1f MiB", bytes.coerceAtLeast(0L) / (1024.0 * 1024.0))
 
     private fun IExecutionContext.sendDebugResult(result: DDIDebugActionResult) {
         sendFeedback(

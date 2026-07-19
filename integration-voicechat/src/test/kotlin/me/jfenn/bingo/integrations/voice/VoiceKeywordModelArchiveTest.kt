@@ -2,6 +2,7 @@ package me.jfenn.bingo.integrations.voice
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNull
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.io.TempDir
@@ -20,11 +21,20 @@ class VoiceKeywordModelArchiveTest {
         val archive = temp.resolve("model.zip")
         writeZip(archive, mapOf("model/conf/model.conf" to "ok"))
         val destination = temp.resolve("extract")
+        val progress = mutableListOf<Long>()
 
-        VoiceKeywordModelArchive.extract(archive, destination, "model", 10, 1_024)
+        VoiceKeywordModelArchive.extract(
+            archive,
+            destination,
+            "model",
+            10,
+            1_024,
+            onProgress = progress::add,
+        )
 
         assertThat(Files.readString(destination.resolve("model/conf/model.conf")))
             .isEqualTo("ok")
+        assertThat(progress.last()).isEqualTo(2L)
     }
 
     @Test
@@ -52,6 +62,23 @@ class VoiceKeywordModelArchiveTest {
                 1_024,
             )
         }
+    }
+
+    @Test
+    fun `model preparation percentage is only shown for known totals`() {
+        assertThat(
+            VoiceKeywordModelProgress(
+                phase = VoiceKeywordModelProgressPhase.DOWNLOADING,
+                completedBytes = 2L,
+                totalBytes = 4L,
+            ).percent,
+        ).isEqualTo(50)
+        assertThat(
+            VoiceKeywordModelProgress(
+                phase = VoiceKeywordModelProgressPhase.EXTRACTING,
+                completedBytes = 2L,
+            ).percent,
+        ).isNull()
     }
 
     private fun writeZip(path: Path, entries: Map<String, String>) {
