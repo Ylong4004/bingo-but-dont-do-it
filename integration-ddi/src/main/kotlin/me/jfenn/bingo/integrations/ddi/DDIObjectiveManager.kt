@@ -123,6 +123,7 @@ class DDIObjectiveManager(
     private val historyService: DDIGameHistoryService,
     private val playerSettingsService: PlayerSettingsService,
     private val log: Logger,
+    private val violationAdjudicator: DDIViolationAdjudicator = DDIViolationAdjudicator(),
 ) {
 
     val playerStates = ConcurrentHashMap<UUID, DDIPlayerState>()
@@ -457,6 +458,20 @@ class DDIObjectiveManager(
         val expected = voiceTargets()[detection.playerId] ?: return false
         if (expected != detection.target || detection.matchedSubjectId !in expected.subjectIds) {
             return false
+        }
+        when (
+            violationAdjudicator.decide(
+                DDIViolationEvidence(
+                    source = DDIEvidenceSource.VOICE_RECOGNITION,
+                    exactTargetMatch = true,
+                    confidence = detection.confidence,
+                ),
+            )
+        ) {
+            DDIAdjudicationDecision.AUTOMATIC_PENALTY -> Unit
+            DDIAdjudicationDecision.MANUAL_ACCUSATION_ONLY,
+            DDIAdjudicationDecision.REJECTED,
+            -> return false
         }
         val player = currentServer?.playerManager?.getPlayer(detection.playerId) ?: return false
         return applyPlayerSignal(
