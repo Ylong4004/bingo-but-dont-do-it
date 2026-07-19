@@ -24,7 +24,6 @@ import net.minecraft.registry.RegistryWrapper
 import net.minecraft.registry.entry.RegistryEntry
 import net.minecraft.server.network.ServerPlayerEntity
 import net.minecraft.server.world.ServerWorld
-import net.minecraft.sound.SoundEvents
 import net.minecraft.util.Identifier
 import net.minecraft.util.math.BlockPos
 import net.minecraft.util.math.Vec3d
@@ -487,9 +486,6 @@ internal class TradeMerchantEvent(context: DDISpecialEventContext) : DDIBaseSpec
 
     override fun onStart() {
         context.objectiveRepresentatives().forEach { player -> spawnMerchant(player) }
-        context.activePlayers().forEach {
-            it.playSound(SoundEvents.ENTITY_PLAYER_LEVELUP, 1f, 1f)
-        }
         context.broadcast("§6⚡ 特殊事件「交易商人」已触发！每个目标附近出现一位神秘商人，持续 30 秒！")
     }
 

@@ -137,6 +137,7 @@ class DDISpecialEventController(
             cleanupDDISpecialEntities(server, type)
             throw failure
         }
+        callbacks.playEventSound(type)
 
         if (definition.isInstant) {
             event.finish()

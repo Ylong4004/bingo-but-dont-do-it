@@ -46,6 +46,9 @@ interface DDISpecialEventCallbacks {
 
     fun message(player: ServerPlayerEntity, message: Text, actionBar: Boolean = true)
 
+    /** 事件开始后向本局参与者播放其语义对应的提示音。 */
+    fun playEventSound(eventType: DDISpecialEventType)
+
     /**
      * 启用或停用由集成事件或 Mixin 实现的钩子。
      * 调用具备幂等性；无论正常结束还是强制清理，每次启用都必须有对应的停用。

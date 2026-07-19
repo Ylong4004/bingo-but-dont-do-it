@@ -14,6 +14,7 @@ import net.minecraft.entity.boss.ServerBossBar
 import net.minecraft.entity.damage.DamageSource
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.sound.SoundEvents
 import net.minecraft.text.Text
 import org.slf4j.Logger
 import java.util.Collections
@@ -187,6 +188,49 @@ class DDISpecialEventService(
 
     override fun message(player: ServerPlayerEntity, message: Text, actionBar: Boolean) {
         player.sendMessage(message, actionBar)
+    }
+
+    override fun playEventSound(eventType: DDISpecialEventType) {
+        val (sound, pitch) = when (eventType) {
+            DDISpecialEventType.MONSTER_RAMPAGE,
+            DDISpecialEventType.ANVIL_STORM,
+            DDISpecialEventType.TNT_RAIN,
+            DDISpecialEventType.CAVE_IN,
+            DDISpecialEventType.FIRE_TRAIL,
+            DDISpecialEventType.ARROW_TRIAL -> SoundEvents.ENTITY_TNT_PRIMED to 0.72f
+
+            DDISpecialEventType.DIAMOND_GIFT,
+            DDISpecialEventType.DIAMOND_BLESSING,
+            DDISpecialEventType.LIFE_BLESSING,
+            DDISpecialEventType.CROP_SPEED_GROW,
+            DDISpecialEventType.DURABILITY_BLESSING,
+            DDISpecialEventType.TRADE_MERCHANT -> SoundEvents.ENTITY_PLAYER_LEVELUP to 1.1f
+
+            DDISpecialEventType.DIAMOND_CURSE,
+            DDISpecialEventType.ECLIPSE_CURSE,
+            DDISpecialEventType.EQUIPMENT_RUST,
+            DDISpecialEventType.HUNGER_DISEASE -> SoundEvents.BLOCK_NOTE_BLOCK_BASS to 0.55f
+
+            DDISpecialEventType.CALM,
+            DDISpecialEventType.CLOUD_EFFECT,
+            DDISpecialEventType.CHICKEN_RAIN,
+            DDISpecialEventType.EVERYONE_BABY -> SoundEvents.BLOCK_NOTE_BLOCK_PLING to 1.45f
+
+            DDISpecialEventType.FOOD_RAIN,
+            DDISpecialEventType.XP_STORM,
+            DDISpecialEventType.ORE_UNDERFOOT -> SoundEvents.ITEM_LODESTONE_COMPASS_LOCK to 1.15f
+
+            DDISpecialEventType.PUMPKIN_HEAD,
+            DDISpecialEventType.INVENTORY_SHUFFLE,
+            DDISpecialEventType.INVENTORY_MIGRATION -> SoundEvents.ENTITY_SHULKER_AMBIENT to 1.15f
+
+            DDISpecialEventType.PLAYER_SWAP,
+            DDISpecialEventType.SKY_WATER_CHALLENGE,
+            DDISpecialEventType.SLIME_POSSESSION -> SoundEvents.BLOCK_PORTAL_TRAVEL to 0.9f
+
+            DDISpecialEventType.CAGE_TRIAL -> SoundEvents.BLOCK_LEVER_CLICK to 0.8f
+        }
+        activePlayers().forEach { player -> player.playSound(sound, 0.85f, pitch) }
     }
 
     override fun setModifier(modifier: DDISpecialEventModifier, enabled: Boolean) {
