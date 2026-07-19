@@ -59,6 +59,9 @@ data class BingoOptions(
     var ddiSpecialEventTypes: Set<DDISpecialEventType> = DDISpecialEventType.BALANCED,
     var ddiVoiceKeywordsEnabled: Boolean = false,
     var ddiVoiceCustomKeywords: List<String> = emptyList(),
+    /** 默认全选；保存被主持人关闭的分类和单条 DDI 词条。 */
+    var ddiDisabledWordCategories: Set<String> = emptySet(),
+    var ddiDisabledWordIds: Set<String> = emptySet(),
 ) {
 
     fun isValid(): Boolean {
@@ -192,6 +195,11 @@ data class BingoOptions(
                         .sorted()
                         .joinToString(",")
                     yield("ddi-voice:$keywordIds")
+                }
+                if (ddiDisabledWordCategories.isNotEmpty() || ddiDisabledWordIds.isNotEmpty()) {
+                    val categoryIds = ddiDisabledWordCategories.sorted().joinToString(",")
+                    val wordIds = ddiDisabledWordIds.sorted().joinToString(",")
+                    yield("ddi-word-filter:$categoryIds:$wordIds")
                 }
             }
             // spawning

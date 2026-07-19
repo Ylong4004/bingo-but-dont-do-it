@@ -464,6 +464,32 @@ internal class OptionsService(
         ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordReset, removedCount))
     }
 
+    fun setDDIWordCategoryEnabled(ctx: Context, categoryId: String, enabled: Boolean) {
+        options.ddiDisabledWordCategories = if (enabled) {
+            options.ddiDisabledWordCategories - categoryId
+        } else {
+            options.ddiDisabledWordCategories + categoryId
+        }
+        ctx.sendFeedback(
+            text.literal(
+                "DDI 词条分类“$categoryId”已${if (enabled) "启用" else "停用"}。"
+            )
+        )
+    }
+
+    fun setDDIWordEnabled(ctx: Context, wordId: String, enabled: Boolean) {
+        options.ddiDisabledWordIds = if (enabled) {
+            options.ddiDisabledWordIds - wordId
+        } else {
+            options.ddiDisabledWordIds + wordId
+        }
+        ctx.sendFeedback(
+            text.literal(
+                "DDI 词条“$wordId”已${if (enabled) "启用" else "停用"}。"
+            )
+        )
+    }
+
     fun setTimeLimit(
         ctx: Context,
         minutes: Int?

@@ -43,6 +43,8 @@ class DDIWordPool(
 
     private val allWords = mutableListOf<WordEntry>()
     private var customVoiceWords: List<WordEntry> = emptyList()
+    private var disabledCategories: Set<String> = emptySet()
+    private var disabledWordIds: Set<String> = emptySet()
     private val random = Random.Default
 
     init {
@@ -120,8 +122,29 @@ class DDIWordPool(
 
     fun availableSize(): Int = availableWords().size
 
+    fun isEnabled(word: WordEntry): Boolean =
+        word.category !in disabledCategories && word.id !in disabledWordIds
+
+    /**
+     * 默认所有词条均可抽取；配置只记录被关闭的类别或词条，以便新词条自动加入默认池。
+     * 返回值用于避免无关设置变化触发一次不必要的重抽。
+     */
+    fun setWordSelection(
+        disabledCategories: Set<String>,
+        disabledWordIds: Set<String>,
+    ): Boolean {
+        val normalizedCategories = disabledCategories.toSet()
+        val normalizedWordIds = disabledWordIds.toSet()
+        if (this.disabledCategories == normalizedCategories && this.disabledWordIds == normalizedWordIds) {
+            return false
+        }
+        this.disabledCategories = normalizedCategories
+        this.disabledWordIds = normalizedWordIds
+        return true
+    }
+
     private fun availableWords(): List<WordEntry> = (allWords + customVoiceWords).filter { word ->
-        word.rule.isAvailable { modId -> environment?.isModLoaded(modId) == true }
+        isEnabled(word) && word.rule.isAvailable { modId -> environment?.isModLoaded(modId) == true }
     }
 
     /**

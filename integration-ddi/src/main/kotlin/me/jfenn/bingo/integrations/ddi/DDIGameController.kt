@@ -52,6 +52,14 @@ class DDIGameController(
         }
 
         events.onStateChange { event -> reconcile(event.to) }
+        events.onChangeOptions {
+            if (!isShutdown) {
+                ddiManager.updateWordSelection(
+                    disabledCategories = options.ddiDisabledWordCategories,
+                    disabledWordIds = options.ddiDisabledWordIds,
+                )
+            }
+        }
         events.onGameTick { event ->
             if (isShutdown) return@onGameTick
             // 只获取本次回调开始前已经存在的结果。由下方计时器产生的结果

@@ -341,6 +341,10 @@ class DDIObjectiveManager(
         inactivePlayerIds.clear()
         teamWordHistory.reset()
         historyService.reset()
+        wordPool.setWordSelection(
+            disabledCategories = state.options.ddiDisabledWordCategories,
+            disabledWordIds = state.options.ddiDisabledWordIds,
+        )
         wordPool.setCustomVoiceKeywords(state.options.ddiVoiceCustomKeywords)
         val forcedInitialWordId = debugNextRoundWordId
         val forcedInitialWord = forcedInitialWordId?.let(wordPool::findById)
@@ -396,11 +400,15 @@ class DDIObjectiveManager(
         sendResetToClients(server)
         triggerDetector.register()
 
-        objectives.forEach { objective ->
+        for (objective in objectives) {
             val initialWord = forcedInitialWord
                 ?.takeIf { isWordAvailableForObjective(objective, it) }
                 ?: drawNextWord(objective, previous = null)
-                ?: error("DDI word pool has no rule available for ${objective.objectiveId}")
+            if (initialWord == null) {
+                log.warn("[DDI] No enabled rule available for {}", objective.objectiveId)
+                stop(sendReset = false)
+                return false
+            }
             if (forcedInitialWordId != null && initialWord.id != forcedInitialWordId) {
                 log.warn(
                     "[DDI Debug] Forced first word {} was unavailable for {}; used {}",
@@ -585,11 +593,19 @@ class DDIObjectiveManager(
     /** 应用大厅或局内的自定义关键词变更，同时不修改静态词条。 */
     internal fun updateCustomVoiceKeywords(keywords: Iterable<String>) {
         wordPool.setCustomVoiceKeywords(keywords)
-        rerollUnavailableVoiceObjectives()
+        rerollUnavailableObjectives()
     }
 
     internal fun refreshVoiceAvailability() {
-        rerollUnavailableVoiceObjectives()
+        rerollUnavailableObjectives()
+    }
+
+    internal fun updateWordSelection(
+        disabledCategories: Set<String>,
+        disabledWordIds: Set<String>,
+    ) {
+        if (!wordPool.setWordSelection(disabledCategories, disabledWordIds)) return
+        rerollUnavailableObjectives()
     }
 
     /** 不可变 DDI 名单中在线且未被淘汰的成员。 */
@@ -905,7 +921,7 @@ class DDIObjectiveManager(
     /** 控制器激活期间每个服务端秒调用一次。 */
     fun tickWordTimers() {
         if (!hasRound || roundCompleted || state.state != GameState.PLAYING) return
-        rerollUnavailableVoiceObjectives()
+        rerollUnavailableObjectives()
 
         // 先完成所有计时器状态变更，再检查胜者，避免同一秒内多队淘汰时
         // 由迭代顺序决定结果。
@@ -1202,6 +1218,7 @@ class DDIObjectiveManager(
         objective: DDIObjectiveState,
         word: DDIWordPool.WordEntry,
     ): Boolean {
+        if (!wordPool.isEnabled(word)) return false
         if (word.category == DDIWordPool.VOICE_CATEGORY) {
             return isVoiceWordAvailable(objective, word)
         }
@@ -1255,15 +1272,15 @@ class DDIObjectiveManager(
             .toCollection(linkedSetOf())
     }
 
-    /** 模型丢失、撤销同意或自定义词条被删除后，绝不能再造成惩罚。 */
-    private fun rerollUnavailableVoiceObjectives() {
+    /** 模型、授权或词条选择改变后，当前失效的词条必须立刻安全重抽。 */
+    private fun rerollUnavailableObjectives() {
         if (!hasRound || roundCompleted) return
         var changed = false
         objectiveStates.values
-            .filter { it.isAlive && it.currentWord?.category == DDIWordPool.VOICE_CATEGORY }
+            .filter { it.isAlive && it.currentWord != null }
             .forEach { objective ->
                 val word = objective.currentWord ?: return@forEach
-                if (isVoiceWordAvailable(objective, word)) return@forEach
+                if (isWordAvailableForObjective(objective, word)) return@forEach
                 val nextWord = drawNextWord(objective, word)
                 if (nextWord == null) {
                     completeByPoolExhaustion(objective)

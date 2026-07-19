@@ -85,6 +85,19 @@ class DDIWordPoolTest {
     }
 
     @Test
+    fun `disabled categories and word ids are excluded from draws`() {
+        val voiceWord = pool.findById("voice_diamond")!!
+        val craftWord = pool.findById("craft_table_01")!!
+
+        assertThat(pool.isEnabled(voiceWord)).isEqualTo(true)
+        assertThat(pool.isEnabled(craftWord)).isEqualTo(true)
+        assertThat(pool.setWordSelection(setOf("voice"), setOf(craftWord.id))).isEqualTo(true)
+        assertThat(pool.isEnabled(voiceWord)).isEqualTo(false)
+        assertThat(pool.isEnabled(craftWord)).isEqualTo(false)
+        assertThat(pool.setWordSelection(setOf("voice"), setOf(craftWord.id))).isEqualTo(false)
+    }
+
+    @Test
     fun `custom voice words are normalized stable and do not duplicate built-ins`() {
         val first = pool.setCustomVoiceKeywords(listOf("  远古残骸  ", "远古残骸", "钻石"))
         val firstId = first.single().id
