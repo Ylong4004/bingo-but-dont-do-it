@@ -37,8 +37,15 @@ private const val PRESET_HEIGHT = 0.55
 private const val PRESET_MARGIN = 0.1
 private const val EVENT_SELECTOR_PAGE_SIZE = 10
 private const val EVENT_SELECTOR_ROWS = 5
+private const val WORD_CATALOG_PAGE_SIZE = 10
+private const val WORD_CATALOG_ROWS = 5
 
 private class DDIEventSelectorState(var page: Int = 0)
+internal class DDIWordCatalogMenuState(
+    var categoryPage: Int = 0,
+    var wordPage: Int = 0,
+    var selectedCategoryId: String? = null,
+)
 
 private fun <T> readOnlyMutableProperty(getter: () -> T): MutableProperty<T> =
     DelegatedProperty(getter = getter, setter = {})
@@ -400,6 +407,263 @@ internal fun MenuComponent.registerDDISpecialEventSelector(
                     OptionsService.Context(player),
                     eventType,
                     eventType !in options.ddiSpecialEventTypes,
+                )
+            }
+        }
+    }
+}
+
+private fun MenuComponent.ddiWordCatalogSnapshot(): DDIWordCatalogSnapshot? =
+    runCatching { koinScope.get<DDIWordCatalog>().snapshot() }.getOrNull()
+
+private fun MenuComponent.ddiWordCategoryText(category: DDIWordCatalogCategory): IText =
+    text.translatable(category.translationKey, null)
+
+internal fun MenuComponent.registerDDIWordCategorySelector(
+    position: Vector3d,
+    width: Double,
+    selectorState: DDIWordCatalogMenuState,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    fun catalog() = ddiWordCatalogSnapshot()
+    fun categories() = catalog()?.categories.orEmpty()
+    fun pageCount() = ceil(categories().size / WORD_CATALOG_PAGE_SIZE.toDouble()).toInt().coerceAtLeast(1)
+    fun categoryStats(categoryId: String): Pair<Int, Int> {
+        val entries = catalog()?.entries.orEmpty().filter { it.categoryId == categoryId }
+        val enabled = entries.count { it.id !in options.ddiDisabledWordIds }
+        return enabled to entries.size
+    }
+
+    registerTitlePanel(
+        position = position + Vector3d(0.0, -0.5, 0.0),
+        width = width,
+        titleProp = computedProperty {
+            val availableCategories = categories()
+            if (availableCategories.isEmpty()) {
+                text.literal("DDI 词条目录不可用")
+            } else {
+                text.string(
+                    StringKey.DdiMenuWordCategorySelectionTitle,
+                    selectorState.categoryPage + 1,
+                    pageCount(),
+                    availableCategories.count { it.id !in options.ddiDisabledWordCategories },
+                    availableCategories.size,
+                )
+            }
+        },
+    )
+
+    registerTileButton(
+        position = position + Vector3d(-width / 2 + 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal("<"),
+        isActiveProp = computedProperty { selectorState.categoryPage > 0 },
+        affectsOptions = false,
+    ) {
+        selectorState.categoryPage = (selectorState.categoryPage - 1).coerceAtLeast(0)
+        markDirty()
+    }
+    registerTileButton(
+        position = position + Vector3d(width / 2 - 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal(">"),
+        isActiveProp = computedProperty { selectorState.categoryPage < pageCount() - 1 },
+        affectsOptions = false,
+    ) {
+        selectorState.categoryPage = (selectorState.categoryPage + 1).coerceAtMost(pageCount() - 1)
+        markDirty()
+    }
+
+    val columnGap = 0.1
+    val itemWidth = (width - columnGap) / 2
+    val viewWidth = 0.85
+    val categoryWidth = itemWidth - viewWidth - columnGap
+    repeat(WORD_CATALOG_PAGE_SIZE) { slot ->
+        val itemIndex by computedProperty {
+            selectorState.categoryPage * WORD_CATALOG_PAGE_SIZE + slot
+        }
+        val column = slot / WORD_CATALOG_ROWS
+        val row = slot % WORD_CATALOG_ROWS
+        val centerX = if (column == 0) {
+            -itemWidth / 2 - columnGap / 2
+        } else {
+            itemWidth / 2 + columnGap / 2
+        }
+        val y = -0.95 - row * 0.4
+
+        registerTileButton(
+            position = position + Vector3d(
+                centerX - (viewWidth + columnGap) / 2,
+                y,
+                0.0,
+            ),
+            width = categoryWidth,
+            height = 0.32,
+            text = text.empty(),
+            textProp = computedProperty {
+                categories().getOrNull(itemIndex)
+                    ?.let(::ddiWordCategoryText)
+                    ?: text.empty()
+            },
+            tooltipProp = computedProperty {
+                categories().getOrNull(itemIndex)?.let { category ->
+                    val (enabled, total) = categoryStats(category.id)
+                    listOf(text.literal("已单独启用 $enabled/$total 条"))
+                }
+            },
+            isActiveProp = computedProperty {
+                categories().getOrNull(itemIndex)?.let { category ->
+                    category.id !in options.ddiDisabledWordCategories
+                } ?: false
+            },
+        ) { player ->
+            categories().getOrNull(itemIndex)?.let { category ->
+                optionsService.setDDIWordCategoryEnabled(
+                    ctx = OptionsService.Context(player),
+                    categoryId = category.id,
+                    enabled = category.id in options.ddiDisabledWordCategories,
+                )
+            }
+        }
+        registerTileButton(
+            position = position + Vector3d(
+                centerX + (categoryWidth + columnGap) / 2,
+                y,
+                0.0,
+            ),
+            width = viewWidth,
+            height = 0.32,
+            text = text.string(StringKey.DdiMenuWordCategoryView),
+            isActiveProp = computedProperty { categories().getOrNull(itemIndex) != null },
+            affectsOptions = false,
+        ) {
+            categories().getOrNull(itemIndex)?.let { category ->
+                selectorState.selectedCategoryId = category.id
+                selectorState.wordPage = 0
+                state.menu.page = MenuPage.DDI_WORD_ENTRIES
+            }
+        }
+    }
+}
+
+internal fun MenuComponent.registerDDIWordEntrySelector(
+    position: Vector3d,
+    width: Double,
+    selectorState: DDIWordCatalogMenuState,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    fun catalog() = ddiWordCatalogSnapshot()
+    fun selectedCategory(): DDIWordCatalogCategory? {
+        val categories = catalog()?.categories.orEmpty()
+        return categories.firstOrNull { it.id == selectorState.selectedCategoryId }
+            ?: categories.firstOrNull()
+    }
+    fun words(): List<DDIWordCatalogEntry> {
+        val category = selectedCategory() ?: return emptyList()
+        return catalog()?.entries
+            .orEmpty()
+            .filter { it.categoryId == category.id }
+            .sortedWith(compareBy(DDIWordCatalogEntry::displayText).thenBy(DDIWordCatalogEntry::id))
+    }
+    fun pageCount() = ceil(words().size / WORD_CATALOG_PAGE_SIZE.toDouble()).toInt().coerceAtLeast(1)
+
+    registerTitlePanel(
+        position = position + Vector3d(0.0, -0.5, 0.0),
+        width = width,
+        titleProp = computedProperty {
+            val category = selectedCategory()
+            if (category == null) {
+                text.literal("DDI 词条目录不可用")
+            } else {
+                val categoryWords = words()
+                val enabled = categoryWords.count { it.id !in options.ddiDisabledWordIds }
+                text.string(
+                    StringKey.DdiMenuWordEntrySelectionTitle,
+                    ddiWordCategoryText(category),
+                    selectorState.wordPage + 1,
+                    pageCount(),
+                    enabled,
+                    categoryWords.size,
+                )
+            }
+        },
+    )
+
+    registerTileButton(
+        position = position + Vector3d(-width / 2 + 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal("<"),
+        isActiveProp = computedProperty { selectorState.wordPage > 0 },
+        affectsOptions = false,
+    ) {
+        selectorState.wordPage = (selectorState.wordPage - 1).coerceAtLeast(0)
+        markDirty()
+    }
+    registerTileButton(
+        position = position + Vector3d(width / 2 - 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal(">"),
+        isActiveProp = computedProperty { selectorState.wordPage < pageCount() - 1 },
+        affectsOptions = false,
+    ) {
+        selectorState.wordPage = (selectorState.wordPage + 1).coerceAtMost(pageCount() - 1)
+        markDirty()
+    }
+
+    val columnGap = 0.1
+    val itemWidth = (width - columnGap) / 2
+    repeat(WORD_CATALOG_PAGE_SIZE) { slot ->
+        val itemIndex by computedProperty {
+            selectorState.wordPage * WORD_CATALOG_PAGE_SIZE + slot
+        }
+        val column = slot / WORD_CATALOG_ROWS
+        val row = slot % WORD_CATALOG_ROWS
+        val x = if (column == 0) {
+            -itemWidth / 2 - columnGap / 2
+        } else {
+            itemWidth / 2 + columnGap / 2
+        }
+        val y = -0.95 - row * 0.4
+
+        registerTileButton(
+            position = position + Vector3d(x, y, 0.0),
+            width = itemWidth,
+            height = 0.32,
+            text = text.empty(),
+            textProp = computedProperty {
+                words().getOrNull(itemIndex)?.let { entry ->
+                    text.literal(entry.displayText)
+                } ?: text.empty()
+            },
+            tooltipProp = computedProperty {
+                words().getOrNull(itemIndex)?.let { entry ->
+                    buildList {
+                        add(text.literal(entry.id))
+                        if (selectedCategory()?.id in options.ddiDisabledWordCategories) {
+                            add(text.literal("该分类当前已停用"))
+                        }
+                    }
+                }
+            },
+            isActiveProp = computedProperty {
+                words().getOrNull(itemIndex)?.let { entry ->
+                    entry.id !in options.ddiDisabledWordIds
+                } ?: false
+            },
+        ) { player ->
+            words().getOrNull(itemIndex)?.let { entry ->
+                optionsService.setDDIWordEnabled(
+                    ctx = OptionsService.Context(player),
+                    wordId = entry.id,
+                    enabled = entry.id in options.ddiDisabledWordIds,
                 )
             }
         }

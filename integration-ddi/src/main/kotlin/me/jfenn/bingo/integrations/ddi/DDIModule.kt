@@ -1,5 +1,6 @@
 package me.jfenn.bingo.integrations.ddi
 
+import me.jfenn.bingo.common.options.DDIWordCatalog
 import me.jfenn.bingo.common.scope.BingoScope
 import org.koin.core.module.dsl.scopedOf
 import org.koin.core.module.dsl.singleOf
@@ -15,6 +16,7 @@ val ddiModule = module {
 
     scope<BingoScope> {
         scopedOf(::DDIWordPool)
+        scoped<DDIWordCatalog> { DDIWordCatalogProvider(wordPool = get(), options = get()) }
         scopedOf(::DDITriggerDetector)
         scopedOf(::DDITabLivesService)
         scoped {

@@ -162,29 +162,38 @@ private fun createDDIPage(
     pos.add(MENU_DDI_ENABLE_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
 
     registerDDISectionLink(
-        position = pos + Vector3d(2.35/2, 0.0, 0.0),
-        width = 2.35,
+        position = pos + Vector3d(1.8/2, 0.0, 0.0),
+        width = 1.8,
         title = StringKey.DdiMenuBasic,
         targetPage = MenuPage.DDI_BASIC,
         icon = "⚙",
     )
-    pos.add(2.35 + MENU_LINE_PADDING, 0.0, 0.0)
+    pos.add(1.8 + MENU_LINE_PADDING, 0.0, 0.0)
 
     registerDDISectionLink(
-        position = pos + Vector3d(2.55/2, 0.0, 0.0),
-        width = 2.55,
+        position = pos + Vector3d(2.0/2, 0.0, 0.0),
+        width = 2.0,
         title = StringKey.DdiMenuSpecialEvents,
         targetPage = MenuPage.DDI_SPECIAL_EVENTS,
         icon = "⚡",
     )
-    pos.add(2.55 + MENU_LINE_PADDING, 0.0, 0.0)
+    pos.add(2.0 + MENU_LINE_PADDING, 0.0, 0.0)
 
     registerDDISectionLink(
-        position = pos + Vector3d(2.5/2, 0.0, 0.0),
-        width = 2.5,
+        position = pos + Vector3d(2.0/2, 0.0, 0.0),
+        width = 2.0,
         title = StringKey.DdiMenuVoiceKeywords,
         targetPage = MenuPage.DDI_VOICE_KEYWORDS,
         icon = "♫",
+    )
+    pos.add(2.0 + MENU_LINE_PADDING, 0.0, 0.0)
+
+    registerDDISectionLink(
+        position = pos + Vector3d(1.7/2, 0.0, 0.0),
+        width = 1.7,
+        title = StringKey.DdiMenuWordCatalog,
+        targetPage = MenuPage.DDI_WORD_CATEGORIES,
+        icon = "☷",
     )
 }
 
@@ -260,6 +269,46 @@ private fun createDDISpecialEventSelectPage(
     registerDDISpecialEventSelector(
         position = pos + Vector3d(selectorWidth/2, 0.0, 0.0),
         width = selectorWidth,
+    )
+}
+
+private fun createDDIWordCategoriesPage(
+    koinScope: Scope,
+    position: Vector3d,
+    selectorState: DDIWordCatalogMenuState,
+) = component(koinScope) {
+    val pos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, 0.0, 0.0)
+    registerBackButton(
+        position = pos + Vector3d(MENU_BACK_WIDTH/2, 0.0, 0.0),
+        targetPage = MenuPage.DDI,
+    )
+    pos.add(MENU_BACK_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    val selectorWidth = 9.7
+    registerDDIWordCategorySelector(
+        position = pos + Vector3d(selectorWidth/2, 0.0, 0.0),
+        width = selectorWidth,
+        selectorState = selectorState,
+    )
+}
+
+private fun createDDIWordEntriesPage(
+    koinScope: Scope,
+    position: Vector3d,
+    selectorState: DDIWordCatalogMenuState,
+) = component(koinScope) {
+    val pos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, 0.0, 0.0)
+    registerBackButton(
+        position = pos + Vector3d(MENU_BACK_WIDTH/2, 0.0, 0.0),
+        targetPage = MenuPage.DDI_WORD_CATEGORIES,
+    )
+    pos.add(MENU_BACK_WIDTH + MENU_LINE_PADDING, 0.0, 0.0)
+
+    val selectorWidth = 9.7
+    registerDDIWordEntrySelector(
+        position = pos + Vector3d(selectorWidth/2, 0.0, 0.0),
+        width = selectorWidth,
+        selectorState = selectorState,
     )
 }
 
@@ -348,6 +397,7 @@ internal fun MenuComponent.registerMenuPage(
     state: BingoState = koinScope.get(),
 ) {
     val menuState by state::menu
+    val ddiWordCatalogState = DDIWordCatalogMenuState()
 
     val pages = MenuPage.entries.associateWith {
         when (it) {
@@ -357,6 +407,8 @@ internal fun MenuComponent.registerMenuPage(
             MenuPage.DDI_BASIC -> createDDIBasicPage(koinScope, position)
             MenuPage.DDI_SPECIAL_EVENTS -> createDDISpecialEventsPage(koinScope, position)
             MenuPage.DDI_SPECIAL_EVENT_SELECT -> createDDISpecialEventSelectPage(koinScope, position)
+            MenuPage.DDI_WORD_CATEGORIES -> createDDIWordCategoriesPage(koinScope, position, ddiWordCatalogState)
+            MenuPage.DDI_WORD_ENTRIES -> createDDIWordEntriesPage(koinScope, position, ddiWordCatalogState)
             MenuPage.DDI_VOICE_KEYWORDS -> createDDIVoiceKeywordsPage(koinScope, position)
             MenuPage.GOAL -> createGoalPage(koinScope, position)
             MenuPage.ITEMS -> createItemsPage(koinScope, position)
