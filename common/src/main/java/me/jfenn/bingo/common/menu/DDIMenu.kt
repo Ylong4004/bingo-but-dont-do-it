@@ -410,6 +410,7 @@ internal fun MenuComponent.registerDDIVoiceEnable(
     position: Vector3d,
     state: BingoState = koinScope.get(),
     optionsService: OptionsService = koinScope.get(),
+    dialogManager: IDialogManager = koinScope.get(),
 ) {
     val options = state.options
     registerTitlePanel(
@@ -418,9 +419,9 @@ internal fun MenuComponent.registerDDIVoiceEnable(
         title = text.string(StringKey.DdiMenuVoiceKeywords),
     )
     registerTileButton(
-        position = position + Vector3d(0.0, PANEL_BOTTOM, 0.0),
+        position = position + Vector3d(0.0, -1.35, 0.0),
         width = MENU_DDI_VOICE_ENABLE_WIDTH,
-        height = PANEL_HEIGHT,
+        height = 0.75,
         text = text.string(StringKey.DdiMenuEnabled),
         isActiveProp = computedProperty { options.ddiVoiceKeywordsEnabled },
         tooltip = buildTooltip(StringKey.DdiOptionVoiceKeywords),
@@ -429,6 +430,34 @@ internal fun MenuComponent.registerDDIVoiceEnable(
             OptionsService.Context(player),
             !options.ddiVoiceKeywordsEnabled,
         )
+    }
+    registerTileButton(
+        position = position + Vector3d(0.0, -2.3, 0.0),
+        width = MENU_DDI_VOICE_ENABLE_WIDTH,
+        height = 0.75,
+        text = text.literal("准备服务器模型"),
+        tooltip = buildTooltip(StringKey.DdiOptionVoiceKeywords),
+        affectsOptions = false,
+    ) { player ->
+        val command = "/bingo ddi voice model download"
+        val builder = dialogManager.confirmationBuilder()
+        if (builder == null) {
+            player.sendMessage(
+                text.literal("§e[不要做·语音] §f模型只会下载到房主/服务器。点击 §a[准备模型]§f 开始。")
+                    .apply { setClickEvent(TextAction.RunCommand(command)) }
+            )
+            return@registerTileButton
+        }
+        builder.title = text.literal("准备服务器语音模型")
+        builder.addText(
+            text.literal(
+                "将由房主/服务器下载约 43.9 MiB 的离线中文模型；其他玩家不会下载模型。" +
+                    "下载、校验、解压和加载状态可在游戏内查看。"
+            )
+        )
+        builder.setYes(text.literal("下载并准备"), IDialogAction.RunCommand(command))
+        builder.setNo(text.literal("暂不"), IDialogAction.None)
+        dialogManager.showDialog(player, builder.build())
     }
 }
 
@@ -499,6 +528,7 @@ internal fun MenuComponent.registerDDIVoiceKeywordEditor(
 
 internal fun MenuComponent.registerDDIVoiceConsentHelp(
     position: Vector3d,
+    dialogManager: IDialogManager = koinScope.get(),
 ) {
     registerTitlePanel(
         position = position + Vector3d(0.0, -0.5, 0.0),
@@ -516,11 +546,25 @@ internal fun MenuComponent.registerDDIVoiceConsentHelp(
         affectsOptions = false,
     ) { player ->
         val command = BingoPrefsCommand.getCommand(PlayerSettings::ddiVoiceConsent, true)
-        player.sendMessage(
-            text.string(StringKey.DdiMenuVoiceConsentMessage, command).apply {
-                setClickEvent(TextAction.SuggestCommand(command))
-            }
+        val builder = dialogManager.confirmationBuilder()
+        if (builder == null) {
+            player.sendMessage(
+                text.string(StringKey.DdiMenuVoiceConsentMessage, command).apply {
+                    setClickEvent(TextAction.RunCommand(command))
+                }
+            )
+            return@registerTileButton
+        }
+        builder.title = text.string(StringKey.DdiMenuVoiceConsent)
+        builder.addText(
+            text.literal(
+                "同意后，服务器仅在本局语音词条期间处理你的语音包进行离线识别。" +
+                    "不会上传或保存音频、转写文本；可随时在个人设置撤回。"
+            )
         )
+        builder.setYes(text.literal("同意并参加"), IDialogAction.RunCommand(command))
+        builder.setNo(text.literal("暂不参加"), IDialogAction.None)
+        dialogManager.showDialog(player, builder.build())
     }
 }
 

@@ -16,6 +16,7 @@ import me.jfenn.bingo.integrations.voice.VoiceKeywordDiagnosticsSnapshot
 import me.jfenn.bingo.platform.commands.ICommandManager
 import me.jfenn.bingo.platform.commands.IExecutionContext
 import me.jfenn.bingo.platform.text.IText
+import me.jfenn.bingo.platform.text.TextAction
 import net.minecraft.util.Formatting
 import java.util.Locale
 import java.util.UUID
@@ -573,12 +574,33 @@ class DDICommands(
                     literal("model") {
                         literal("download") {
                             executes {
-                                scope.get<DDIVoiceKeywordController>().requestModelDownload()
+                                val requester = player
+                                scope.get<DDIVoiceKeywordController>()
+                                    .requestModelDownload()
+                                    .whenComplete { status, failure ->
+                                        server.execute {
+                                            val target = requester ?: return@execute
+                                            val message = when {
+                                                failure != null ->
+                                                    "§c[不要做·语音] §f模型准备请求失败；请重试或查看状态。"
+                                                status?.isReady == true ->
+                                                    "§a[不要做·语音] §f本地识别模型已准备完成。"
+                                                else ->
+                                                    "§e[不要做·语音] §f模型准备结束，当前状态=" +
+                                                        "${status?.state?.name?.lowercase() ?: "未知"}。"
+                                            }
+                                            target.sendMessage(text.literal(message))
+                                        }
+                                    }
                                 sendFeedback(
-                                    text.literal(
-                                        "§a已异步检查/下载校验后的本地中文语音模型；" +
-                                            "使用 /bingo ddi voice status 查看进度。"
-                                    )
+                                    text.literal("§a已开始检查/下载服务器本地中文语音模型；")
+                                        .append(
+                                            text.literal("[查看进度]").apply {
+                                                setClickEvent(
+                                                    TextAction.RunCommand("/bingo ddi voice status"),
+                                                )
+                                            }
+                                        )
                                 )
                             }
                         }
