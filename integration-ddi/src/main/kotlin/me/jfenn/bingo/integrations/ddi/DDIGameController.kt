@@ -25,6 +25,7 @@ class DDIGameController(
     private val ddiManager: DDIObjectiveManager,
     private val specialEvents: DDISpecialEventService,
     private val voiceKeywords: DDIVoiceKeywordController,
+    private val voiceAccusations: DDIVoiceAccusationService,
     private val gameEndService: DDIGameEndService,
     events: ScopedEvents,
     private val log: Logger,
@@ -60,6 +61,9 @@ class DDIGameController(
                 server.ticks.toLong() > pendingResultTick
             }
             ddiManager.enforceEliminatedSpectators()
+            if (sessionState is DDISessionState.Active) {
+                voiceAccusations.tick()
+            }
             if (sessionState is DDISessionState.Active) {
                 specialEvents.tickServerTick()
                 voiceKeywords.tick()
@@ -230,6 +234,8 @@ class DDIGameController(
             .onFailure { log.error("[DDI Events] Failed to stop auxiliary event state", it) }
         runCatching(voiceKeywords::stop)
             .onFailure { log.error("[DDI Voice] Failed to stop the recognition session", it) }
+        runCatching(voiceAccusations::stop)
+            .onFailure { log.error("[DDI Vote] Failed to stop accusation vote state", it) }
     }
 
     private companion object {

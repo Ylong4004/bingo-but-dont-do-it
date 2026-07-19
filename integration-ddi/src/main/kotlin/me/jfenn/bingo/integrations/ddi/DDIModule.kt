@@ -17,9 +17,21 @@ val ddiModule = module {
         scopedOf(::DDIWordPool)
         scopedOf(::DDITriggerDetector)
         scopedOf(::DDITabLivesService)
-        scopedOf(::DDIObjectiveManager)
+        scoped {
+            DDIObjectiveManager(
+                state = get(),
+                wordPool = get(),
+                triggerDetector = get(),
+                packets = get(),
+                tabLivesService = get(),
+                historyService = get(),
+                playerSettingsService = get(),
+                log = get(),
+            )
+        }
         scopedOf(::DDISpecialEventService)
         scopedOf(::DDIVoiceKeywordController)
+        scoped { DDIVoiceAccusationService(server = get(), manager = get(), log = get()) }
         scopedOf(::DDIGameController)
     }
 }

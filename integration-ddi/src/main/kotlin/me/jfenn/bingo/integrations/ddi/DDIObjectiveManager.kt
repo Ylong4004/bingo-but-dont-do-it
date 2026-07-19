@@ -107,6 +107,30 @@ data class DDIVoicePlayerDebugSnapshot(
     val isTargetPublished: Boolean,
 )
 
+/** 为一次玩家主动语音指控冻结的 DDI 侧事实。 */
+data class DDIVoiceAccusationCandidate(
+    val accuserId: UUID,
+    val accusedPlayerId: UUID,
+    val accusedPlayerName: String,
+    val accusedTeamId: String,
+    val objectiveId: String,
+    val assignmentRevision: Long,
+    val eligibleVoterIds: Set<UUID>,
+)
+
+sealed interface DDIVoiceAccusationPreparation {
+    data class Ready(val candidate: DDIVoiceAccusationCandidate) : DDIVoiceAccusationPreparation
+    data object NoActiveRound : DDIVoiceAccusationPreparation
+    data object AccusedNotActive : DDIVoiceAccusationPreparation
+    data object AccusedHasNoVoiceWord : DDIVoiceAccusationPreparation
+    data object AccuserNotEligible : DDIVoiceAccusationPreparation
+}
+
+enum class DDIVoiceAccusationSettlement {
+    SETTLED,
+    STALE_OR_INELIGIBLE,
+}
+
 /**
  * 服务端权威 DDI 回合状态。
  *
@@ -482,6 +506,80 @@ class DDIObjectiveManager(
             ),
             finalizeWinCheck = true,
         )
+    }
+
+    /**
+     * 在指控创建时冻结服务端可验证的资格条件。实际选民快照一旦交给投票模块，
+     * 换队、进退语音组都不会修改它；结算时仍会重新校验词条版本，避免旧词条处罚。
+     */
+    internal fun prepareVoiceAccusation(
+        accuserId: UUID,
+        accusedPlayerId: UUID,
+    ): DDIVoiceAccusationPreparation {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) {
+            return DDIVoiceAccusationPreparation.NoActiveRound
+        }
+        if (accusedPlayerId in inactivePlayerIds) {
+            return DDIVoiceAccusationPreparation.AccusedNotActive
+        }
+        val accused = playerStates[accusedPlayerId]
+            ?: return DDIVoiceAccusationPreparation.AccusedNotActive
+        val objective = objectiveFor(accusedPlayerId)?.takeIf { it.isAlive }
+            ?: return DDIVoiceAccusationPreparation.AccusedNotActive
+        val word = objective.currentWord
+            ?.takeIf { it.category == DDIWordPool.VOICE_CATEGORY }
+            ?.takeIf { isVoiceWordAvailable(objective, it) }
+            ?: return DDIVoiceAccusationPreparation.AccusedHasNoVoiceWord
+
+        val eligibleVoters = eligibleVoiceAccusationVoters(objective.teamKey)
+        if (accuserId !in eligibleVoters) {
+            return DDIVoiceAccusationPreparation.AccuserNotEligible
+        }
+        return DDIVoiceAccusationPreparation.Ready(
+            DDIVoiceAccusationCandidate(
+                accuserId = accuserId,
+                accusedPlayerId = accusedPlayerId,
+                accusedPlayerName = accused.playerName,
+                accusedTeamId = objective.teamKey.id,
+                objectiveId = objective.objectiveId,
+                assignmentRevision = objective.assignmentRevision,
+                eligibleVoterIds = eligibleVoters,
+            ),
+        )
+    }
+
+    /**
+     * 只接受仍指向同一语音词条分配版本的已通过投票。该二次校验使旧投票在换词、
+     * 撤回语音同意、断开语音或玩家失效后自然作废，而不是惩罚一条新词条。
+     */
+    internal fun settleApprovedVoiceAccusation(
+        vote: DDIAccusationVoteSnapshot,
+    ): DDIVoiceAccusationSettlement {
+        if (!hasRound || roundCompleted || state.state != GameState.PLAYING) {
+            return DDIVoiceAccusationSettlement.STALE_OR_INELIGIBLE
+        }
+        if (vote.accusedPlayerId in inactivePlayerIds ||
+            currentServer?.playerManager?.getPlayer(vote.accusedPlayerId) == null
+        ) {
+            return DDIVoiceAccusationSettlement.STALE_OR_INELIGIBLE
+        }
+        val accused = playerStates[vote.accusedPlayerId]
+            ?: return DDIVoiceAccusationSettlement.STALE_OR_INELIGIBLE
+        val objective = objectiveFor(vote.accusedPlayerId)
+            ?.takeIf { it.isAlive }
+            ?.takeIf { it.objectiveId == vote.objectiveId }
+            ?.takeIf { it.teamKey.id == vote.accusedTeamId }
+            ?.takeIf { it.assignmentRevision == vote.assignmentRevision }
+            ?: return DDIVoiceAccusationSettlement.STALE_OR_INELIGIBLE
+        val word = objective.currentWord
+            ?.takeIf { it.category == DDIWordPool.VOICE_CATEGORY }
+            ?.takeIf { isVoiceWordAvailable(objective, it) }
+            ?: return DDIVoiceAccusationSettlement.STALE_OR_INELIGIBLE
+
+        settleViolation(objective, word, actorName = accused.playerName)
+        syncObjectiveToAll(objective)
+        if (!roundCompleted) checkWinCondition()
+        return DDIVoiceAccusationSettlement.SETTLED
     }
 
     /** 应用大厅或局内的自定义关键词变更，同时不修改静态词条。 */
@@ -1140,6 +1238,21 @@ class DDIObjectiveManager(
         return objective.memberIds.filter { playerId ->
             playerId !in inactivePlayerIds && server.playerManager.getPlayer(playerId) != null
         }
+    }
+
+    /** 当前在线、同意语音识别且不属于被指控队伍的 DDI 参与者。 */
+    private fun eligibleVoiceAccusationVoters(excludedTeam: BingoTeamKey): Set<UUID> {
+        val server = currentServer ?: return emptySet()
+        return server.playerManager.playerList.asSequence()
+            .map { it.uuid }
+            .filter { playerId ->
+                playerId !in inactivePlayerIds &&
+                    playerStates[playerId]?.teamKey != excludedTeam &&
+                    objectiveFor(playerId)?.isAlive == true &&
+                    playerSettingsService.getPlayer(playerId).ddiVoiceConsent &&
+                    VoiceKeywordBridge.isPlayerConnected(playerId)
+            }
+            .toCollection(linkedSetOf())
     }
 
     /** 模型丢失、撤销同意或自定义词条被删除后，绝不能再造成惩罚。 */

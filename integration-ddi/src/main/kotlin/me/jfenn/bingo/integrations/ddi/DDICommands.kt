@@ -197,6 +197,14 @@ class DDICommands(
         )
     }
 
+    private fun IExecutionContext.sendAccusationResult(result: DDIVoiceAccusationActionResult) {
+        sendMessage(
+            text.literal(
+                (if (result.success) "§a[不要做·投票] " else "§c[不要做·投票] ") + result.message,
+            )
+        )
+    }
+
     private fun diagnosticStageText(stage: VoiceKeywordDiagnosticStage?): String = when (stage) {
         VoiceKeywordDiagnosticStage.MICROPHONE_PACKET -> "收到麦克风包"
         VoiceKeywordDiagnosticStage.NO_ACTIVE_TARGET -> "玩家没有活动语音目标"
@@ -561,6 +569,49 @@ class DDICommands(
                                         "§a已异步检查/下载校验后的本地中文语音模型；" +
                                             "使用 /bingo ddi voice status 查看进度。"
                                     )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 与管理员诊断命令分开注册：这是所有 DDI 语音参与者的游戏内交互入口。
+        commandManager.register("bingo") {
+            literal("accuse") {
+                requires { !isConsole }
+                player("player") { accusedArg ->
+                    executes {
+                        val result = scope.get<DDIVoiceAccusationService>().accuse(
+                            accuser = playerOrThrow.player,
+                            accused = getArgument(accusedArg).player,
+                        )
+                        sendAccusationResult(result)
+                    }
+                }
+                literal("vote") {
+                    string("vote_id") { voteIdArg ->
+                        boolean("approve") { approveArg ->
+                            executes {
+                                val voteId = runCatching {
+                                    UUID.fromString(getArgument(voteIdArg))
+                                }.getOrNull()
+                                if (voteId == null) {
+                                    sendAccusationResult(
+                                        DDIVoiceAccusationActionResult(
+                                            success = false,
+                                            message = "投票编号无效。",
+                                        ),
+                                    )
+                                    return@executes
+                                }
+                                sendAccusationResult(
+                                    scope.get<DDIVoiceAccusationService>().vote(
+                                        voter = playerOrThrow.player,
+                                        voteId = voteId,
+                                        approve = getArgument(approveArg),
+                                    ),
                                 )
                             }
                         }
