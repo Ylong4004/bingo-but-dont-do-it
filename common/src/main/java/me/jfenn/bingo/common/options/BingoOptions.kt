@@ -76,7 +76,7 @@ data class BingoOptions(
         ) return false
 
         if (ddiVoiceKeywordsEnabled) {
-            if (ddiVoiceCustomKeywords.size > DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS) return false
+            if (!DDIVoiceKeywordOptions.isWithinTotalBudget(ddiVoiceCustomKeywords)) return false
             if (ddiVoiceCustomKeywords.any { DDIVoiceKeywordOptions.validate(it) != it }) return false
             if (ddiVoiceCustomKeywords
                     .map(DDIVoiceKeywordOptions::recognitionKey)

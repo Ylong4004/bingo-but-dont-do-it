@@ -93,7 +93,6 @@ class BingoOptionsCommands(
             StringKey.DdiCommandVoiceKeywordsSummary,
             text.boolean(options.ddiVoiceKeywordsEnabled),
             options.ddiVoiceCustomKeywords.size,
-            DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
         )
     )
 
@@ -140,7 +139,6 @@ class BingoOptionsCommands(
             text.string(
                 StringKey.DdiCommandVoiceKeywordListHeader,
                 options.ddiVoiceCustomKeywords.size,
-                DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
             )
         )
         if (options.ddiVoiceCustomKeywords.isEmpty()) {
@@ -456,7 +454,6 @@ class BingoOptionsCommands(
                                     StringKey.DdiCommandVoiceKeywordsSummary,
                                     text.boolean(options.ddiVoiceKeywordsEnabled),
                                     options.ddiVoiceCustomKeywords.size,
-                                    DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
                                 )
                             )
                         }

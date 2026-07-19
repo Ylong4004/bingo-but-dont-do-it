@@ -482,7 +482,6 @@ internal fun MenuComponent.registerDDIVoiceKeywordEditor(
             text.string(
                 StringKey.DdiMenuVoiceKeywordAddWithCount,
                 options.ddiVoiceCustomKeywords.size,
-                DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
             )
         },
         tooltip = buildTooltip(StringKey.DdiMenuVoiceKeywordAdd),

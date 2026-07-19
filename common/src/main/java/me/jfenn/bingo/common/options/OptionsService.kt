@@ -434,15 +434,16 @@ internal class OptionsService(
         ) {
             ctx.error(text.string(StringKey.DdiCommandVoiceKeywordDuplicate, keyword))
         }
-        if (options.ddiVoiceCustomKeywords.size >= DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS) {
+        val updatedKeywords = options.ddiVoiceCustomKeywords + keyword
+        if (!DDIVoiceKeywordOptions.isWithinTotalBudget(updatedKeywords)) {
             ctx.error(
-                text.string(
-                    StringKey.DdiCommandVoiceKeywordLimit,
-                    DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
+                text.literal(
+                    "自定义语音词的总长度不能超过 " +
+                        "${DDIVoiceKeywordOptions.MAX_TOTAL_CUSTOM_KEYWORD_CODE_POINTS} 个字符。"
                 )
             )
         }
-        options.ddiVoiceCustomKeywords = (options.ddiVoiceCustomKeywords + keyword).toList()
+        options.ddiVoiceCustomKeywords = updatedKeywords
         ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordAdded, keyword))
     }
 

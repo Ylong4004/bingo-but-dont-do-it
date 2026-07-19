@@ -146,15 +146,19 @@ class BingoOptionsDDITest {
     }
 
     @Test
-    fun `enabled voice keywords reject invalid duplicate and oversized persisted lists`() {
+    fun `enabled voice keywords reject invalid duplicate and over-budget persisted lists`() {
         val options = BingoOptions(enableDDI = true, ddiVoiceKeywordsEnabled = true)
 
         assertThat(options.copy(ddiVoiceCustomKeywords = listOf(" x ")).isValid()).isFalse()
         assertThat(options.copy(ddiVoiceCustomKeywords = listOf("Diamond", "diamond")).isValid()).isFalse()
         assertThat(
             options.copy(
-                ddiVoiceCustomKeywords = (1..DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS + 1)
-                    .map { "keyword $it" }
+                ddiVoiceCustomKeywords = customKeywords(256)
+            ).isValid()
+        ).isTrue()
+        assertThat(
+            options.copy(
+                ddiVoiceCustomKeywords = customKeywords(257)
             ).isValid()
         ).isFalse()
         assertThat(options.copy(ddiVoiceCustomKeywords = listOf("钻石", "nether portal")).isValid()).isTrue()
@@ -167,6 +171,10 @@ class BingoOptionsDDITest {
         )
 
         assertThat(normalized).isEqualTo(listOf("Nether Portal", "下界传送门"))
+    }
+
+    private fun customKeywords(count: Int): List<String> = (0 until count).map { index ->
+        "word${index.toString().padStart(28, 'x')}"
     }
 
     @Test
