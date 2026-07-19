@@ -113,6 +113,7 @@ class DDIHudRenderer(
                     line.append(text.literal("  ✖").formatted(Formatting.DARK_GRAY))
                 } else {
                     line.append(text.literal("  ❤×${player.hearts}").formatted(Formatting.RED))
+                    line.append(text.literal("  ⏱ ${player.timerSeconds}s").formatted(Formatting.GRAY))
                 }
                 add(line)
             }
@@ -151,14 +152,16 @@ class DDIHudRenderer(
                     teamLine.append(text.literal("❤×${team.hearts}").formatted(Formatting.RED))
                 }
                 add(teamLine)
-                add(
-                    text.literal("  ↳ ").formatted(Formatting.DARK_GRAY)
-                        .append(
-                            text.literal(team.wordText.ifEmpty { "?" }).formatted(
-                                if (team.isEliminated) Formatting.DARK_GRAY else Formatting.AQUA
-                            )
+                val wordLine = text.literal("  ↳ ").formatted(Formatting.DARK_GRAY)
+                    .append(
+                        text.literal(team.wordText.ifEmpty { "?" }).formatted(
+                            if (team.isEliminated) Formatting.DARK_GRAY else Formatting.AQUA
                         )
-                )
+                    )
+                if (!team.isEliminated) {
+                    wordLine.append(text.literal("  ⏱ ${team.timerSeconds}s").formatted(Formatting.GRAY))
+                }
+                add(wordLine)
             }
         },
     )

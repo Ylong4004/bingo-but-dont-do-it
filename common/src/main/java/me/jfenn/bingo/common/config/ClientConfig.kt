@@ -19,7 +19,7 @@ data class ClientConfig(
     var ddiHudScale: Float = 1f,
     var ddiHudAlignment: CardAlignment = CardAlignment.TOP_RIGHT,
     var ddiHudOffsetX: Int = 8,
-    var ddiHudOffsetY: Int = 80,
+    var ddiHudOffsetY: Int = 8,
     var ddiHudBackgroundOpacity: Float = 0.30f,
     var hideOnF3: Boolean = true,
     var hideOnChat: Boolean = false,
