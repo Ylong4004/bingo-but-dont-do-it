@@ -55,7 +55,7 @@ data class BingoOptions(
     var ddiMaxHearts: Int = 3,
     var ddiWordTimerSeconds: Int = 60,
     /** 每个个人或共享队伍目标同时持有的禁做词数量。 */
-    var ddiWordsPerObjective: Int = 2,
+    var ddiWordsPerObjective: Int = 1,
     var ddiMultiHitPolicy: DDIMultiHitPolicy = DDIMultiHitPolicy.ALL_MATCHED,
     var ddiSpecialEventsEnabled: Boolean = false,
     var ddiSpecialEventIntervalSeconds: Int = 300,

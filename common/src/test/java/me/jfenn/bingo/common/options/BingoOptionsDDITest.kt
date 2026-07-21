@@ -18,7 +18,7 @@ class BingoOptionsDDITest {
 
         assertThat(options.ddiObjectiveMode).isEqualTo(DDIObjectiveMode.INDIVIDUAL)
         assertThat(options.ddiMaxHearts).isEqualTo(3)
-        assertThat(options.ddiWordsPerObjective).isEqualTo(2)
+        assertThat(options.ddiWordsPerObjective).isEqualTo(1)
         assertThat(options.ddiMultiHitPolicy).isEqualTo(DDIMultiHitPolicy.ALL_MATCHED)
         assertThat(options.ddiSpecialEventsEnabled).isFalse()
         assertThat(options.ddiSpecialEventIntervalSeconds).isEqualTo(300)
