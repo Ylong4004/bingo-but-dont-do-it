@@ -650,6 +650,10 @@ class DDICommands(
         commandManager.register("bingo") {
             literal("accuse") {
                 requires { !isConsole }
+                executes {
+                    scope.get<DDIVoiceAccusationService>()
+                        .showAccusationTargetPicker(playerOrThrow.player)
+                }
                 player("player") { accusedArg ->
                     executes {
                         val result = scope.get<DDIVoiceAccusationService>().accuse(

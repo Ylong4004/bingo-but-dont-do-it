@@ -26,6 +26,94 @@ class DDIVoiceAccusationService(
     private val votes: DDIAccusationVoteBook = DDIAccusationVoteBook(),
 ) {
 
+    /**
+     * 在 DDI 语音局开始时给每个参赛者一组可点击的快捷入口。
+     *
+     * 玩家不需要记住授权或举报命令；命令仍保留给聊天栏翻走后的兜底使用。
+     */
+    fun announceRoundQuickActions() {
+        server.playerManager.playerList.forEach { player ->
+            val state = manager.debugVoiceState(player.uuid)
+            if (!state.isActiveParticipant) return@forEach
+
+            val message = Text.literal("§6[不要做·语音] §f本局可使用语音词条。")
+            if (state.hasConsent) {
+                message.append(Text.literal("§a你已同意识别。§f "))
+            } else {
+                message.append(
+                    actionButton(
+                        label = "[同意语音识别]",
+                        command = "/bingoprefs ddi_voice_consent true",
+                        color = Formatting.GREEN,
+                    ),
+                )
+                message.append(Text.literal(" "))
+            }
+            message.append(
+                actionButton(
+                    label = "[举报玩家]",
+                    command = "/bingo accuse",
+                    color = Formatting.GOLD,
+                ),
+            )
+            player.sendMessage(message, false)
+        }
+    }
+
+    /** 显示当前可被该玩家举报的跨队语音词条，全部以点击按钮选择。 */
+    fun showAccusationTargetPicker(accuser: ServerPlayerEntity) {
+        val candidates = server.playerManager.playerList
+            .asSequence()
+            .filter { it.uuid != accuser.uuid }
+            .flatMap { accused ->
+                when (val preparation = manager.prepareVoiceAccusation(accuser.uuid, accused.uuid)) {
+                    is DDIVoiceAccusationPreparation.Ready -> sequenceOf(
+                        AccusationPickerEntry(
+                            playerName = accused.name.string,
+                            slotIndex = null,
+                        ),
+                    )
+                    is DDIVoiceAccusationPreparation.AmbiguousVoiceSlots ->
+                        preparation.availableSlotIndices.asSequence().map { slotIndex ->
+                            AccusationPickerEntry(
+                                playerName = accused.name.string,
+                                slotIndex = slotIndex,
+                            )
+                        }
+                    else -> emptySequence()
+                }
+            }
+            .toList()
+
+        if (candidates.isEmpty()) {
+            accuser.sendMessage(
+                Text.literal("§e[不要做·投票] §f当前没有可举报的跨队语音词条；" +
+                    "需先同意语音识别并连接 Simple Voice Chat。"),
+                false,
+            )
+            return
+        }
+
+        accuser.sendMessage(
+            Text.literal("§6[不要做·投票] §f选择听到违规的玩家；点击后立即发起 5 秒自动结算的投票："),
+            false,
+        )
+        candidates.chunked(PICKER_BUTTONS_PER_ROW).forEach { row ->
+            val buttons = Text.empty()
+            row.forEachIndexed { index, candidate ->
+                if (index > 0) buttons.append(Text.literal("  "))
+                buttons.append(
+                    actionButton(
+                        label = candidate.label,
+                        command = candidate.command,
+                        color = Formatting.GOLD,
+                    ),
+                )
+            }
+            accuser.sendMessage(buttons, false)
+        }
+    }
+
     fun accuse(
         accuser: ServerPlayerEntity,
         accused: ServerPlayerEntity,
@@ -151,22 +239,23 @@ class DDIVoiceAccusationService(
 
     private fun voteButtons(vote: DDIAccusationVoteSnapshot): Text {
         val base = Text.literal("§7本票不可更改：")
-        val approve = Text.literal("[同意]").apply {
-            setStyle(
-                style.withColor(Formatting.GREEN).withClickEvent(
-                    ClickEvent.RunCommand("/bingo accuse vote ${vote.voteId} true"),
-                ),
-            )
-        }
-        val reject = Text.literal("[反对]").apply {
-            setStyle(
-                style.withColor(Formatting.RED).withClickEvent(
-                    ClickEvent.RunCommand("/bingo accuse vote ${vote.voteId} false"),
-                ),
-            )
-        }
+        val approve = actionButton(
+            label = "[同意]",
+            command = "/bingo accuse vote ${vote.voteId} true",
+            color = Formatting.GREEN,
+        )
+        val reject = actionButton(
+            label = "[反对]",
+            command = "/bingo accuse vote ${vote.voteId} false",
+            color = Formatting.RED,
+        )
         return base.append(approve).append(Text.literal(" ")).append(reject)
     }
+
+    private fun actionButton(label: String, command: String, color: Formatting): Text =
+        Text.literal(label).apply {
+            setStyle(style.withColor(color).withClickEvent(ClickEvent.RunCommand(command)))
+        }
 
     private fun playerName(playerId: UUID): String =
         server.playerManager.getPlayer(playerId)?.name?.string ?: "该玩家"
@@ -177,4 +266,27 @@ class DDIVoiceAccusationService(
     }
 
     private fun rejected(message: String) = DDIVoiceAccusationActionResult(false, message)
+
+    private data class AccusationPickerEntry(
+        val playerName: String,
+        val slotIndex: Int?,
+    ) {
+        val label: String
+            get() = if (slotIndex == null) {
+                "[举报 $playerName]"
+            } else {
+                "[举报 $playerName #${slotIndex + 1}]"
+            }
+
+        val command: String
+            get() = if (slotIndex == null) {
+                "/bingo accuse $playerName"
+            } else {
+                "/bingo accuse $playerName ${slotIndex + 1}"
+            }
+    }
+
+    private companion object {
+        const val PICKER_BUTTONS_PER_ROW = 4
+    }
 }

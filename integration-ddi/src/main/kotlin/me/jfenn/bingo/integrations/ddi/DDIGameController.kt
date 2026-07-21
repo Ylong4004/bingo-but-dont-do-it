@@ -207,6 +207,10 @@ class DDIGameController(
             )
             runCatching(voiceKeywords::start)
                 .onFailure { log.error("[DDI Voice] Could not start the voice session", it) }
+            if (options.ddiVoiceKeywordsEnabled) {
+                runCatching(voiceAccusations::announceRoundQuickActions)
+                    .onFailure { log.error("[DDI Voice] Could not announce quick actions", it) }
+            }
         }
     }
 
