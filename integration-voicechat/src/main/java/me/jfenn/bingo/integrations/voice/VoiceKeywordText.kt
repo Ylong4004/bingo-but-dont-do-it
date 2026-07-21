@@ -331,9 +331,18 @@ internal object VoiceKeywordResultMatcher {
         val subjectId = grammar.subjectByNormalizedPhrase[normalized]
             ?: return VoiceKeywordResultEvaluation.TextMismatch
         val minimum = words.minOf { it.confidence }
-        val average = words.sumOf { it.confidence } / words.size
-        val usedLightToneRelaxation = minimum < minimumWordConfidence &&
-            canRelaxLightToneTail(words, minimumWordConfidence)
+        val lightToneTailStart = if (minimum < minimumWordConfidence) {
+            lightToneTailStart(words, minimumWordConfidence)
+        } else {
+            null
+        }
+        val usedLightToneRelaxation = lightToneTailStart != null
+        // The weak tail is deliberately excluded from the confidence summary only
+        // after the exact grammar match and strong spoken core have been verified.
+        // This lets natural light-tone endings through without lowering the core
+        // confidence requirement or inflating the delivered confidence.
+        val confidenceWords = lightToneTailStart?.let(words::take) ?: words
+        val average = confidenceWords.sumOf { it.confidence } / confidenceWords.size
         if (average < minimumAverageConfidence ||
             (minimum < minimumWordConfidence && !usedLightToneRelaxation)
         ) {
@@ -350,18 +359,20 @@ internal object VoiceKeywordResultMatcher {
      * 置信度。仅当整句仍精确命中受限 grammar、平均置信度达标、且所有弱词都在
      * 已知尾音内时才放宽最低阈值；核心词变弱仍会被拒绝。
      */
-    private fun canRelaxLightToneTail(
+    private fun lightToneTailStart(
         words: List<RecognizedWord>,
         minimumWordConfidence: Double,
-    ): Boolean {
+    ): Int? {
         if (words.size < 2 || words.minOf(RecognizedWord::confidence) < LIGHT_TONE_MINIMUM_WORD_CONFIDENCE) {
-            return false
+            return null
         }
         val tailStart = (1 until words.size).firstOrNull { start ->
             VoiceKeywordNormalizer.normalize(words.drop(start).joinToString("") { it.text }) in LIGHT_TONE_TAILS
-        } ?: return false
-        return words.take(tailStart).all { it.confidence >= minimumWordConfidence } &&
-            words.drop(tailStart).any { it.confidence < minimumWordConfidence }
+        } ?: return null
+        return tailStart.takeIf {
+            words.take(it).all { word -> word.confidence >= minimumWordConfidence } &&
+                words.drop(it).any { word -> word.confidence < minimumWordConfidence }
+        }
     }
 
     private data class RecognizedWord(val text: String, val confidence: Double)

@@ -1073,21 +1073,22 @@ class DDIObjectiveManager(
     /** 由服务端计时循环和专门的截止时间契约测试共同使用。 */
     internal fun handleExpiredObjective(
         objective: DDIObjectiveState,
-        slot: DDIWordSlotState = objective.slots.minByOrNull(DDIWordSlotState::index) ?: return,
+        slot: DDIWordSlotState? = null,
     ) {
-        val previous = slot.currentWord ?: return
+        val expiredSlot = slot ?: objective.slots.minByOrNull(DDIWordSlotState::index) ?: return
+        val previous = expiredSlot.currentWord ?: return
         if (previous.rule.deadlineBehavior == DDIDeadlineBehavior.TRIGGER_ON_EXPIRY) {
-            if (!slot.deadlineSatisfied) {
-                settleViolation(objective, slot, previous, actorName = null)
+            if (!expiredSlot.deadlineSatisfied) {
+                settleViolation(objective, expiredSlot, previous, actorName = null)
                 return
             }
         }
 
-        val nextWord = drawNextWord(objective, slot, previous)
+        val nextWord = drawNextWord(objective, expiredSlot, previous)
         if (nextWord == null) {
             completeByPoolExhaustion(objective)
         } else {
-            assignResolvedWord(objective, slot, nextWord, announceInstant = true)
+            assignResolvedWord(objective, expiredSlot, nextWord, announceInstant = true)
         }
     }
 

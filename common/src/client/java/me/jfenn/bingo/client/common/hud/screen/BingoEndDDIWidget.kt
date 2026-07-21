@@ -12,6 +12,12 @@ import me.jfenn.bingo.platform.text.IText
 import net.minecraft.util.Formatting
 import org.koin.core.Koin
 
+private fun DDITeamDamageHistory.finalHeartsRemaining(): Int =
+    if (maxHearts > 0) heartsRemaining else entries.lastOrNull()?.heartsRemaining ?: 0
+
+private fun DDITeamDamageHistory.finalMaxHearts(): Int =
+    if (maxHearts > 0) maxHearts else entries.lastOrNull()?.maxHearts ?: 0
+
 /** 赛后标签页，只列出确实导致队伍扣血的词条。 */
 internal class BingoEndDDIWidget(
     koin: Koin,
@@ -154,9 +160,4 @@ internal class BingoEndDDIWidget(
         )
     }
 
-    private fun DDITeamDamageHistory.finalHeartsRemaining(): Int =
-        if (maxHearts > 0) heartsRemaining else entries.lastOrNull()?.heartsRemaining ?: 0
-
-    private fun DDITeamDamageHistory.finalMaxHearts(): Int =
-        if (maxHearts > 0) maxHearts else entries.lastOrNull()?.maxHearts ?: 0
 }

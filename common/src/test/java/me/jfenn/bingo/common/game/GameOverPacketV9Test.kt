@@ -76,6 +76,7 @@ class GameOverPacketV9Test {
             isWinner = true,
             isUpdate = false,
             winStreak = null,
+            endedAt = Instant.ofEpochMilli(789),
             seed = 123,
             scores = listOf(
                 GameOverPacket.ScoreRanking(0, blue, teamName, TeamScore(9, 2, 1), Duration.ofSeconds(45))

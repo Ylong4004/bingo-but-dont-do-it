@@ -27,6 +27,8 @@ class DDIGameHistoryServiceTest {
                         DDIDamageHistoryEntry("不要跳跃", "Alice", 2, 3),
                         DDIDamageHistoryEntry("立即扣一心", null, 1, 3),
                     ),
+                    heartsRemaining = 1,
+                    maxHearts = 3,
                 ),
                 DDITeamDamageHistory(
                     teamKey = blue,
