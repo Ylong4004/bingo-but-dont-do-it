@@ -37,11 +37,30 @@ data class VoiceKeywordBackendStatus(
         get() = state == VoiceKeywordBackendState.READY && voiceChatAvailable
 }
 
+/** 单个语音禁做槽位的不可变分配令牌。 */
+data class VoiceKeywordSlotTarget(
+    val slotIndex: Int,
+    val revision: Long,
+    val wordId: String,
+    val subjectIds: Set<String>,
+) {
+    init {
+        require(slotIndex >= 0) { "Voice slot index cannot be negative" }
+        require(revision >= 0L) { "Voice assignment revision cannot be negative" }
+        require(wordId.isNotBlank()) { "Voice word ID cannot be blank" }
+        require(subjectIds.isNotEmpty()) { "A voice slot requires at least one subject" }
+        require(subjectIds.all { it.startsWith(VoiceKeywordTarget.VOICE_SUBJECT_PREFIX) }) {
+            "Voice subjects must use the voice: namespace"
+        }
+    }
+}
+
 /**
- * 由服务端线程发布的不可变词条分配快照。
+ * 由服务端线程发布的不可变玩家语音目标快照。
  *
- * 目标 ID 特意采用可直接还原的 `voice:<词语>` 形式。它们是 DDI 内部字符串，
- * 并非 Minecraft 标识符，因此可以包含中文。每个异步结果都会携带这份完整快照。
+ * 一个语音目标可以聚合同一玩家的多个词条槽位，因此 ASR 只需构造一套语法；命中的
+ * subject 再由 [slotFor] 映射回服务端权威的独立槽位令牌。旧的一槽位调用仍可省略
+ * [slotTargets]，以便平滑兼容已有测试和调用方。
  */
 data class VoiceKeywordTarget(
     val gameId: UUID,
@@ -49,6 +68,7 @@ data class VoiceKeywordTarget(
     val revision: Long,
     val wordId: String,
     val subjectIds: Set<String>,
+    val slotTargets: List<VoiceKeywordSlotTarget> = emptyList(),
 ) {
     init {
         require(objectiveId.isNotBlank()) { "Voice objective ID cannot be blank" }
@@ -58,6 +78,29 @@ data class VoiceKeywordTarget(
         require(subjectIds.all { it.startsWith(VOICE_SUBJECT_PREFIX) }) {
             "Voice subjects must use the voice: namespace"
         }
+        if (slotTargets.isNotEmpty()) {
+            require(slotTargets.map(VoiceKeywordSlotTarget::slotIndex).distinct().size == slotTargets.size) {
+                "Voice target slot indices must be unique"
+            }
+            val mappedSubjects = slotTargets.flatMapTo(linkedSetOf(), VoiceKeywordSlotTarget::subjectIds)
+            require(mappedSubjects == subjectIds) {
+                "Voice target subjects must exactly match its slot targets"
+            }
+            require(slotTargets.flatMap(VoiceKeywordSlotTarget::subjectIds).size == mappedSubjects.size) {
+                "A voice subject may only belong to one active slot"
+            }
+        }
+    }
+
+    fun slotFor(subjectId: String): VoiceKeywordSlotTarget? {
+        if (subjectId !in subjectIds) return null
+        return slotTargets.firstOrNull { subjectId in it.subjectIds }
+            ?: VoiceKeywordSlotTarget(
+                slotIndex = 0,
+                revision = revision,
+                wordId = wordId,
+                subjectIds = subjectIds,
+            )
     }
 
     companion object {

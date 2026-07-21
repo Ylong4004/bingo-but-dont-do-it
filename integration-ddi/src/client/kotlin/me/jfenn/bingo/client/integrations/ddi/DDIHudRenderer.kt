@@ -92,30 +92,34 @@ class DDIHudRenderer(
         } else {
             val status = text.literal("❤×${state.myHearts}  ${state.myHearts}/${state.myMaxHearts}")
                 .formatted(Formatting.RED)
-            if (state.myMaxTimerSeconds > 0) {
-                status.append(
-                    text.literal("  ⏱ ${state.myTimerSeconds}s").formatted(Formatting.GRAY)
+            add(status)
+            state.mySlots.forEach { slot ->
+                add(
+                    text.literal("  ↳ 第${slot.index + 1}条  ⏱ ${slot.timerSeconds}s")
+                        .formatted(Formatting.GRAY),
                 )
             }
-            add(status)
         }
 
         state.otherPlayers.values
             .sortedWith(compareBy<DDIHudState.PlayerDDIInfo> { it.isEliminated }.thenBy { it.playerName })
             .forEach { player ->
                 val line = text.literal("${player.playerName}: ").formatted(Formatting.WHITE)
-                    .append(
-                        text.literal(player.wordText.ifEmpty { "?" }).formatted(
-                            if (player.isEliminated) Formatting.DARK_GRAY else Formatting.AQUA
-                        )
-                    )
                 if (player.isEliminated) {
                     line.append(text.literal("  ✖").formatted(Formatting.DARK_GRAY))
                 } else {
                     line.append(text.literal("  ❤×${player.hearts}").formatted(Formatting.RED))
-                    line.append(text.literal("  ⏱ ${player.timerSeconds}s").formatted(Formatting.GRAY))
                 }
                 add(line)
+                if (!player.isEliminated) {
+                    player.slots.forEach { slot ->
+                        add(
+                            text.literal("  ↳ 第${slot.index + 1}条：").formatted(Formatting.DARK_GRAY)
+                                .append(text.literal(slot.wordText.ifEmpty { "?" }).formatted(Formatting.AQUA))
+                                .append(text.literal("  ⏱ ${slot.timerSeconds}s").formatted(Formatting.GRAY)),
+                        )
+                    }
+                }
             }
         },
     )
@@ -135,10 +139,13 @@ class DDIHudRenderer(
             val status = text.literal("我方 ").formatted(Formatting.WHITE)
                 .append(text.literal(state.myTeamName).formatted(state.myTeamColor))
                 .append(text.literal("：❤×${state.myHearts}  ${state.myHearts}/${state.myMaxHearts}").formatted(Formatting.RED))
-            if (state.myMaxTimerSeconds > 0) {
-                status.append(text.literal("  ⏱ ${state.myTimerSeconds}s").formatted(Formatting.GRAY))
-            }
             add(status)
+            state.mySlots.forEach { slot ->
+                add(
+                    text.literal("  ↳ 第${slot.index + 1}条  ⏱ ${slot.timerSeconds}s")
+                        .formatted(Formatting.GRAY),
+                )
+            }
         }
 
         state.otherTeams.values
@@ -152,16 +159,18 @@ class DDIHudRenderer(
                     teamLine.append(text.literal("❤×${team.hearts}").formatted(Formatting.RED))
                 }
                 add(teamLine)
-                val wordLine = text.literal("  ↳ ").formatted(Formatting.DARK_GRAY)
-                    .append(
-                        text.literal(team.wordText.ifEmpty { "?" }).formatted(
-                            if (team.isEliminated) Formatting.DARK_GRAY else Formatting.AQUA
+                team.slots.forEach { slot ->
+                    val wordLine = text.literal("  ↳ 第${slot.index + 1}条：").formatted(Formatting.DARK_GRAY)
+                        .append(
+                            text.literal(slot.wordText.ifEmpty { "?" }).formatted(
+                                if (team.isEliminated) Formatting.DARK_GRAY else Formatting.AQUA
+                            ),
                         )
-                    )
-                if (!team.isEliminated) {
-                    wordLine.append(text.literal("  ⏱ ${team.timerSeconds}s").formatted(Formatting.GRAY))
+                    if (!team.isEliminated) {
+                        wordLine.append(text.literal("  ⏱ ${slot.timerSeconds}s").formatted(Formatting.GRAY))
+                    }
+                    add(wordLine)
                 }
-                add(wordLine)
             }
         },
     )

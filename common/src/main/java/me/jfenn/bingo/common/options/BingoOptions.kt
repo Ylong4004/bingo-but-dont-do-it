@@ -54,6 +54,9 @@ data class BingoOptions(
     var ddiObjectiveMode: DDIObjectiveMode = DDIObjectiveMode.INDIVIDUAL,
     var ddiMaxHearts: Int = 3,
     var ddiWordTimerSeconds: Int = 60,
+    /** 每个个人或共享队伍目标同时持有的禁做词数量。 */
+    var ddiWordsPerObjective: Int = 2,
+    var ddiMultiHitPolicy: DDIMultiHitPolicy = DDIMultiHitPolicy.ALL_MATCHED,
     var ddiSpecialEventsEnabled: Boolean = false,
     var ddiSpecialEventIntervalSeconds: Int = 300,
     var ddiSpecialEventTypes: Set<DDISpecialEventType> = DDISpecialEventType.BALANCED,
@@ -70,7 +73,9 @@ data class BingoOptions(
 
     fun hasValidDDIOptions(): Boolean {
         if (!enableDDI) return true
-        if (ddiMaxHearts !in 1..20 || ddiWordTimerSeconds !in 10..600) return false
+        if (ddiMaxHearts !in 1..20 || ddiWordTimerSeconds !in 10..600 ||
+            ddiWordsPerObjective !in DDIRoundSettings.MIN_WORD_SLOTS..DDIRoundSettings.MAX_WORD_SLOTS
+        ) return false
 
         if (ddiSpecialEventsEnabled && (
                 ddiSpecialEventIntervalSeconds !in DDI_SPECIAL_EVENT_INTERVAL_RANGE ||
@@ -181,7 +186,10 @@ data class BingoOptions(
                 // 保持现有非 DDI 预设的哈希稳定，同时让 DDI 对局使用独立的
                 // 难度/统计分类。带分隔符的单段内容还能避免连续写入摘要时
                 // (1,160) 与 (11,60) 发生冲突。
-                yield("ddi:${ddiObjectiveMode.name}:$ddiMaxHearts:$ddiWordTimerSeconds")
+                yield(
+                    "ddi:${ddiObjectiveMode.name}:$ddiMaxHearts:$ddiWordTimerSeconds:" +
+                        "$ddiWordsPerObjective:${ddiMultiHitPolicy.name}",
+                )
                 if (ddiSpecialEventsEnabled) {
                     val eventIds = ddiSpecialEventTypes
                         .map(DDISpecialEventType::id)

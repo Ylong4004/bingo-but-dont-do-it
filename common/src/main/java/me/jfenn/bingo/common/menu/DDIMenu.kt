@@ -20,6 +20,8 @@ internal const val MENU_DDI_ENABLE_WIDTH = 2.0
 internal const val MENU_DDI_MODE_WIDTH = 3.1
 internal const val MENU_DDI_HEARTS_WIDTH = 3.0
 internal const val MENU_DDI_TIMER_WIDTH = 3.3
+internal const val MENU_DDI_WORD_SLOTS_WIDTH = 3.0
+internal const val MENU_DDI_MULTI_HIT_WIDTH = 3.5
 internal const val MENU_DDI_EVENT_ENABLE_WIDTH = 2.0
 internal const val MENU_DDI_EVENT_INTERVAL_WIDTH = 2.7
 internal const val MENU_DDI_EVENT_PRESET_WIDTH = 2.7
@@ -410,6 +412,64 @@ internal fun MenuComponent.registerDDISpecialEventSelector(
                 )
             }
         }
+    }
+}
+
+internal fun MenuComponent.registerDDIWordSlots(
+    position: Vector3d,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    registerTitlePanel(
+        position = position + Vector3d(0.0, -0.5, 0.0),
+        width = MENU_DDI_WORD_SLOTS_WIDTH,
+        title = text.literal("同时词条数"),
+    )
+    registerNumberInput(
+        position = position + Vector3d(0.0, NUMBER_INPUT_Y, 0.0),
+        width = MENU_DDI_WORD_SLOTS_WIDTH,
+        height = NUMBER_INPUT_HEIGHT,
+        valueProp = readOnlyMutableProperty { options.ddiWordsPerObjective },
+        minValueProp = ConstantProperty(DDIRoundSettings.MIN_WORD_SLOTS),
+        maxValueProp = ConstantProperty(DDIRoundSettings.MAX_WORD_SLOTS),
+        format = { text.literal("$it 条") },
+        tooltip = listOf(text.literal("每个玩家或共享队伍同时持有的禁做词数量。")),
+    ) { player, count ->
+        optionsService.setDDIWordsPerObjective(OptionsService.Context(player), count)
+    }
+    registerDDIPresets(
+        position = position + Vector3d(0.0, PRESET_Y, 0.0),
+        width = MENU_DDI_WORD_SLOTS_WIDTH,
+        values = listOf(1, 2, 3, 5),
+        selected = { options.ddiWordsPerObjective },
+        format = { text.literal("$it") },
+    ) { player, count ->
+        optionsService.setDDIWordsPerObjective(OptionsService.Context(player), count)
+    }
+}
+
+internal fun MenuComponent.registerDDIMultiHitPolicy(
+    position: Vector3d,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    val policies = DDIMultiHitPolicy.entries
+    registerRadioMenu(
+        position = position,
+        width = MENU_DDI_MULTI_HIT_WIDTH,
+        height = 2.4,
+        title = text.literal("同次命中"),
+        options = listOf(text.literal("全部扣血"), text.literal("仅第一条")),
+        tooltips = listOf(
+            listOf(text.literal("一次动作命中几条词，就扣几颗心并分别换词。")),
+            listOf(text.literal("一次动作只结算槽位顺序最靠前的一条词。")),
+        ),
+        optionsPerPage = 2,
+        selectedIndexProp = readOnlyMutableProperty { policies.indexOf(options.ddiMultiHitPolicy) },
+    ) { player, index ->
+        optionsService.setDDIMultiHitPolicy(OptionsService.Context(player), policies[index])
     }
 }
 

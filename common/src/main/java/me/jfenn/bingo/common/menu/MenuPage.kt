@@ -221,6 +221,18 @@ private fun createDDIBasicPage(
     registerDDITimer(
         position = pos + Vector3d(MENU_DDI_TIMER_WIDTH/2, 0.0, 0.0),
     )
+
+    val advancedPos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, -3.35, 0.0)
+    registerDDIWordSlots(
+        position = advancedPos + Vector3d(MENU_DDI_WORD_SLOTS_WIDTH/2, 0.0, 0.0),
+    )
+    registerDDIMultiHitPolicy(
+        position = advancedPos + Vector3d(
+            MENU_DDI_WORD_SLOTS_WIDTH + MENU_LINE_PADDING + MENU_DDI_MULTI_HIT_WIDTH/2,
+            0.0,
+            0.0,
+        ),
+    )
 }
 
 private fun createDDISpecialEventsPage(

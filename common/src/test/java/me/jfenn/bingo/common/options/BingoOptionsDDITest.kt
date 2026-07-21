@@ -18,6 +18,8 @@ class BingoOptionsDDITest {
 
         assertThat(options.ddiObjectiveMode).isEqualTo(DDIObjectiveMode.INDIVIDUAL)
         assertThat(options.ddiMaxHearts).isEqualTo(3)
+        assertThat(options.ddiWordsPerObjective).isEqualTo(2)
+        assertThat(options.ddiMultiHitPolicy).isEqualTo(DDIMultiHitPolicy.ALL_MATCHED)
         assertThat(options.ddiSpecialEventsEnabled).isFalse()
         assertThat(options.ddiSpecialEventIntervalSeconds).isEqualTo(300)
         assertThat(options.ddiSpecialEventTypes).isEqualTo(DDISpecialEventType.BALANCED)
@@ -65,6 +67,8 @@ class BingoOptionsDDITest {
         assertThat(BingoOptions(enableDDI = true, ddiMaxHearts = 21).isValid()).isFalse()
         assertThat(BingoOptions(enableDDI = true, ddiWordTimerSeconds = 9).isValid()).isFalse()
         assertThat(BingoOptions(enableDDI = true, ddiWordTimerSeconds = 601).isValid()).isFalse()
+        assertThat(BingoOptions(enableDDI = true, ddiWordsPerObjective = 0).isValid()).isFalse()
+        assertThat(BingoOptions(enableDDI = true, ddiWordsPerObjective = 6).isValid()).isFalse()
     }
 
     @Test
@@ -206,6 +210,8 @@ class BingoOptionsDDITest {
             ),
             ddiVoiceKeywordsEnabled = true,
             ddiVoiceCustomKeywords = listOf("钻石", "nether portal"),
+            ddiWordsPerObjective = 3,
+            ddiMultiHitPolicy = DDIMultiHitPolicy.FIRST_MATCHED,
             ddiDisabledWordCategories = setOf("voice"),
             ddiDisabledWordIds = setOf("craft_table_01"),
         )
@@ -217,6 +223,8 @@ class BingoOptionsDDITest {
         assertThat(restored.ddiSpecialEventTypes).isEqualTo(options.ddiSpecialEventTypes)
         assertThat(restored.ddiVoiceKeywordsEnabled).isEqualTo(options.ddiVoiceKeywordsEnabled)
         assertThat(restored.ddiVoiceCustomKeywords).isEqualTo(options.ddiVoiceCustomKeywords)
+        assertThat(restored.ddiWordsPerObjective).isEqualTo(options.ddiWordsPerObjective)
+        assertThat(restored.ddiMultiHitPolicy).isEqualTo(options.ddiMultiHitPolicy)
         assertThat(restored.ddiDisabledWordCategories).isEqualTo(options.ddiDisabledWordCategories)
         assertThat(restored.ddiDisabledWordIds).isEqualTo(options.ddiDisabledWordIds)
     }

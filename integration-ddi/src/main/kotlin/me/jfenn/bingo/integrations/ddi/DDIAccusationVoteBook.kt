@@ -9,6 +9,7 @@ data class DDIAccusationVoteRequest(
     val accusedPlayerId: UUID,
     val accusedTeamId: String,
     val objectiveId: String,
+    val slotIndex: Int,
     val assignmentRevision: Long,
     /** 仅包含指控创建时合资格的语音对局参与者，且不含被指控队伍。 */
     val eligibleVoterIds: Set<UUID>,
@@ -17,6 +18,7 @@ data class DDIAccusationVoteRequest(
     init {
         require(accusedTeamId.isNotBlank()) { "Accused team ID cannot be blank" }
         require(objectiveId.isNotBlank()) { "Objective ID cannot be blank" }
+        require(slotIndex >= 0) { "Voice slot index cannot be negative" }
         require(assignmentRevision >= 0L) { "Assignment revision cannot be negative" }
         require(startedAtTick >= 0L) { "Vote start tick cannot be negative" }
     }
@@ -48,6 +50,7 @@ data class DDIAccusationVoteSnapshot(
     val accusedPlayerId: UUID,
     val accusedTeamId: String,
     val objectiveId: String,
+    val slotIndex: Int,
     val assignmentRevision: Long,
     val eligibleVoterIds: Set<UUID>,
     val yesVoterIds: Set<UUID>,
@@ -94,7 +97,7 @@ class DDIAccusationVoteBook(
     private val policy: DDIAccusationVotePolicy = DDIAccusationVotePolicy(),
 ) {
     private val votesById = linkedMapOf<UUID, ActiveVote>()
-    private val activeVoteIdsByAccused = mutableMapOf<UUID, UUID>()
+    private val activeVoteIdsByAccusedSlot = mutableMapOf<Pair<UUID, Int>, UUID>()
 
     fun open(request: DDIAccusationVoteRequest): DDIAccusationVoteOpenResult {
         if (request.accuserId !in request.eligibleVoterIds) {
@@ -103,7 +106,8 @@ class DDIAccusationVoteBook(
         if (request.eligibleVoterIds.size < policy.minimumEligibleVoters) {
             return DDIAccusationVoteOpenResult.InsufficientEligibleVoters
         }
-        activeVoteIdsByAccused[request.accusedPlayerId]?.let {
+        val accusedSlotKey = request.accusedPlayerId to request.slotIndex
+        activeVoteIdsByAccusedSlot[accusedSlotKey]?.let {
             return DDIAccusationVoteOpenResult.AlreadyActiveForAccused(it)
         }
 
@@ -115,7 +119,7 @@ class DDIAccusationVoteBook(
             yesVoterIds = linkedSetOf(request.accuserId),
         )
         votesById[request.voteId] = vote
-        activeVoteIdsByAccused[request.accusedPlayerId] = request.voteId
+        activeVoteIdsByAccusedSlot[accusedSlotKey] = request.voteId
         return DDIAccusationVoteOpenResult.Opened(vote.snapshot())
     }
 
@@ -141,7 +145,7 @@ class DDIAccusationVoteBook(
 
     fun cancel(voteId: UUID): DDIAccusationVoteSnapshot? {
         val vote = votesById.remove(voteId) ?: return null
-        activeVoteIdsByAccused.remove(vote.request.accusedPlayerId, voteId)
+        activeVoteIdsByAccusedSlot.remove(vote.request.accusedPlayerId to vote.request.slotIndex, voteId)
         return vote.snapshot()
     }
 
@@ -151,7 +155,10 @@ class DDIAccusationVoteBook(
 
     private fun resolve(vote: ActiveVote): DDIAccusationVoteResolution {
         votesById.remove(vote.request.voteId)
-        activeVoteIdsByAccused.remove(vote.request.accusedPlayerId, vote.request.voteId)
+        activeVoteIdsByAccusedSlot.remove(
+            vote.request.accusedPlayerId to vote.request.slotIndex,
+            vote.request.voteId,
+        )
         val snapshot = vote.snapshot()
         val outcome = if (snapshot.yesVoterIds.size >= snapshot.approvalThreshold) {
             DDIAccusationVoteOutcome.APPROVED
@@ -174,6 +181,7 @@ class DDIAccusationVoteBook(
             accusedPlayerId = request.accusedPlayerId,
             accusedTeamId = request.accusedTeamId,
             objectiveId = request.objectiveId,
+            slotIndex = request.slotIndex,
             assignmentRevision = request.assignmentRevision,
             eligibleVoterIds = request.eligibleVoterIds.toSet(),
             yesVoterIds = yesVoterIds.toSet(),

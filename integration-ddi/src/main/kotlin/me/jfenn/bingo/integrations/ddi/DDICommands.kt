@@ -621,6 +621,26 @@ class DDICommands(
                         )
                         sendAccusationResult(result)
                     }
+                    string("slot") { slotArg ->
+                        executes {
+                            val displaySlot = getArgument(slotArg).toIntOrNull()
+                            if (displaySlot == null || displaySlot !in 1..DDIRoundConfig.MAX_WORD_SLOTS) {
+                                sendAccusationResult(
+                                    DDIVoiceAccusationActionResult(
+                                        success = false,
+                                        message = "槽位必须是 1 到 ${DDIRoundConfig.MAX_WORD_SLOTS} 的整数。",
+                                    ),
+                                )
+                                return@executes
+                            }
+                            val result = scope.get<DDIVoiceAccusationService>().accuse(
+                                accuser = playerOrThrow.player,
+                                accused = getArgument(accusedArg).player,
+                                slotIndex = displaySlot - 1,
+                            )
+                            sendAccusationResult(result)
+                        }
+                    }
                 }
                 literal("vote") {
                     string("vote_id") { voteIdArg ->

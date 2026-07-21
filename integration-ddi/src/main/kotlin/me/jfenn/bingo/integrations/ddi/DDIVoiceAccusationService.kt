@@ -29,8 +29,9 @@ class DDIVoiceAccusationService(
     fun accuse(
         accuser: ServerPlayerEntity,
         accused: ServerPlayerEntity,
+        slotIndex: Int? = null,
     ): DDIVoiceAccusationActionResult {
-        val preparation = manager.prepareVoiceAccusation(accuser.uuid, accused.uuid)
+        val preparation = manager.prepareVoiceAccusation(accuser.uuid, accused.uuid, slotIndex)
         val candidate = when (preparation) {
             is DDIVoiceAccusationPreparation.Ready -> preparation.candidate
             DDIVoiceAccusationPreparation.NoActiveRound ->
@@ -39,6 +40,11 @@ class DDIVoiceAccusationService(
                 return rejected("被指控玩家当前不是有效的 DDI 参与者。")
             DDIVoiceAccusationPreparation.AccusedHasNoVoiceWord ->
                 return rejected("被指控玩家当前没有可用于语音指控的有效词条。")
+            is DDIVoiceAccusationPreparation.AmbiguousVoiceSlots ->
+                return rejected(
+                    "被指控玩家有多个语音词条；请指定槽位：" +
+                        preparation.availableSlotIndices.joinToString("、") { (it + 1).toString() },
+                )
             DDIVoiceAccusationPreparation.AccuserNotEligible ->
                 return rejected("只有被指控队伍以外、已同意且已连接语音的 DDI 玩家可以发起指控。")
         }
@@ -48,13 +54,19 @@ class DDIVoiceAccusationService(
             accusedPlayerId = candidate.accusedPlayerId,
             accusedTeamId = candidate.accusedTeamId,
             objectiveId = candidate.objectiveId,
+            slotIndex = candidate.slotIndex,
             assignmentRevision = candidate.assignmentRevision,
             eligibleVoterIds = candidate.eligibleVoterIds,
             startedAtTick = server.ticks.toLong(),
         )
         return when (val opened = votes.open(request)) {
             is DDIAccusationVoteOpenResult.Opened -> {
-                broadcastVoteOpened(opened.vote, accuser.name.string, candidate.accusedPlayerName)
+                broadcastVoteOpened(
+                    opened.vote,
+                    accuser.name.string,
+                    candidate.accusedPlayerName,
+                    candidate.slotIndex,
+                )
                 DDIVoiceAccusationActionResult(
                     success = true,
                     message = "已发起语音违规投票；你的同意票已计入，投票将在 5 秒后自动结算。",
@@ -96,6 +108,7 @@ class DDIVoiceAccusationService(
                             "（同意 ${resolution.vote.yesVoterIds.size}/${resolution.vote.approvalThreshold}）。",
                     recipients = server.playerManager.playerList,
                 )
+                }
                 DDIAccusationVoteOutcome.APPROVED -> when (
                     manager.settleApprovedVoiceAccusation(resolution.vote)
                 ) {
@@ -124,8 +137,9 @@ class DDIVoiceAccusationService(
         vote: DDIAccusationVoteSnapshot,
         accuserName: String,
         accusedName: String,
+        slotIndex: Int,
     ) {
-        val headline = "§6[不要做·投票] §f$accuserName 指控 $accusedName 说出了当前违禁词。" +
+        val headline = "§6[不要做·投票] §f$accuserName 指控 $accusedName 说出了第 ${slotIndex + 1} 条违禁词。" +
             "被指控队伍不能投票；合资格玩家请在 5 秒内表决。"
         server.playerManager.playerList.forEach { player ->
             player.sendMessage(Text.literal(headline), false)

@@ -477,6 +477,22 @@ internal class OptionsService(
         )
     }
 
+    fun setDDIWordsPerObjective(ctx: Context, count: Int) {
+        options.ddiWordsPerObjective = count.coerceIn(DDIRoundSettings.MIN_WORD_SLOTS, DDIRoundSettings.MAX_WORD_SLOTS)
+        ctx.sendFeedback(
+            textFactory.literal("不要做挑战：每个目标同时拥有 ${options.ddiWordsPerObjective} 条词条。"),
+        )
+    }
+
+    fun setDDIMultiHitPolicy(ctx: Context, policy: DDIMultiHitPolicy) {
+        options.ddiMultiHitPolicy = policy
+        val label = when (policy) {
+            DDIMultiHitPolicy.ALL_MATCHED -> "全部命中均结算"
+            DDIMultiHitPolicy.FIRST_MATCHED -> "仅结算第一条"
+        }
+        ctx.sendFeedback(textFactory.literal("不要做挑战：同次命中规则已设为$label。"))
+    }
+
     fun setDDIWordEnabled(ctx: Context, wordId: String, enabled: Boolean) {
         options.ddiDisabledWordIds = if (enabled) {
             options.ddiDisabledWordIds - wordId

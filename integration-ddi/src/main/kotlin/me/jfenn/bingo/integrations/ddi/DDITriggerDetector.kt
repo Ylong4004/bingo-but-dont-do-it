@@ -38,8 +38,8 @@ class DDITriggerDetector(
 
     var onSignalHandler: ((ServerPlayerEntity, DDISignal) -> Boolean)? = null
     var activePlayerIdsHandler: (() -> Set<UUID>)? = null
-    var currentTriggerHandler: ((UUID) -> DDITriggerType?)? = null
-    var currentRuleHandler: ((UUID) -> DDIRuleDefinition?)? = null
+    var currentTriggersHandler: ((UUID) -> Set<DDITriggerType>)? = null
+    var currentRulesHandler: ((UUID) -> Set<DDIRuleDefinition>)? = null
     var isEnemyPlayerHandler: ((UUID, UUID) -> Boolean)? = null
     var onEnemyPlayerDamageHandler:
         ((ServerPlayerEntity, ServerPlayerEntity) -> Pair<Boolean, Boolean>)? = null
@@ -128,7 +128,7 @@ class DDITriggerDetector(
 
             val id = player.uuid
             detector.lastJumpTick[id] = detector.server.ticks.toLong()
-            if (detector.currentTrigger(player) != DDITriggerType.JUMP_10_TIMES) return
+            if (DDITriggerType.JUMP_10_TIMES !in detector.currentTriggers(player)) return
 
             val count = detector.jumpCount.merge(id, 1) { current, increment ->
                 (current + increment).coerceAtMost(10)
@@ -547,22 +547,21 @@ class DDITriggerDetector(
         clearAllState()
     }
 
-    private fun currentTrigger(player: ServerPlayerEntity): DDITriggerType? =
-        currentTriggerHandler?.invoke(player.uuid)
+    private fun currentTriggers(player: ServerPlayerEntity): Set<DDITriggerType> =
+        currentTriggersHandler?.invoke(player.uuid).orEmpty()
 
-    private fun currentRule(player: ServerPlayerEntity): DDIRuleDefinition? =
-        currentRuleHandler?.invoke(player.uuid)
+    private fun currentRules(player: ServerPlayerEntity): Set<DDIRuleDefinition> =
+        currentRulesHandler?.invoke(player.uuid).orEmpty()
 
     private fun isActive(player: ServerPlayerEntity): Boolean =
-        currentRule(player) != null
+        currentRules(player).isNotEmpty()
 
     private fun fire(player: ServerPlayerEntity, type: DDITriggerType) {
         emitSignal(player, DDISignal.legacy(type))
     }
 
     private fun emitSignal(player: ServerPlayerEntity, signal: DDISignal) {
-        val rule = currentRule(player) ?: return
-        if (!rule.matches(signal)) return
+        if (currentRules(player).none { it.matches(signal) }) return
         val handler = onSignalHandler ?: return
         val tick = server.ticks.toLong()
         if (lastTriggeredTick[player.uuid] == tick) return
@@ -618,32 +617,33 @@ class DDITriggerDetector(
         for (player in server.playerManager.playerList) {
             val id = player.uuid; val tick = server.ticks.toLong()
             if (id !in activePlayerIds) continue
-            val currentRule = currentRule(player) ?: continue
-            val currentTrigger = currentTrigger(player)
+            val currentRules = currentRules(player)
+            if (currentRules.isEmpty()) continue
+            val currentTriggers = currentTriggers(player)
             // 动作回调可能已在同一服务端游戏刻稍早时更换该玩家的词条。
             // 不要用本刻剩余数据预热刚刚重置的边沿/进度映射。
             if (lastTriggeredTick[id] == tick) continue
 
             // 移动分类由原版负责，这些厘米统计会排除传送、重生和维度切换。
-            // 移动规则没有其他匹配信号，因此采样其唯一相关统计后跳过旧版逐刻检查。
-            val travelStat = travelStats[currentRule.signalKind]
-            if (travelStat != null) {
+            currentRules.map(DDIRuleDefinition::signalKind)
+                .distinct()
+                .mapNotNull { signalKind -> travelStats[signalKind]?.let { signalKind to it } }
+                .forEach { (signalKind, travelStat) ->
                 val travelledCentimetres = travelStatSampler.sample(
                     playerId = id,
-                    signalKind = currentRule.signalKind,
+                    signalKind = signalKind,
                     currentCentimetres = player.statHandler.getStat(travelStat),
                 )
                 if (travelledCentimetres > 0) {
                     emitSignal(
                         player,
                         DDISignal(
-                            kind = currentRule.signalKind,
+                            kind = signalKind,
                             quantity = travelledCentimetres,
-                            legacyAliases = setOfNotNull(travelLegacyAliases[currentRule.signalKind]),
+                            legacyAliases = setOfNotNull(travelLegacyAliases[signalKind]),
                         ),
                     )
                 }
-                continue
             }
 
             val sneaking = player.isSneaking
@@ -684,7 +684,7 @@ class DDITriggerDetector(
 
             // 保持静止：以同一锚点比较完整的五秒窗口。
             // 若比较相邻游戏刻，缓慢行走会被无限期误判为保持静止。
-            if (currentTrigger == DDITriggerType.STAND_STILL_5S) {
+            if (DDITriggerType.STAND_STILL_5S in currentTriggers) {
                 val cx = player.x; val cy = player.y; val cz = player.z
                 val ax = lastX[id]; val ay = lastY[id]; val az = lastZ[id]
                 if (ax == null || ay == null || az == null) {
@@ -706,7 +706,7 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 注视检测同理：以窗口起点为锚点，防止玩家每刻旋转几度来规避检测。
-            if (currentTrigger == DDITriggerType.LOOK_SAME_DIR_5S) {
+            if (DDITriggerType.LOOK_SAME_DIR_5S in currentTriggers) {
                 val cyaw = player.yaw; val cp = player.pitch
                 val anchorYaw = lastYaw[id]; val anchorPitch = lastPitch[id]
                 if (anchorYaw == null || anchorPitch == null) {
@@ -728,7 +728,7 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 密闭状态
-            if (currentTrigger == DDITriggerType.ENCLOSED_1X2) {
+            if (DDITriggerType.ENCLOSED_1X2 in currentTriggers) {
                 val enclosed = isPlayerEnclosed(player)
                 val previousEnclosed = wasEnclosed.put(id, enclosed)
                 if (enclosed && previousEnclosed != true) fire(player, DDITriggerType.ENCLOSED_1X2)
@@ -736,7 +736,7 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 浸没状态
-            if (currentTrigger == DDITriggerType.SUBMERGED) {
+            if (DDITriggerType.SUBMERGED in currentTriggers) {
                 val submerged = player.isSubmergedInWater
                 val previousSubmerged = wasSubmerged.put(id, submerged)
                 if (submerged && previousSubmerged != true) fire(player, DDITriggerType.SUBMERGED)
@@ -744,7 +744,7 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 漂浮状态
-            if (currentTrigger == DDITriggerType.FLOATING) {
+            if (DDITriggerType.FLOATING in currentTriggers) {
                 val floating = player.entityWorld.getBlockState(player.blockPos.down()).isAir
                 val previousFloating = wasFloating.put(id, floating)
                 if (floating && previousFloating != true) fire(player, DDITriggerType.FLOATING)
@@ -753,8 +753,8 @@ class DDITriggerDetector(
 
             // 使用原版选定的碰撞支撑方块。blockPos.down() 会错误判断台阶、楼梯、
             // 床、地毯和方块边界。
-            if ((currentRule.signalKind == DDISignalKind.BLOCK_STOOD_ON ||
-                    currentTrigger in standingBlockTriggers) &&
+            if ((currentRules.any { it.signalKind == DDISignalKind.BLOCK_STOOD_ON } ||
+                    currentTriggers.any { it in standingBlockTriggers }) &&
                 player.isOnGround && !player.hasVehicle()
             ) {
                 val steppingBlock = player.steppingBlockState.block
@@ -774,8 +774,8 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 头顶方块
-            if (currentTrigger == DDITriggerType.BLOCK_ABOVE_HEAD ||
-                currentTrigger == DDITriggerType.NO_BLOCK_ABOVE_HEAD
+            if (DDITriggerType.BLOCK_ABOVE_HEAD in currentTriggers ||
+                DDITriggerType.NO_BLOCK_ABOVE_HEAD in currentTriggers
             ) {
                 val hasAbove = hasBlockAboveHead(player)
                 val previousHasAbove = wasBlockAboveHead.put(id, hasAbove)
@@ -805,8 +805,8 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 距离
-            if (currentTrigger == DDITriggerType.FAR_FROM_ALL_15M ||
-                currentTrigger == DDITriggerType.TOO_CLOSE_TO_PLAYER
+            if (DDITriggerType.FAR_FROM_ALL_15M in currentTriggers ||
+                DDITriggerType.TOO_CLOSE_TO_PLAYER in currentTriggers
             ) {
                 val opponents = server.playerManager.playerList.filter {
                     it.uuid != id && it.uuid in activePlayerIds
@@ -837,15 +837,15 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 盔甲
-            if (currentTrigger == DDITriggerType.WEAR_ARMOR) {
+            if (DDITriggerType.WEAR_ARMOR in currentTriggers) {
                 val armorSlots = arrayOf(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET)
                 if (armorSlots.any { !player.getEquippedStack(it).isEmpty }) fire(player, DDITriggerType.WEAR_ARMOR)
             }
             if (lastTriggeredTick[id] == tick) continue
 
             // 手持物品（既定语义为任意一只手）
-            if (currentRule.signalKind == DDISignalKind.ITEM_HELD ||
-                currentTrigger in heldItemTriggers.values
+            if (currentRules.any { it.signalKind == DDISignalKind.ITEM_HELD } ||
+                currentTriggers.any { it in heldItemTriggers.values }
             ) {
                 sequenceOf(player.mainHandStack, player.offHandStack)
                     .filterNot { it.isEmpty }
@@ -877,7 +877,7 @@ class DDITriggerDetector(
             if (lastTriggeredTick[id] == tick) continue
 
             // 物品栏
-            if (currentTrigger in inventoryStateTriggers) {
+            if (currentTriggers.any { it in inventoryStateTriggers }) {
                 val inventoryIds = buildSet {
                     for (slot in 0 until player.inventory.size()) {
                         val stack = player.inventory.getStack(slot)

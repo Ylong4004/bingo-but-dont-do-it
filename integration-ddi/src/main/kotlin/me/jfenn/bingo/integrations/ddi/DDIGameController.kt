@@ -183,6 +183,8 @@ class DDIGameController(
             maxHearts = options.ddiMaxHearts,
             wordTimerSeconds = options.ddiWordTimerSeconds,
             objectiveMode = options.ddiObjectiveMode,
+            wordsPerObjective = options.ddiWordsPerObjective,
+            multiHitPolicy = options.ddiMultiHitPolicy,
         )
 
         // 必须在 start() 前设为 Active，因为解析初始即时词条时，

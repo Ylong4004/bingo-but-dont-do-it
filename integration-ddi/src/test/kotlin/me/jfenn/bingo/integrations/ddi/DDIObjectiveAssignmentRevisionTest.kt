@@ -32,11 +32,40 @@ class DDIObjectiveAssignmentRevisionTest {
             ),
         )
 
-        objective.assignWord(word, 60)
-        assertThat(objective.assignmentRevision).isEqualTo(1)
-        objective.clearWord()
-        assertThat(objective.assignmentRevision).isEqualTo(2)
-        objective.assignWord(word, 60)
-        assertThat(objective.assignmentRevision).isEqualTo(3)
+        val slot = objective.slots.single()
+        slot.assignWord(word, 60)
+        assertThat(slot.assignmentRevision).isEqualTo(1)
+        slot.clearWord()
+        assertThat(slot.assignmentRevision).isEqualTo(2)
+        slot.assignWord(word, 60)
+        assertThat(slot.assignmentRevision).isEqualTo(3)
+    }
+
+    @Test
+    fun `word slots keep asynchronous revisions independent`() {
+        val objective = DDIObjectiveState(
+            objectiveId = "team:red",
+            objectiveName = "红队",
+            teamKey = BingoTeamKey("bingo_red"),
+            teamName = "红队",
+            teamColor = Formatting.RED,
+            memberIds = setOf(UUID.randomUUID()),
+            memberNames = listOf("player"),
+            isTeamShared = true,
+            slots = mutableListOf(DDIWordSlotState(0), DDIWordSlotState(1)),
+        )
+        val word = DDIWordPool.WordEntry(
+            id = "test",
+            displayText = "测试",
+            triggerType = DDITriggerType.SNEAK,
+        )
+
+        objective.slot(0)!!.assignWord(word, 60)
+        objective.slot(1)!!.assignWord(word, 60)
+        objective.slot(0)!!.clearWord()
+
+        assertThat(objective.slot(0)!!.assignmentRevision).isEqualTo(2)
+        assertThat(objective.slot(1)!!.assignmentRevision).isEqualTo(1)
+        assertThat(objective.slot(1)!!.currentWord).isEqualTo(word)
     }
 }

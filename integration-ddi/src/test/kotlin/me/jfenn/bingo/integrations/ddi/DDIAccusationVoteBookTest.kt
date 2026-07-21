@@ -100,6 +100,7 @@ class DDIAccusationVoteBookTest {
         accusedPlayerId = accusedPlayerId,
         accusedTeamId = "bingo_blue",
         objectiveId = "team:bingo_blue",
+        slotIndex = 0,
         assignmentRevision = 4L,
         eligibleVoterIds = eligible,
         startedAtTick = startedAtTick,
