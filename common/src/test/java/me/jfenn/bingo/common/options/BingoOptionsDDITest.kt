@@ -13,6 +13,13 @@ import org.junit.jupiter.api.Test
 class BingoOptionsDDITest {
 
     @Test
+    fun `custom voice word ids are stable across equivalent spelling`() {
+        assertThat(DDIVoiceKeywordOptions.customWordId(" ＧＯ  Home "))
+            .isEqualTo(DDIVoiceKeywordOptions.customWordId("go home"))
+        assertThat(DDIVoiceKeywordOptions.customWordId("a")).isEqualTo(null)
+    }
+
+    @Test
     fun `old options without an objective mode keep individual behavior`() {
         val options = json.decodeFromString<BingoOptions>("{}")
 

@@ -10,8 +10,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.jfenn.bingo.platform.IModEnvironment
 import me.jfenn.bingo.common.options.DDIVoiceKeywordOptions
-import java.security.MessageDigest
-import java.util.HexFormat
 import kotlin.random.Random
 
 /**
@@ -166,11 +164,12 @@ class DDIWordPool(
     }
 
     private fun customVoiceWord(keyword: String): WordEntry {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(DDIVoiceKeywordOptions.recognitionKey(keyword).toByteArray(Charsets.UTF_8))
-        val suffix = HexFormat.of().formatHex(digest).take(16)
+        val id = checkNotNull(DDIVoiceKeywordOptions.customWordId(keyword)) {
+            "Custom voice keyword must have been validated before creating a word entry"
+        }
+        val suffix = id.removePrefix("voice_custom_")
         return WordEntry(
-            id = "voice_custom_$suffix",
+            id = id,
             displayText = "说出“$keyword”",
             triggerType = DDITriggerType.SPEAK_KEYWORD,
             repeatKey = "voice:custom:$suffix",

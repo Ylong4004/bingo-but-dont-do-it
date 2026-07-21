@@ -1,6 +1,8 @@
 package me.jfenn.bingo.common.options
 
 import java.text.Normalizer
+import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.Locale
 
 /** 设置墙输入、命令和运行时词条共用的校验规则。 */
@@ -24,6 +26,13 @@ object DDIVoiceKeywordOptions {
     fun recognitionKey(raw: String): String = normalize(raw)
         .lowercase(Locale.ROOT)
         .filter { it.isLetterOrDigit() }
+
+    /** 与运行时词池共享的稳定自定义词 ID，用于启停和重命名状态迁移。 */
+    fun customWordId(raw: String): String? = validate(raw)?.let { keyword ->
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(recognitionKey(keyword).toByteArray(Charsets.UTF_8))
+        "voice_custom_${HexFormat.of().formatHex(digest).take(16)}"
+    }
 
     fun validate(raw: String): String? {
         val normalized = normalize(raw)
