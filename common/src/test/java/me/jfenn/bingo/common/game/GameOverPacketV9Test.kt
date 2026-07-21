@@ -62,6 +62,43 @@ class GameOverPacketV9Test {
         assertThat(decoded.scores.single().score).isEqualTo(TeamScore(7, 1, 0))
     }
 
+    @Test
+    fun `V10 round trip preserves final DDI life snapshots`() {
+        val title = mockk<IText>()
+        val subtitle = mockk<IText>()
+        val teamName = mockk<IText>()
+        val blue = BingoTeamKey("bingo_blue")
+        val source = GameOverPacket(
+            title = title,
+            subtitle = subtitle,
+            winner = blue,
+            duration = Duration.ofSeconds(45),
+            isWinner = true,
+            isUpdate = false,
+            winStreak = null,
+            seed = 123,
+            scores = listOf(
+                GameOverPacket.ScoreRanking(0, blue, teamName, TeamScore(9, 2, 1), Duration.ofSeconds(45))
+            ),
+            ddiDamageHistory = listOf(
+                DDITeamDamageHistory(
+                    teamKey = blue,
+                    teamName = "蓝",
+                    heartsRemaining = 3,
+                    maxHearts = 4,
+                )
+            ),
+        )
+        val buffer = MemoryPacketBuf()
+
+        GameOverPacket.V10.toPacketBuf(source, buffer)
+        val decoded = GameOverPacket.V10.fromPacketBuf(buffer)
+
+        assertThat(decoded.ddiDamageHistory.single().heartsRemaining).isEqualTo(3)
+        assertThat(decoded.ddiDamageHistory.single().maxHearts).isEqualTo(4)
+        assertThat(decoded.scores.single().score).isEqualTo(TeamScore(9, 2, 1))
+    }
+
     private class MemoryPacketBuf : IPacketBuf {
         private val values = mutableListOf<Any?>()
         private var readIndex = 0

@@ -447,7 +447,14 @@ class DDIObjectiveManager(
         }
         objectives
             .distinctBy { it.teamKey }
-            .forEach { historyService.registerTeam(it.teamKey, displayTeamName(it)) }
+            .forEach {
+                historyService.registerTeam(
+                    teamKey = it.teamKey,
+                    teamName = displayTeamName(it),
+                    heartsRemaining = it.hearts,
+                    maxHearts = it.maxHearts,
+                )
+            }
 
         // 在发送任何初始即时词条通知前，先清除之前的客户端投影。
         sendResetToClients(server)
@@ -848,6 +855,12 @@ class DDIObjectiveManager(
         objective.hearts = (before + delta).coerceIn(0, objective.maxHearts)
         val applied = objective.hearts - before
         val eliminated = objective.hearts <= 0
+        historyService.updateHearts(
+            teamKey = objective.teamKey,
+            teamName = displayTeamName(objective),
+            heartsRemaining = objective.hearts,
+            maxHearts = objective.maxHearts,
+        )
         if (applied < 0) {
             historyService.recordDamage(
                 teamKey = objective.teamKey,
@@ -1108,6 +1121,12 @@ class DDIObjectiveManager(
         }
 
         objective.hearts = 0
+        historyService.updateHearts(
+            teamKey = objective.teamKey,
+            teamName = displayTeamName(objective),
+            heartsRemaining = objective.hearts,
+            maxHearts = objective.maxHearts,
+        )
         eliminate(objective)
         clearAllWords(objective)
         val message = if (objective.isTeamShared) {
@@ -1227,6 +1246,12 @@ class DDIObjectiveManager(
                 DDITriggerType.INSTANT_GAIN_HEART -> {
                     teamWordHistory.record(objective.teamKey, nextWord)
                     objective.addHeart()
+                    historyService.updateHearts(
+                        teamKey = objective.teamKey,
+                        teamName = displayTeamName(objective),
+                        heartsRemaining = objective.hearts,
+                        maxHearts = objective.maxHearts,
+                    )
                     if (announceInstant) {
                         broadcastTrigger(objective, nextWord, null, isElimination = false, isGain = true)
                     }
@@ -1312,6 +1337,12 @@ class DDIObjectiveManager(
     private fun forfeit(objective: DDIObjectiveState, message: String) {
         if (!objective.isAlive) return
         objective.hearts = 0
+        historyService.updateHearts(
+            teamKey = objective.teamKey,
+            teamName = displayTeamName(objective),
+            heartsRemaining = objective.hearts,
+            maxHearts = objective.maxHearts,
+        )
         eliminate(objective)
         clearAllWords(objective)
         currentServer?.playerManager?.broadcast(Text.literal(message), false)
