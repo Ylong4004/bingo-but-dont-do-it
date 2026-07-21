@@ -169,6 +169,24 @@ class VoiceKeywordTextTest {
     }
 
     @Test
+    fun `weak light tone tail matches without weakening the spoken core`() {
+        val grammar = VoiceKeywordGrammar.fromSubjects(setOf("voice:跳一下"))!!
+        val relaxed = VoiceKeywordResultMatcher.evaluateFinalResult(
+            """{"result":[{"conf":0.84,"word":"跳"},{"conf":0.18,"word":"一下"}],"text":"跳 一下"}""",
+            grammar,
+        )
+        val weakCore = VoiceKeywordResultMatcher.evaluateFinalResult(
+            """{"result":[{"conf":0.18,"word":"跳"},{"conf":0.84,"word":"一下"}],"text":"跳 一下"}""",
+            grammar,
+        )
+
+        assertThat(relaxed is VoiceKeywordResultEvaluation.Matched).isEqualTo(true)
+        assertThat((relaxed as VoiceKeywordResultEvaluation.Matched).usedLightToneRelaxation)
+            .isEqualTo(true)
+        assertThat(weakCore is VoiceKeywordResultEvaluation.LowConfidence).isEqualTo(true)
+    }
+
+    @Test
     fun exactFinalTextIsAcceptedWhenNativeResultOmitsWordDetails() {
         val grammar = VoiceKeywordGrammar.fromSubjects(setOf("voice:钻石"))!!
         val evaluation = VoiceKeywordResultMatcher.evaluateFinalResult(

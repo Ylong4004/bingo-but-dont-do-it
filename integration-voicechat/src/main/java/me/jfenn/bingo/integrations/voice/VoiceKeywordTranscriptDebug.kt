@@ -14,6 +14,7 @@ import kotlin.math.ceil
 enum class VoiceKeywordTranscriptOutcome {
     MATCHED,
     MATCHED_TEXT_FALLBACK,
+    MATCHED_LIGHT_TONE_RELAXED,
     LOW_CONFIDENCE,
     TEXT_MISMATCH,
     EMPTY_RESULT,
@@ -145,10 +146,10 @@ internal class VoiceKeywordTranscriptBuffer(
     }
 
     private fun VoiceKeywordResultEvaluation.outcome(): VoiceKeywordTranscriptOutcome = when (this) {
-        is VoiceKeywordResultEvaluation.Matched -> if (usedTextFallback) {
-            VoiceKeywordTranscriptOutcome.MATCHED_TEXT_FALLBACK
-        } else {
-            VoiceKeywordTranscriptOutcome.MATCHED
+        is VoiceKeywordResultEvaluation.Matched -> when {
+            usedTextFallback -> VoiceKeywordTranscriptOutcome.MATCHED_TEXT_FALLBACK
+            usedLightToneRelaxation -> VoiceKeywordTranscriptOutcome.MATCHED_LIGHT_TONE_RELAXED
+            else -> VoiceKeywordTranscriptOutcome.MATCHED
         }
         is VoiceKeywordResultEvaluation.LowConfidence -> VoiceKeywordTranscriptOutcome.LOW_CONFIDENCE
         VoiceKeywordResultEvaluation.TextMismatch -> VoiceKeywordTranscriptOutcome.TEXT_MISMATCH

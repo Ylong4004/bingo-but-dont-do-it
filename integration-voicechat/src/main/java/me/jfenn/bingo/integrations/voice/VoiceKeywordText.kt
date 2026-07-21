@@ -252,6 +252,8 @@ internal sealed interface VoiceKeywordResultEvaluation {
     data class Matched(
         val match: VoiceKeywordMatch,
         val usedTextFallback: Boolean = false,
+        /** 仅末尾轻声/语气词置信度偏低时使用的窄范围放宽。 */
+        val usedLightToneRelaxation: Boolean = false,
     ) : VoiceKeywordResultEvaluation
 
     data object InvalidJson : VoiceKeywordResultEvaluation
@@ -269,6 +271,10 @@ internal object VoiceKeywordResultMatcher {
     // 完整短语仍必须与唯一目标精确匹配，所以无需使用通用听写场景的高阈值。
     const val DEFAULT_AVERAGE_CONFIDENCE = 0.55
     const val DEFAULT_MINIMUM_WORD_CONFIDENCE = 0.30
+    private const val LIGHT_TONE_MINIMUM_WORD_CONFIDENCE = 0.12
+    private val LIGHT_TONE_TAILS = setOf(
+        "一下", "一下子", "一会", "一会儿", "着", "了", "吧", "呢", "吗",
+    )
 
     fun matchFinalResult(
         resultJson: String,
@@ -326,10 +332,36 @@ internal object VoiceKeywordResultMatcher {
             ?: return VoiceKeywordResultEvaluation.TextMismatch
         val minimum = words.minOf { it.confidence }
         val average = words.sumOf { it.confidence } / words.size
-        if (minimum < minimumWordConfidence || average < minimumAverageConfidence) {
+        val usedLightToneRelaxation = minimum < minimumWordConfidence &&
+            canRelaxLightToneTail(words, minimumWordConfidence)
+        if (average < minimumAverageConfidence ||
+            (minimum < minimumWordConfidence && !usedLightToneRelaxation)
+        ) {
             return VoiceKeywordResultEvaluation.LowConfidence(average, minimum)
         }
-        return VoiceKeywordResultEvaluation.Matched(VoiceKeywordMatch(subjectId, average))
+        return VoiceKeywordResultEvaluation.Matched(
+            match = VoiceKeywordMatch(subjectId, average),
+            usedLightToneRelaxation = usedLightToneRelaxation,
+        )
+    }
+
+    /**
+     * “跳一下”“等一下”中的“下/着/了”等轻声尾音，常被小模型赋予很低的逐词
+     * 置信度。仅当整句仍精确命中受限 grammar、平均置信度达标、且所有弱词都在
+     * 已知尾音内时才放宽最低阈值；核心词变弱仍会被拒绝。
+     */
+    private fun canRelaxLightToneTail(
+        words: List<RecognizedWord>,
+        minimumWordConfidence: Double,
+    ): Boolean {
+        if (words.size < 2 || words.minOf(RecognizedWord::confidence) < LIGHT_TONE_MINIMUM_WORD_CONFIDENCE) {
+            return false
+        }
+        val tailStart = (1 until words.size).firstOrNull { start ->
+            VoiceKeywordNormalizer.normalize(words.drop(start).joinToString("") { it.text }) in LIGHT_TONE_TAILS
+        } ?: return false
+        return words.take(tailStart).all { it.confidence >= minimumWordConfidence } &&
+            words.drop(tailStart).any { it.confidence < minimumWordConfidence }
     }
 
     private data class RecognizedWord(val text: String, val confidence: Double)
