@@ -41,6 +41,7 @@ internal object SimpleVoiceEntrypoint : VoicechatPlugin {
             modelProvider = VoiceKeywordBridge::loadedModel,
             currentTarget = VoiceKeywordBridge::currentTarget,
             detectionSink = VoiceKeywordBridge::acceptDetection,
+            transcriptSink = VoiceKeywordBridge::recordTranscriptDebugResult,
         )
         voiceKeywordBackend = next
         VoiceKeywordBridge.installBackend(next)

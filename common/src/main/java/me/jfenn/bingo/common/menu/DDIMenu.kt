@@ -882,7 +882,8 @@ internal fun MenuComponent.registerDDIVoiceConsentHelp(
         builder.addText(
             text.literal(
                 "同意后，服务器仅在本局语音词条期间处理你的语音包进行离线识别。" +
-                    "不会上传或保存音频、转写文本；可随时在个人设置撤回。"
+                    "不会上传或保存音频、转写文本；可随时在个人设置撤回。" +
+                    "如需排查识别，可自行使用 /bingo voice transcript enable 开启仅自己可看的短时内存转写。"
             )
         )
         builder.setYes(text.literal("同意并参加"), IDialogAction.RunCommand(command))

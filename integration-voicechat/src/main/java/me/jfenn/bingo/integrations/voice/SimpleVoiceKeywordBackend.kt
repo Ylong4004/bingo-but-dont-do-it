@@ -25,6 +25,7 @@ internal class SimpleVoiceKeywordBackend(
     private val modelProvider: () -> Model?,
     private val currentTarget: (UUID) -> VoiceKeywordTarget?,
     private val detectionSink: (VoiceKeywordDetection) -> Boolean,
+    private val transcriptSink: (UUID, String?, VoiceKeywordResultEvaluation) -> Unit,
 ) : VoiceKeywordAudioBackend {
     companion object {
         private const val MAX_QUEUED_PACKETS = 400
@@ -410,6 +411,7 @@ internal class SimpleVoiceKeywordBackend(
         private fun consumeFinalResult(resultJson: String?) {
             if (matchedCurrentTarget) return
             if (resultJson == null) {
+                recordTranscriptDebug(null, VoiceKeywordResultEvaluation.EmptyResult)
                 VoiceKeywordDiagnostics.record(
                     playerId,
                     VoiceKeywordDiagnosticStage.RESULT_EMPTY,
@@ -422,6 +424,7 @@ internal class SimpleVoiceKeywordBackend(
                 resultJson,
                 activeGrammar,
             )
+            recordTranscriptDebug(resultJson, evaluation)
             val match = when (evaluation) {
                 VoiceKeywordResultEvaluation.InvalidJson -> {
                     VoiceKeywordDiagnostics.record(
@@ -478,6 +481,14 @@ internal class SimpleVoiceKeywordBackend(
             if (delivered) {
                 matchedCurrentTarget = true
             }
+        }
+
+        private fun recordTranscriptDebug(
+            resultJson: String?,
+            evaluation: VoiceKeywordResultEvaluation,
+        ) {
+            // 调试功能绝不能影响正常的检测与结算流水线。
+            runCatching { transcriptSink(playerId, resultJson, evaluation) }
         }
 
         private fun closeResources() {

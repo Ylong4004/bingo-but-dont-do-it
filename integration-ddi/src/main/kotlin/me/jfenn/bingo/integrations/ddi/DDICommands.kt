@@ -385,6 +385,43 @@ class DDICommands(
         )
     }
 
+    /** 只展示执行者本人主动开启的临时转写缓冲，避免管理员命令意外暴露语音内容。 */
+    private fun IExecutionContext.showOwnVoiceTranscript(playerId: UUID) {
+        val snapshot = VoiceKeywordBridge.transcriptDebugSnapshot(playerId)
+        if (!snapshot.enabled) {
+            sendMessage(
+                text.literal(
+                    "§e[DDI 语音转写] §f未开启。使用 /bingo voice transcript enable " +
+                        "开启 10 分钟临时调试。"
+                )
+            )
+            return
+        }
+        sendMessage(
+            text.literal(
+                "§6[DDI 语音转写] §f剩余 ${snapshot.secondsRemaining}s，" +
+                    "仅内存保存最近 ${snapshot.entries.size} 条最终结果。"
+            )
+        )
+        if (snapshot.entries.isEmpty()) {
+            sendMessage(text.literal("§7尚无最终识别结果；说完后停顿或松开 PTT。"))
+            return
+        }
+        snapshot.entries.forEachIndexed { index, entry ->
+            val confidence = entry.averageConfidence?.let {
+                val minimum = entry.minimumWordConfidence
+                    ?.let { value -> "/${String.format(Locale.ROOT, "%.2f", value)}" }
+                    .orEmpty()
+                "，置信=${String.format(Locale.ROOT, "%.2f", it)}$minimum"
+            }.orEmpty()
+            sendMessage(
+                text.literal(
+                    "§7${index + 1}. §f「${entry.transcript}」 §8${entry.outcome.name}$confidence"
+                )
+            )
+        }
+    }
+
     private fun IExecutionContext.showDebugWordInfo(id: String) {
         val word = scope.get<DDIObjectiveManager>().debugWord(id)
         if (word == null) {
@@ -666,6 +703,31 @@ class DDICommands(
                                     ),
                                 )
                             }
+                        }
+                    }
+                }
+            }
+            literal("voice") {
+                requires { !isConsole }
+                literal("transcript") {
+                    executes {
+                        showOwnVoiceTranscript(playerOrThrow.player.uuid)
+                    }
+                    literal("enable") {
+                        executes {
+                            VoiceKeywordBridge.enableTranscriptDebug(playerOrThrow.player.uuid)
+                            sendMessage(
+                                text.literal(
+                                    "§a[DDI 语音转写] §f已开启 10 分钟临时调试；" +
+                                        "仅保存最近 12 条最终结果，不写入日志或磁盘。"
+                                )
+                            )
+                        }
+                    }
+                    literal("disable") {
+                        executes {
+                            VoiceKeywordBridge.disableTranscriptDebug(playerOrThrow.player.uuid)
+                            sendMessage(text.literal("§a[DDI 语音转写] §f已关闭并清除临时结果。"))
                         }
                     }
                 }

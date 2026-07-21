@@ -143,6 +143,7 @@ object VoiceKeywordBridge {
     private val backend = AtomicReference<VoiceKeywordAudioBackend?>()
     private val connectedPlayers = ConcurrentHashMap.newKeySet<UUID>()
     private val modelManager = VoiceKeywordModelManager(defaultModelRoot())
+    private val transcriptDebug = VoiceKeywordTranscriptBuffer()
 
     @JvmStatic
     fun status(): VoiceKeywordBackendStatus {
@@ -177,6 +178,21 @@ object VoiceKeywordBridge {
     fun resetDiagnostics() {
         VoiceKeywordDiagnostics.reset()
     }
+
+    /** 玩家主动开启的十分钟临时转写调试；会清空该玩家此前的临时结果。 */
+    @JvmStatic
+    fun enableTranscriptDebug(playerId: UUID): VoiceKeywordTranscriptSnapshot =
+        transcriptDebug.enable(playerId)
+
+    @JvmStatic
+    fun disableTranscriptDebug(playerId: UUID) {
+        transcriptDebug.disable(playerId)
+    }
+
+    /** 仅返回玩家自己的短时调试缓存，调用方负责保持访问控制。 */
+    @JvmStatic
+    fun transcriptDebugSnapshot(playerId: UUID): VoiceKeywordTranscriptSnapshot =
+        transcriptDebug.snapshot(playerId)
 
     /** 由 DDI 服务端线程补上异步检测后的最终结算阶段。 */
     @JvmStatic
@@ -229,6 +245,7 @@ object VoiceKeywordBridge {
         synchronized(lifecycleLock) {
             if (backend.compareAndSet(value, null)) {
                 connectedPlayers.clear()
+                transcriptDebug.clear()
                 value.close()
             }
         }
@@ -270,12 +287,22 @@ object VoiceKeywordBridge {
     internal fun onPlayerDisconnected(playerId: UUID) {
         connectedPlayers.remove(playerId)
         backend.get()?.disconnect(playerId)
+        transcriptDebug.disable(playerId)
         // 全局累计值仍会保留；移除明细可限制长期服务器的 UUID 映射大小。
         VoiceKeywordDiagnostics.removePlayer(playerId)
     }
 
     internal fun onPlayerConnected(playerId: UUID) {
         connectedPlayers += playerId
+    }
+
+    /** 仅由 ASR 工作线程在玩家显式开启调试时调用；绝不记录到日志。 */
+    internal fun recordTranscriptDebugResult(
+        playerId: UUID,
+        resultJson: String?,
+        evaluation: VoiceKeywordResultEvaluation,
+    ) {
+        transcriptDebug.capture(playerId, resultJson, evaluation)
     }
 
     @JvmStatic
