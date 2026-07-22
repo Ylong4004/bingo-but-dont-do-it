@@ -140,6 +140,23 @@ internal class BingoHudScreen(
         .takeIf { gameOver != null && gameOver.isFirstOpen && gameOver.packet.isWinner }
         ?.also { gameOver?.isFirstOpen = false }
 
+    // DDI 等可选集成不一定已加载；缺少入口时保持原有 Bingo 页面不变。
+    private val activeGameAction = runCatching { koin.get<BingoHudScreenAction>() }.getOrNull()
+
+    private val activeGameActionButton = activeGameAction?.let { action ->
+        buttonFactory.createNinePatchButton(
+            sliceSize = 8,
+            textureSize = Vector2i(200, 20),
+            texture = "minecraft:bingo/button_game_generic",
+            focusedTexture = "minecraft:bingo/button_game_generic_focused",
+        ).also { button ->
+            button.message = action.label
+            button.onClick {
+                client.screen = action.open(helper.screen)
+            }
+        }
+    }
+
     private val settingsButton = buttonFactory.createNinePatchButton(
         sliceSize = 8,
         textureSize = Vector2i(200, 20),
@@ -312,6 +329,13 @@ internal class BingoHudScreen(
             }
         }
 
+        if (activeGameActionButton != null && activeGameAction?.isAvailable == true) {
+            activeGameActionButton.message = activeGameAction.label
+            activeGameActionButton.size = Vector2i(sidebarWidth - marginX * 2, 20)
+            buttonY -= marginY + activeGameActionButton.size.y
+            activeGameActionButton.position = Vector2i(width - interpolatedSidebarWidth + marginX, buttonY)
+        }
+
         messagesWidget.x = width - interpolatedSidebarWidth + marginX
         messagesWidget.y = 0
         messagesWidget.width = sidebarWidth - marginX*2
@@ -340,6 +364,10 @@ internal class BingoHudScreen(
 
         if (settingsButton != null) {
             helper.addButton(settingsButton)
+        }
+
+        if (activeGameActionButton != null && activeGameAction?.isAvailable == true) {
+            helper.addButton(activeGameActionButton)
         }
 
         if (gameOver != null) {

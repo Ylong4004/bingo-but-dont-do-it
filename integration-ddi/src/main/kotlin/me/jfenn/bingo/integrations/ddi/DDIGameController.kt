@@ -93,7 +93,10 @@ class DDIGameController(
         events.onPlayerChannelRegister { event ->
             // 在 Join 时 ScopedEvents 也会尝试同步；数据包处理器会检查支持情况，
             // 因此 ChannelRegister 才是能够可靠成功发送的时机。
-            if (!isShutdown) ddiManager.resyncTo(event.player.player)
+            if (!isShutdown) {
+                ddiManager.resyncTo(event.player.player)
+                voiceAccusations.syncTo(event.player.player)
+            }
         }
         events.onPlayerDisconnect { event ->
             if (!isShutdown) {

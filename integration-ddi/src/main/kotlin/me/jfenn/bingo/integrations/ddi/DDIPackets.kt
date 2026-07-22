@@ -86,9 +86,17 @@ data class DDIAccusationVoteView(
     val ownVote: Int,
 )
 
+/** 服务端已过滤后的举报目标；客户端永远不自行推导举报资格。 */
+data class DDIAccusationCandidateView(
+    val accusedPlayerId: UUID,
+    val accusedName: String,
+    val slotIndex: Int,
+)
+
 /** S2C：Y 页面需要的进行中投票状态。 */
 class DDIAccusationSyncPacket(
     val votes: List<DDIAccusationVoteView>,
+    val candidates: List<DDIAccusationCandidateView>,
 ) {
     object V1 : PacketConverter<DDIAccusationSyncPacket> {
         override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_accusation_sync_v1")!!
@@ -109,6 +117,13 @@ class DDIAccusationSyncPacket(
                     ownVote = buf.readInt(),
                 )
             },
+            candidates = buf.readList {
+                DDIAccusationCandidateView(
+                    accusedPlayerId = UUID(buf.readLong(), buf.readLong()),
+                    accusedName = buf.readString(),
+                    slotIndex = buf.readInt(),
+                )
+            },
         )
 
         override fun toPacketBuf(source: DDIAccusationSyncPacket, dest: IPacketBuf) {
@@ -126,6 +141,12 @@ class DDIAccusationSyncPacket(
                 dest.writeInt(vote.remainingTicks)
                 dest.writeBoolean(vote.canVote)
                 dest.writeInt(vote.ownVote)
+            }
+            dest.writeList(source.candidates) { candidate ->
+                dest.writeLong(candidate.accusedPlayerId.mostSignificantBits)
+                dest.writeLong(candidate.accusedPlayerId.leastSignificantBits)
+                dest.writeString(candidate.accusedName)
+                dest.writeInt(candidate.slotIndex)
             }
         }
     }

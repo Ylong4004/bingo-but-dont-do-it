@@ -247,8 +247,41 @@ class DDIVoiceAccusationService(
                 ownVote = ownVote,
             )
         }
-        packets.accusationSync.send(player, DDIAccusationSyncPacket(views))
+        packets.accusationSync.send(
+            player,
+            DDIAccusationSyncPacket(
+                votes = views,
+                candidates = accusationCandidatesFor(player),
+            ),
+        )
     }
+
+    private fun accusationCandidatesFor(accuser: ServerPlayerEntity): List<DDIAccusationCandidateView> =
+        server.playerManager.playerList
+            .asSequence()
+            .filter { it.uuid != accuser.uuid }
+            .flatMap { accused ->
+                when (val preparation = manager.prepareVoiceAccusation(accuser.uuid, accused.uuid)) {
+                    is DDIVoiceAccusationPreparation.Ready -> sequenceOf(
+                        DDIAccusationCandidateView(
+                            accusedPlayerId = accused.uuid,
+                            accusedName = accused.name.string,
+                            slotIndex = preparation.candidate.slotIndex,
+                        ),
+                    )
+                    is DDIVoiceAccusationPreparation.AmbiguousVoiceSlots ->
+                        preparation.availableSlotIndices.asSequence().map { slotIndex ->
+                            DDIAccusationCandidateView(
+                                accusedPlayerId = accused.uuid,
+                                accusedName = accused.name.string,
+                                slotIndex = slotIndex,
+                            )
+                        }
+                    else -> emptySequence()
+                }
+            }
+            .sortedWith(compareBy<DDIAccusationCandidateView> { it.accusedName }.thenBy { it.slotIndex })
+            .toList()
 
     private fun syncAll() {
         lastProjectionTick = server.ticks.toLong()

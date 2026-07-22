@@ -113,7 +113,10 @@ class DDIClientController(
         }
 
         eventBus.register(accusationSyncV1) { clientPacket ->
-            accusationState.update(clientPacket.packet.votes)
+            accusationState.update(
+                votes = clientPacket.packet.votes,
+                candidates = clientPacket.packet.candidates,
+            )
         }
 
         eventBus.register(ClientServerEvent.Join) {
