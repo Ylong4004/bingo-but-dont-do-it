@@ -8,6 +8,7 @@ import me.jfenn.bingo.client.platform.event.model.ClientTickEvent
 import me.jfenn.bingo.client.platform.event.model.HudRenderEvent
 import me.jfenn.bingo.common.config.BingoConfig
 import me.jfenn.bingo.integrations.ddi.DDIStateResetPacket
+import me.jfenn.bingo.integrations.ddi.DDIAccusationSyncPacket
 import me.jfenn.bingo.integrations.ddi.DDITeamSyncPacket
 import me.jfenn.bingo.integrations.ddi.DDITeamTriggeredPacket
 import me.jfenn.bingo.integrations.ddi.DDITriggeredPacket
@@ -22,6 +23,7 @@ import net.minecraft.client.gui.screen.ChatScreen
 class DDIClientController(
     clientNetworking: IClientNetworking,
     private val state: DDIHudState,
+    private val accusationState: DDIAccusationClientState,
     private val renderer: DDIHudRenderer,
     private val eventBus: IEventBus,
     private val client: IClient,
@@ -34,6 +36,7 @@ class DDIClientController(
     private val teamSyncV3 = clientNetworking.registerS2C(DDITeamSyncPacket.V3)
     private val teamTriggeredV1 = clientNetworking.registerS2C(DDITeamTriggeredPacket.V1)
     private val stateResetV1 = clientNetworking.registerS2C(DDIStateResetPacket.V1)
+    private val accusationSyncV1 = clientNetworking.registerS2C(DDIAccusationSyncPacket.V1)
 
     init {
         eventBus.register(wordSyncV2) { clientPacket ->
@@ -106,18 +109,28 @@ class DDIClientController(
 
         eventBus.register(stateResetV1) {
             state.reset()
+            accusationState.reset()
+        }
+
+        eventBus.register(accusationSyncV1) { clientPacket ->
+            accusationState.update(clientPacket.packet.votes)
         }
 
         eventBus.register(ClientServerEvent.Join) {
             state.reset()
+            accusationState.reset()
         }
 
         eventBus.register(ClientServerEvent.Disconnect) {
             state.reset()
+            accusationState.reset()
         }
 
         eventBus.register(ClientTickEvent.End) {
-            if (!client.isPaused) state.tick()
+            if (!client.isPaused) {
+                state.tick()
+                accusationState.tick()
+            }
         }
 
         eventBus.register(HudRenderEvent) {

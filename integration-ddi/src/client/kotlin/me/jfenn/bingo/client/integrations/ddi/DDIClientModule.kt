@@ -13,6 +13,7 @@ import org.koin.dsl.module
  */
 val ddiClientModule = module {
     singleOf(::DDIHudState)
+    singleOf(::DDIAccusationClientState)
     singleOf(::DDIHudRenderer)
     singleOf(::DDIClientController) withOptions { createdAtStart() }
 }

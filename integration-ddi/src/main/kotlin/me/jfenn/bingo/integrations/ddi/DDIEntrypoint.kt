@@ -22,6 +22,7 @@ class DDIEntrypoint : IBingoInternalPlugin {
     }
 
     override fun onScopeStarted(scope: Scope) {
+        scope.get<DDIVoiceAccusationPacketController>()
         scope.get<DDIGameController>()
     }
 

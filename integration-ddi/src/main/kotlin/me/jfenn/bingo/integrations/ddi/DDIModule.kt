@@ -33,7 +33,15 @@ val ddiModule = module {
         }
         scopedOf(::DDISpecialEventService)
         scopedOf(::DDIVoiceKeywordController)
-        scoped { DDIVoiceAccusationService(server = get(), manager = get(), log = get()) }
+        scoped {
+            DDIVoiceAccusationService(
+                server = get(),
+                manager = get(),
+                packets = get(),
+                log = get(),
+            )
+        }
+        scopedOf(::DDIVoiceAccusationPacketController)
         scopedOf(::DDIGameController)
     }
 }

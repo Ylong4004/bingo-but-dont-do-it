@@ -24,6 +24,111 @@ class DDIServerPackets(serverNetworking: IServerNetworking) {
     val teamSync = serverNetworking.registerS2C(DDITeamSyncPacket.V3)
     val teamTriggered = serverNetworking.registerS2C(DDITeamTriggeredPacket.V1)
     val stateReset = serverNetworking.registerS2C(DDIStateResetPacket.V1)
+    val accusationSync = serverNetworking.registerS2C(DDIAccusationSyncPacket.V1)
+    val accusationOpen = serverNetworking.registerC2S(DDIAccusationOpenPacket.V1)
+    val accusationVote = serverNetworking.registerC2S(DDIAccusationVotePacket.V1)
+}
+
+/** 客户端发起举报时只提交被举报玩家与公开槽位编号；服务端会重新校验全部资格。 */
+class DDIAccusationOpenPacket(
+    val accusedPlayerId: UUID,
+    val slotIndex: Int,
+) {
+    object V1 : PacketConverter<DDIAccusationOpenPacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_accusation_open_v1")!!
+
+        override fun fromPacketBuf(buf: IPacketBuf): DDIAccusationOpenPacket = DDIAccusationOpenPacket(
+            accusedPlayerId = UUID(buf.readLong(), buf.readLong()),
+            slotIndex = buf.readInt(),
+        )
+
+        override fun toPacketBuf(source: DDIAccusationOpenPacket, dest: IPacketBuf) {
+            dest.writeLong(source.accusedPlayerId.mostSignificantBits)
+            dest.writeLong(source.accusedPlayerId.leastSignificantBits)
+            dest.writeInt(source.slotIndex)
+        }
+    }
+}
+
+/** 客户端投票请求；票权、重复票和票是否仍有效均由服务端裁决。 */
+class DDIAccusationVotePacket(
+    val voteId: UUID,
+    val approve: Boolean,
+) {
+    object V1 : PacketConverter<DDIAccusationVotePacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_accusation_vote_v1")!!
+
+        override fun fromPacketBuf(buf: IPacketBuf): DDIAccusationVotePacket = DDIAccusationVotePacket(
+            voteId = UUID(buf.readLong(), buf.readLong()),
+            approve = buf.readBoolean(),
+        )
+
+        override fun toPacketBuf(source: DDIAccusationVotePacket, dest: IPacketBuf) {
+            dest.writeLong(source.voteId.mostSignificantBits)
+            dest.writeLong(source.voteId.leastSignificantBits)
+            dest.writeBoolean(source.approve)
+        }
+    }
+}
+
+/** 一场投票在单个客户端的安全展示投影；不含私密词条文本或其他玩家的投票身份。 */
+data class DDIAccusationVoteView(
+    val voteId: UUID,
+    val accuserName: String,
+    val accusedPlayerId: UUID,
+    val accusedName: String,
+    val slotIndex: Int,
+    val yesVotes: Int,
+    val noVotes: Int,
+    val approvalThreshold: Int,
+    val remainingTicks: Int,
+    val canVote: Boolean,
+    val ownVote: Int,
+)
+
+/** S2C：Y 页面需要的进行中投票状态。 */
+class DDIAccusationSyncPacket(
+    val votes: List<DDIAccusationVoteView>,
+) {
+    object V1 : PacketConverter<DDIAccusationSyncPacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_accusation_sync_v1")!!
+
+        override fun fromPacketBuf(buf: IPacketBuf): DDIAccusationSyncPacket = DDIAccusationSyncPacket(
+            votes = buf.readList {
+                DDIAccusationVoteView(
+                    voteId = UUID(buf.readLong(), buf.readLong()),
+                    accuserName = buf.readString(),
+                    accusedPlayerId = UUID(buf.readLong(), buf.readLong()),
+                    accusedName = buf.readString(),
+                    slotIndex = buf.readInt(),
+                    yesVotes = buf.readInt(),
+                    noVotes = buf.readInt(),
+                    approvalThreshold = buf.readInt(),
+                    remainingTicks = buf.readInt(),
+                    canVote = buf.readBoolean(),
+                    ownVote = buf.readInt(),
+                )
+            },
+        )
+
+        override fun toPacketBuf(source: DDIAccusationSyncPacket, dest: IPacketBuf) {
+            dest.writeList(source.votes) { vote ->
+                dest.writeLong(vote.voteId.mostSignificantBits)
+                dest.writeLong(vote.voteId.leastSignificantBits)
+                dest.writeString(vote.accuserName)
+                dest.writeLong(vote.accusedPlayerId.mostSignificantBits)
+                dest.writeLong(vote.accusedPlayerId.leastSignificantBits)
+                dest.writeString(vote.accusedName)
+                dest.writeInt(vote.slotIndex)
+                dest.writeInt(vote.yesVotes)
+                dest.writeInt(vote.noVotes)
+                dest.writeInt(vote.approvalThreshold)
+                dest.writeInt(vote.remainingTicks)
+                dest.writeBoolean(vote.canVote)
+                dest.writeInt(vote.ownVote)
+            }
+        }
+    }
 }
 
 /** 单条公开词条或私密倒计时的网络投影。 */

@@ -22,9 +22,12 @@ data class DDIVoiceAccusationActionResult(
 class DDIVoiceAccusationService(
     private val server: MinecraftServer,
     private val manager: DDIObjectiveManager,
+    private val packets: DDIServerPackets,
     private val log: Logger,
     private val votes: DDIAccusationVoteBook = DDIAccusationVoteBook(),
 ) {
+
+    private var lastProjectionTick = Long.MIN_VALUE
 
     /**
      * 在 DDI 语音局开始时给每个参赛者一组可点击的快捷入口。
@@ -95,7 +98,7 @@ class DDIVoiceAccusationService(
         }
 
         accuser.sendMessage(
-            Text.literal("§6[不要做·投票] §f选择听到违规的玩家；点击后立即发起 5 秒自动结算的投票："),
+            Text.literal("§6[不要做·投票] §f选择听到违规的玩家；点击后立即发起最长 10 秒的投票："),
             false,
         )
         candidates.chunked(PICKER_BUTTONS_PER_ROW).forEach { row ->
@@ -157,7 +160,7 @@ class DDIVoiceAccusationService(
                 )
                 DDIVoiceAccusationActionResult(
                     success = true,
-                    message = "已发起语音违规投票；你的同意票已计入，投票将在 5 秒后自动结算。",
+                    message = "已发起语音违规投票；你的同意票已计入。达到结果会立即结算，否则将在 10 秒后自动结算。",
                 )
             }
             DDIAccusationVoteOpenResult.AccuserIneligible ->
@@ -169,56 +172,112 @@ class DDIVoiceAccusationService(
         }
     }
 
+    fun accuse(
+        accuser: ServerPlayerEntity,
+        accusedPlayerId: UUID,
+        slotIndex: Int,
+    ): DDIVoiceAccusationActionResult {
+        val accused = server.playerManager.getPlayer(accusedPlayerId)
+            ?: return rejected("被举报玩家已离线或不存在。")
+        return accuse(accuser, accused, slotIndex)
+    }
+
     fun vote(
         voter: ServerPlayerEntity,
         voteId: UUID,
         approve: Boolean,
     ): DDIVoiceAccusationActionResult = when (votes.cast(voteId, voter.uuid, approve)) {
-        DDIAccusationVoteCastResult.ACCEPTED -> DDIVoiceAccusationActionResult(
-            success = true,
-            message = if (approve) "已投同意票，等待系统自动结算。" else "已投反对票，等待系统自动结算。",
-        )
+        DDIAccusationVoteCastResult.ACCEPTED -> {
+            val resolution = votes.resolveIfDecisive(voteId)
+            if (resolution != null) settle(resolution)
+            syncAll()
+            DDIVoiceAccusationActionResult(
+                success = true,
+                message = if (resolution == null) {
+                    if (approve) "已投同意票，等待系统自动结算。" else "已投反对票，等待系统自动结算。"
+                } else {
+                    "已投票，系统已得到最终结果。"
+                },
+            )
+        }
         DDIAccusationVoteCastResult.VOTE_NOT_FOUND -> rejected("这场投票已结束、被取消或不存在。")
         DDIAccusationVoteCastResult.VOTER_INELIGIBLE ->
             rejected("你不在这场投票创建时冻结的合资格选民中。")
         DDIAccusationVoteCastResult.ALREADY_VOTED -> rejected("你已经投过票，投票不能更改。")
     }
 
-    /** 每个服务端游戏刻调用一次；只有到期的投票才会在此触发处罚。 */
+    /** 每个服务端游戏刻调用一次；到期或已经确定结果的投票都会在此收口。 */
     fun tick() {
         val resolutions = votes.resolveExpired(server.ticks.toLong())
-        resolutions.forEach { resolution ->
-            if (!manager.hasRound) return
-            when (resolution.outcome) {
-                DDIAccusationVoteOutcome.REJECTED_INSUFFICIENT_YES -> {
-                    broadcast(
-                        "§e[不要做·投票] §f对 ${playerName(resolution.vote.accusedPlayerId)} 的指控未通过" +
-                            "（同意 ${resolution.vote.yesVoterIds.size}/${resolution.vote.approvalThreshold}）。",
-                    recipients = server.playerManager.playerList,
-                )
-                }
-                DDIAccusationVoteOutcome.APPROVED -> when (
-                    manager.settleApprovedVoiceAccusation(resolution.vote)
-                ) {
-                    DDIVoiceAccusationSettlement.SETTLED -> broadcast(
-                        "§c[不要做·投票] §f对 ${playerName(resolution.vote.accusedPlayerId)} 的指控通过，" +
-                            "已执行 DDI 处罚。",
-                        recipients = server.playerManager.playerList,
-                    )
-                    DDIVoiceAccusationSettlement.STALE_OR_INELIGIBLE -> broadcast(
-                        "§e[不要做·投票] §f对 ${playerName(resolution.vote.accusedPlayerId)} 的指控已通过，" +
-                            "但词条或语音资格已变化，因此不处罚。",
-                        recipients = server.playerManager.playerList,
-                    )
-                }
-            }
-        }
+        resolutions.forEach(::settle)
+        val tick = server.ticks.toLong()
+        if (resolutions.isNotEmpty() || tick - lastProjectionTick >= PROJECTION_INTERVAL_TICKS) syncAll()
     }
 
     /** 对局停止时丢弃未到期投票；结束后绝不补扣血。 */
     fun stop() {
         val cancelled = votes.cancelAll().size
         if (cancelled > 0) log.debug("[DDI Vote] Cancelled {} pending accusation vote(s)", cancelled)
+        syncAll()
+    }
+
+    /** 网络按钮和聊天命令共用的权威投票快照。 */
+    fun syncTo(player: ServerPlayerEntity) {
+        if (!packets.accusationSync.isSupported(player)) return
+        val now = server.ticks.toLong()
+        val views = votes.activeSnapshots().map { vote ->
+            val ownVote = when {
+                player.uuid in vote.yesVoterIds -> OWN_VOTE_YES
+                player.uuid in vote.noVoterIds -> OWN_VOTE_NO
+                else -> OWN_VOTE_NONE
+            }
+            DDIAccusationVoteView(
+                voteId = vote.voteId,
+                accuserName = playerName(vote.accuserId),
+                accusedPlayerId = vote.accusedPlayerId,
+                accusedName = playerName(vote.accusedPlayerId),
+                slotIndex = vote.slotIndex,
+                yesVotes = vote.yesVoterIds.size,
+                noVotes = vote.noVoterIds.size,
+                approvalThreshold = vote.approvalThreshold,
+                remainingTicks = (vote.deadlineTick - now)
+                    .coerceIn(0L, Int.MAX_VALUE.toLong())
+                    .toInt(),
+                canVote = player.uuid in vote.eligibleVoterIds && ownVote == OWN_VOTE_NONE,
+                ownVote = ownVote,
+            )
+        }
+        packets.accusationSync.send(player, DDIAccusationSyncPacket(views))
+    }
+
+    private fun syncAll() {
+        lastProjectionTick = server.ticks.toLong()
+        server.playerManager.playerList.forEach(::syncTo)
+    }
+
+    private fun settle(resolution: DDIAccusationVoteResolution) {
+        if (!manager.hasRound) return
+        when (resolution.outcome) {
+            DDIAccusationVoteOutcome.REJECTED_INSUFFICIENT_YES -> broadcast(
+                "§e[不要做·投票] §f对 ${playerName(resolution.vote.accusedPlayerId)} 的指控未通过" +
+                    "（同意 ${resolution.vote.yesVoterIds.size}/${resolution.vote.approvalThreshold}）。",
+                recipients = server.playerManager.playerList,
+            )
+            DDIAccusationVoteOutcome.APPROVED -> when (
+                manager.settleApprovedVoiceAccusation(resolution.vote)
+            ) {
+                DDIVoiceAccusationSettlement.SETTLED -> broadcast(
+                    "§c[不要做·投票] §f对 ${playerName(resolution.vote.accusedPlayerId)} 的指控通过，" +
+                        "已执行 DDI 处罚。",
+                    recipients = server.playerManager.playerList,
+                )
+                DDIVoiceAccusationSettlement.STALE_OR_INELIGIBLE -> broadcast(
+                    "§e[不要做·投票] §f对 ${playerName(resolution.vote.accusedPlayerId)} 的指控已通过，" +
+                        "但词条或语音资格已变化，因此不处罚。",
+                    recipients = server.playerManager.playerList,
+                )
+            }
+        }
     }
 
     private fun broadcastVoteOpened(
@@ -228,7 +287,8 @@ class DDIVoiceAccusationService(
         slotIndex: Int,
     ) {
         val headline = "§6[不要做·投票] §f$accuserName 指控 $accusedName 说出了第 ${slotIndex + 1} 条违禁词。" +
-            "被指控队伍不能投票；合资格玩家请在 5 秒内表决。"
+            "被指控队伍不能投票；合资格玩家请在 10 秒内表决。"
+        syncAll()
         server.playerManager.playerList.forEach { player ->
             player.sendMessage(Text.literal(headline), false)
             if (player.uuid in vote.eligibleVoterIds && player.uuid != vote.accuserId) {
@@ -288,5 +348,9 @@ class DDIVoiceAccusationService(
 
     private companion object {
         const val PICKER_BUTTONS_PER_ROW = 4
+        const val PROJECTION_INTERVAL_TICKS = 20L
+        const val OWN_VOTE_NONE = 0
+        const val OWN_VOTE_YES = 1
+        const val OWN_VOTE_NO = -1
     }
 }

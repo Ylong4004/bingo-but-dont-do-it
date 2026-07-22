@@ -29,15 +29,15 @@ class DDIAccusationVoteBookTest {
             ?: error("Expected vote to open")
         assertThat(initial.yesVoterIds).containsExactlyInAnyOrder(accuser)
         assertThat(initial.approvalThreshold).isEqualTo(3)
-        assertThat(initial.deadlineTick).isEqualTo(150L)
+        assertThat(initial.deadlineTick).isEqualTo(250L)
 
         assertThat(book.cast(request.voteId, voterThree, approve = true))
             .isEqualTo(DDIAccusationVoteCastResult.ACCEPTED)
         assertThat(book.cast(request.voteId, voterFour, approve = false))
             .isEqualTo(DDIAccusationVoteCastResult.ACCEPTED)
-        assertThat(book.resolveExpired(149L)).isEqualTo(emptyList())
+        assertThat(book.resolveExpired(249L)).isEqualTo(emptyList())
 
-        val resolved = book.resolveExpired(150L).single()
+        val resolved = book.resolveExpired(250L).single()
         assertThat(resolved.outcome).isEqualTo(DDIAccusationVoteOutcome.REJECTED_INSUFFICIENT_YES)
         assertThat(resolved.vote.yesVoterIds).containsExactlyInAnyOrder(accuser, voterThree)
         assertThat(resolved.vote.noVoterIds).containsExactlyInAnyOrder(voterFour)
@@ -50,7 +50,7 @@ class DDIAccusationVoteBookTest {
         val request = request(eligible = setOf(accuser, voterThree))
         book.open(request)
 
-        assertThat(book.resolveExpired(100L).single().outcome)
+        assertThat(book.resolveExpired(200L).single().outcome)
             .isEqualTo(DDIAccusationVoteOutcome.REJECTED_INSUFFICIENT_YES)
 
         val secondRequest = request(
@@ -61,8 +61,29 @@ class DDIAccusationVoteBookTest {
         book.open(secondRequest)
         assertThat(book.cast(secondRequest.voteId, voterThree, approve = true))
             .isEqualTo(DDIAccusationVoteCastResult.ACCEPTED)
-        assertThat(book.resolveExpired(100L).single().outcome)
+        assertThat(book.resolveExpired(200L).single().outcome)
             .isEqualTo(DDIAccusationVoteOutcome.APPROVED)
+    }
+
+    @Test
+    fun `decisive approval and rejection resolve without waiting for timer`() {
+        val book = DDIAccusationVoteBook()
+        val approval = request(eligible = setOf(accuser, voterThree, voterFour))
+        book.open(approval)
+        book.cast(approval.voteId, voterThree, approve = true)
+        assertThat(book.resolveIfDecisive(approval.voteId)?.outcome)
+            .isEqualTo(DDIAccusationVoteOutcome.APPROVED)
+
+        val rejection = request(
+            voteId = id(7),
+            accusedPlayerId = id(8),
+            eligible = setOf(accuser, voterThree, voterFour),
+        )
+        book.open(rejection)
+        book.cast(rejection.voteId, voterThree, approve = false)
+        book.cast(rejection.voteId, voterFour, approve = false)
+        assertThat(book.resolveIfDecisive(rejection.voteId)?.outcome)
+            .isEqualTo(DDIAccusationVoteOutcome.REJECTED_INSUFFICIENT_YES)
     }
 
     @Test

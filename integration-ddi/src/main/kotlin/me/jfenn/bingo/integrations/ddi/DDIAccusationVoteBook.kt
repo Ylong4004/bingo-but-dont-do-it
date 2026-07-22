@@ -38,7 +38,10 @@ data class DDIAccusationVotePolicy(
         (eligibleVoterCount * 2 + 2) / 3
 
     companion object {
-        const val DEFAULT_DURATION_TICKS = 20L * 5L
+        /**
+         * 按 Y 打开互动页面需要一点反应时间；十秒仍足以保持处罚的紧张感。
+         */
+        const val DEFAULT_DURATION_TICKS = 20L * 10L
         const val DEFAULT_MINIMUM_ELIGIBLE_VOTERS = 2
     }
 }
@@ -134,6 +137,27 @@ class DDIAccusationVoteBook(
     }
 
     fun snapshot(voteId: UUID): DDIAccusationVoteSnapshot? = votesById[voteId]?.snapshot()
+
+    /** 当前仍在等待表决的投票，用于向客户端投影权威状态。 */
+    fun activeSnapshots(): List<DDIAccusationVoteSnapshot> = votesById.values
+        .sortedWith(compareBy<ActiveVote> { it.deadlineTick }.thenBy { it.request.voteId.toString() })
+        .map(ActiveVote::snapshot)
+
+    /**
+     * 在某次投票已经不可能被后续选票推翻时立即结算。
+     *
+     * 这让“达到门槛立即通过”与“剩余票全投同意也不够时立即驳回”都不必等到倒计时结束。
+     */
+    fun resolveIfDecisive(voteId: UUID): DDIAccusationVoteResolution? {
+        val vote = votesById[voteId] ?: return null
+        val snapshot = vote.snapshot()
+        val cannotReachThreshold = snapshot.yesVoterIds.size + snapshot.remainingVoterCount < snapshot.approvalThreshold
+        return if (snapshot.yesVoterIds.size >= snapshot.approvalThreshold || cannotReachThreshold) {
+            resolve(vote)
+        } else {
+            null
+        }
+    }
 
     /** 仅在投票时限到达后结算；不会因为提前达到门槛而跳过其余选民的窗口。 */
     fun resolveExpired(currentTick: Long): List<DDIAccusationVoteResolution> {
