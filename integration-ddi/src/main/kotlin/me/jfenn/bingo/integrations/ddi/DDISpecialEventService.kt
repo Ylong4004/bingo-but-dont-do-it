@@ -14,6 +14,7 @@ import net.minecraft.entity.boss.ServerBossBar
 import net.minecraft.entity.damage.DamageSource
 import net.minecraft.server.MinecraftServer
 import net.minecraft.server.network.ServerPlayerEntity
+import net.minecraft.sound.SoundEvent
 import net.minecraft.sound.SoundEvents
 import net.minecraft.text.Text
 import org.slf4j.Logger
@@ -191,7 +192,7 @@ class DDISpecialEventService(
     }
 
     override fun playEventSound(eventType: DDISpecialEventType) {
-        val (sound, pitch) = when (eventType) {
+        val soundAndPitch: Pair<SoundEvent, Float> = when (eventType) {
             DDISpecialEventType.MONSTER_RAMPAGE,
             DDISpecialEventType.ANVIL_STORM,
             DDISpecialEventType.TNT_RAIN,
@@ -209,12 +210,12 @@ class DDISpecialEventService(
             DDISpecialEventType.DIAMOND_CURSE,
             DDISpecialEventType.ECLIPSE_CURSE,
             DDISpecialEventType.EQUIPMENT_RUST,
-            DDISpecialEventType.HUNGER_DISEASE -> SoundEvents.BLOCK_NOTE_BLOCK_BASS to 0.55f
+            DDISpecialEventType.HUNGER_DISEASE -> SoundEvents.BLOCK_NOTE_BLOCK_BASS.value() to 0.55f
 
             DDISpecialEventType.CALM,
             DDISpecialEventType.CLOUD_EFFECT,
             DDISpecialEventType.CHICKEN_RAIN,
-            DDISpecialEventType.EVERYONE_BABY -> SoundEvents.BLOCK_NOTE_BLOCK_PLING to 1.45f
+            DDISpecialEventType.EVERYONE_BABY -> SoundEvents.BLOCK_NOTE_BLOCK_PLING.value() to 1.45f
 
             DDISpecialEventType.FOOD_RAIN,
             DDISpecialEventType.XP_STORM,
@@ -230,6 +231,7 @@ class DDISpecialEventService(
 
             DDISpecialEventType.CAGE_TRIAL -> SoundEvents.BLOCK_LEVER_CLICK to 0.8f
         }
+        val (sound, pitch) = soundAndPitch
         activePlayers().forEach { player -> player.playSound(sound, 0.85f, pitch) }
     }
 
