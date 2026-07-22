@@ -144,6 +144,7 @@ object VoiceKeywordBridge {
     private val connectedPlayers = ConcurrentHashMap.newKeySet<UUID>()
     private val modelManager = VoiceKeywordModelManager(defaultModelRoot())
     private val transcriptDebug = VoiceKeywordTranscriptBuffer()
+    private val developmentDebug = VoiceKeywordDevelopmentDebugBuffer()
 
     @JvmStatic
     fun status(): VoiceKeywordBackendStatus {
@@ -193,6 +194,11 @@ object VoiceKeywordBridge {
     @JvmStatic
     fun transcriptDebugSnapshot(playerId: UUID): VoiceKeywordTranscriptSnapshot =
         transcriptDebug.snapshot(playerId)
+
+    /** 开发期管理员调试开关；关闭时立即清除全部文本。 */
+    @JvmStatic fun enableDevelopmentDebug() { developmentDebug.enable(); backend.get()?.onSessionChanged() }
+    @JvmStatic fun disableDevelopmentDebug() { developmentDebug.disable(); backend.get()?.onSessionChanged() }
+    @JvmStatic fun developmentDebugSnapshot(): VoiceKeywordDevelopmentDebugSnapshot = developmentDebug.snapshot()
 
     /** 由 DDI 服务端线程补上异步检测后的最终结算阶段。 */
     @JvmStatic
@@ -246,6 +252,7 @@ object VoiceKeywordBridge {
             if (backend.compareAndSet(value, null)) {
                 connectedPlayers.clear()
                 transcriptDebug.clear()
+                developmentDebug.disable()
                 value.close()
             }
         }
@@ -303,6 +310,7 @@ object VoiceKeywordBridge {
         evaluation: VoiceKeywordResultEvaluation,
     ) {
         transcriptDebug.capture(playerId, resultJson, evaluation)
+        developmentDebug.capture(playerId, gate.currentTarget(playerId), resultJson, evaluation)
     }
 
     @JvmStatic

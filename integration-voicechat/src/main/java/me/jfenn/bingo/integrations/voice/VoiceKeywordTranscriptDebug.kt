@@ -12,6 +12,7 @@ import kotlin.math.ceil
 
 /** 仅在玩家主动开启时记录的最终转写结果分类。 */
 enum class VoiceKeywordTranscriptOutcome {
+    FREE_TRANSCRIPT,
     MATCHED,
     MATCHED_TEXT_FALLBACK,
     MATCHED_LIGHT_TONE_RELAXED,
