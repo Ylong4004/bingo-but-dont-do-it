@@ -222,7 +222,9 @@ private fun createDDIBasicPage(
         position = pos + Vector3d(MENU_DDI_TIMER_WIDTH/2, 0.0, 0.0),
     )
 
-    val advancedPos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, -3.35, 0.0)
+    // Keep the secondary settings above the menu platform. The previous offset put the
+    // controls below the player's natural view and partly into the floor/void.
+    val advancedPos = position + Vector3d(-5.5 + MENU_LINE_PADDING*2, -2.45, 0.0)
     registerDDIWordSlots(
         position = advancedPos + Vector3d(MENU_DDI_WORD_SLOTS_WIDTH/2, 0.0, 0.0),
     )
