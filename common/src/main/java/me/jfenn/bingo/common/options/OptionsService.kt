@@ -434,15 +434,16 @@ internal class OptionsService(
         ) {
             ctx.error(text.string(StringKey.DdiCommandVoiceKeywordDuplicate, keyword))
         }
-        if (options.ddiVoiceCustomKeywords.size >= DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS) {
+        val updatedKeywords = options.ddiVoiceCustomKeywords + keyword
+        if (!DDIVoiceKeywordOptions.isWithinTotalBudget(updatedKeywords)) {
             ctx.error(
-                text.string(
-                    StringKey.DdiCommandVoiceKeywordLimit,
-                    DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
+                text.literal(
+                    "自定义语音词的总长度不能超过 " +
+                        "${DDIVoiceKeywordOptions.MAX_TOTAL_CUSTOM_KEYWORD_CODE_POINTS} 个字符。"
                 )
             )
         }
-        options.ddiVoiceCustomKeywords = (options.ddiVoiceCustomKeywords + keyword).toList()
+        options.ddiVoiceCustomKeywords = updatedKeywords
         ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordAdded, keyword))
     }
 
@@ -454,13 +455,132 @@ internal class OptionsService(
         options.ddiVoiceCustomKeywords = options.ddiVoiceCustomKeywords
             .filterNot { DDIVoiceKeywordOptions.recognitionKey(it) == recognitionKey }
             .toList()
+        DDIVoiceKeywordOptions.customWordId(removedKeyword)?.let { id ->
+            options.ddiDisabledWordIds = options.ddiDisabledWordIds - id
+        }
         ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordRemoved, removedKeyword))
     }
 
+    /** 原子重命名自定义语音词，并保留它原来的启用/停用状态。 */
+    fun renameDDIVoiceKeyword(ctx: Context, rawOldKeyword: String, rawNewKeyword: String) {
+        val oldKey = DDIVoiceKeywordOptions.recognitionKey(rawOldKeyword)
+        val oldKeyword = options.ddiVoiceCustomKeywords.firstOrNull {
+            DDIVoiceKeywordOptions.recognitionKey(it) == oldKey
+        } ?: ctx.error(text.string(StringKey.DdiCommandVoiceKeywordNotFound, rawOldKeyword))
+        val newKeyword = DDIVoiceKeywordOptions.validate(rawNewKeyword)
+            ?: ctx.error(
+                text.string(
+                    StringKey.DdiCommandVoiceKeywordInvalid,
+                    DDIVoiceKeywordOptions.MAX_KEYWORD_CODE_POINTS,
+                )
+            )
+        val newKey = DDIVoiceKeywordOptions.recognitionKey(newKeyword)
+        if (newKey != oldKey && options.ddiVoiceCustomKeywords.any {
+                DDIVoiceKeywordOptions.recognitionKey(it) == newKey
+            }
+        ) {
+            ctx.error(text.string(StringKey.DdiCommandVoiceKeywordDuplicate, newKeyword))
+        }
+        val updated = options.ddiVoiceCustomKeywords.map { keyword ->
+            if (DDIVoiceKeywordOptions.recognitionKey(keyword) == oldKey) newKeyword else keyword
+        }
+        if (!DDIVoiceKeywordOptions.isWithinTotalBudget(updated)) {
+            ctx.error(text.literal("自定义语音词的总长度超过安全预算。"))
+        }
+        val oldId = DDIVoiceKeywordOptions.customWordId(oldKeyword)
+        val newId = DDIVoiceKeywordOptions.customWordId(newKeyword)
+        val wasDisabled = oldId != null && oldId in options.ddiDisabledWordIds
+        options.ddiVoiceCustomKeywords = updated
+        options.ddiDisabledWordIds = buildSet {
+            addAll(options.ddiDisabledWordIds)
+            oldId?.let { remove(it) }
+            if (wasDisabled) newId?.let { add(it) }
+        }
+        ctx.sendFeedback(text.literal("自定义语音词已重命名：$oldKeyword → $newKeyword。"))
+    }
+
+    /** 以逗号、分号或换行为分隔批量合并；任一非法词会使本次导入整体不生效。 */
+    fun importDDIVoiceKeywords(ctx: Context, rawKeywords: String) {
+        val rawValues = rawKeywords.split(Regex("[;,，；\\r\\n]+"))
+            .map(String::trim)
+            .filter(String::isNotBlank)
+        if (rawValues.isEmpty()) ctx.error(text.literal("没有可导入的自定义语音词。"))
+        val invalid = rawValues.firstOrNull { DDIVoiceKeywordOptions.validate(it) == null }
+        if (invalid != null) {
+            ctx.error(text.literal("导入已取消：词条“$invalid”不符合格式或长度要求。"))
+        }
+        val existingKeys = options.ddiVoiceCustomKeywords
+            .mapTo(linkedSetOf(), DDIVoiceKeywordOptions::recognitionKey)
+        val additions = rawValues
+            .mapNotNull(DDIVoiceKeywordOptions::validate)
+            .filter { existingKeys.add(DDIVoiceKeywordOptions.recognitionKey(it)) }
+        val updated = options.ddiVoiceCustomKeywords + additions
+        if (!DDIVoiceKeywordOptions.isWithinTotalBudget(updated)) {
+            ctx.error(text.literal("导入已取消：自定义语音词总长度超过安全预算。"))
+        }
+        options.ddiVoiceCustomKeywords = updated
+        ctx.sendFeedback(
+            text.literal("已导入 ${additions.size} 条自定义语音词；当前共 ${updated.size} 条。"),
+        )
+    }
+
+    fun setDDIVoiceKeywordEnabled(ctx: Context, rawKeyword: String, enabled: Boolean) {
+        val keyword = options.ddiVoiceCustomKeywords.firstOrNull {
+            DDIVoiceKeywordOptions.recognitionKey(it) == DDIVoiceKeywordOptions.recognitionKey(rawKeyword)
+        } ?: ctx.error(text.string(StringKey.DdiCommandVoiceKeywordNotFound, rawKeyword))
+        val wordId = checkNotNull(DDIVoiceKeywordOptions.customWordId(keyword))
+        setDDIWordEnabled(ctx, wordId, enabled)
+    }
+
     fun resetDDIVoiceKeywords(ctx: Context) {
-        val removedCount = options.ddiVoiceCustomKeywords.size
+        val removed = options.ddiVoiceCustomKeywords
+        val removedCount = removed.size
         options.ddiVoiceCustomKeywords = emptyList()
+        val customIds = removed.mapNotNull(DDIVoiceKeywordOptions::customWordId).toSet()
+        options.ddiDisabledWordIds = options.ddiDisabledWordIds - customIds
         ctx.sendFeedback(text.string(StringKey.DdiCommandVoiceKeywordReset, removedCount))
+    }
+
+    fun setDDIWordCategoryEnabled(ctx: Context, categoryId: String, enabled: Boolean) {
+        options.ddiDisabledWordCategories = if (enabled) {
+            options.ddiDisabledWordCategories - categoryId
+        } else {
+            options.ddiDisabledWordCategories + categoryId
+        }
+        ctx.sendFeedback(
+            text.literal(
+                "DDI 词条分类“$categoryId”已${if (enabled) "启用" else "停用"}。"
+            )
+        )
+    }
+
+    fun setDDIWordsPerObjective(ctx: Context, count: Int) {
+        options.ddiWordsPerObjective = count.coerceIn(DDIRoundSettings.MIN_WORD_SLOTS, DDIRoundSettings.MAX_WORD_SLOTS)
+        ctx.sendFeedback(
+            textFactory.literal("不要做挑战：每个目标同时拥有 ${options.ddiWordsPerObjective} 条词条。"),
+        )
+    }
+
+    fun setDDIMultiHitPolicy(ctx: Context, policy: DDIMultiHitPolicy) {
+        options.ddiMultiHitPolicy = policy
+        val label = when (policy) {
+            DDIMultiHitPolicy.ALL_MATCHED -> "全部命中均结算"
+            DDIMultiHitPolicy.FIRST_MATCHED -> "仅结算第一条"
+        }
+        ctx.sendFeedback(textFactory.literal("不要做挑战：同次命中规则已设为$label。"))
+    }
+
+    fun setDDIWordEnabled(ctx: Context, wordId: String, enabled: Boolean) {
+        options.ddiDisabledWordIds = if (enabled) {
+            options.ddiDisabledWordIds - wordId
+        } else {
+            options.ddiDisabledWordIds + wordId
+        }
+        ctx.sendFeedback(
+            text.literal(
+                "DDI 词条“$wordId”已${if (enabled) "启用" else "停用"}。"
+            )
+        )
     }
 
     fun setTimeLimit(

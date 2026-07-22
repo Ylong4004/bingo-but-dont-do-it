@@ -125,6 +125,7 @@ internal class GameOverController(
             )
 
             when {
+                packetManager.gameOverV10.send(player.player, packet) -> {}
                 packetManager.gameOverV9.send(player.player, packet) -> {}
                 packetManager.gameOverV8.send(player.player, packet) -> {}
                 packetManager.gameOverV7.send(player.player, packet) -> {}

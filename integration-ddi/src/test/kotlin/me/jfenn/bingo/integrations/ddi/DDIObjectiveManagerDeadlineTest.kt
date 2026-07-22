@@ -80,8 +80,8 @@ class DDIObjectiveManagerDeadlineTest {
         manager.handleExpiredObjective(red)
 
         assertThat(red.hearts).isEqualTo(1)
-        assertThat(red.currentWord).isEqualTo(replacement)
-        assertThat(red.ruleProgress).isEqualTo(0)
+        assertThat(red.slots.single().currentWord).isEqualTo(replacement)
+        assertThat(red.slots.single().ruleProgress).isEqualTo(0)
         assertThat(expiring.repeatKey in hardHistory.captured).isEqualTo(true)
         verify(exactly = 1) {
             history.recordDamage(
@@ -139,7 +139,7 @@ class DDIObjectiveManagerDeadlineTest {
             word = deadline,
             hearts = 3,
             timer = 0,
-        ).apply { deadlineSatisfied = true }
+        ).apply { slots.single().deadlineSatisfied = true }
         manager.objectiveStates[objective.objectiveId] = objective
         every {
             wordPool.drawAvailable(
@@ -154,8 +154,8 @@ class DDIObjectiveManagerDeadlineTest {
         manager.handleExpiredObjective(objective)
 
         assertThat(objective.hearts).isEqualTo(3)
-        assertThat(objective.currentWord).isEqualTo(replacement)
-        assertThat(objective.deadlineSatisfied).isEqualTo(false)
+        assertThat(objective.slots.single().currentWord).isEqualTo(replacement)
+        assertThat(objective.slots.single().deadlineSatisfied).isEqualTo(false)
         verify(exactly = 0) { history.recordDamage(any(), any(), any(), any(), any(), any()) }
     }
 
@@ -174,11 +174,16 @@ class DDIObjectiveManagerDeadlineTest {
         memberIds = emptySet(),
         memberNames = emptyList(),
         isTeamShared = true,
-        currentWord = word,
         hearts = hearts,
         maxHearts = hearts,
-        wordTimerSeconds = timer,
-        maxWordTimerSeconds = timer,
+        slots = mutableListOf(
+            DDIWordSlotState(
+                index = 0,
+                currentWord = word,
+                wordTimerSeconds = timer,
+                maxWordTimerSeconds = timer,
+            ),
+        ),
     )
 
     private fun Any.setPrivate(name: String, value: Any?) {

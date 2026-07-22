@@ -13,11 +13,20 @@ import org.junit.jupiter.api.Test
 class BingoOptionsDDITest {
 
     @Test
+    fun `custom voice word ids are stable across equivalent spelling`() {
+        assertThat(DDIVoiceKeywordOptions.customWordId(" ＧＯ  Home "))
+            .isEqualTo(DDIVoiceKeywordOptions.customWordId("go home"))
+        assertThat(DDIVoiceKeywordOptions.customWordId("a")).isEqualTo(null)
+    }
+
+    @Test
     fun `old options without an objective mode keep individual behavior`() {
         val options = json.decodeFromString<BingoOptions>("{}")
 
         assertThat(options.ddiObjectiveMode).isEqualTo(DDIObjectiveMode.INDIVIDUAL)
         assertThat(options.ddiMaxHearts).isEqualTo(3)
+        assertThat(options.ddiWordsPerObjective).isEqualTo(1)
+        assertThat(options.ddiMultiHitPolicy).isEqualTo(DDIMultiHitPolicy.ALL_MATCHED)
         assertThat(options.ddiSpecialEventsEnabled).isFalse()
         assertThat(options.ddiSpecialEventIntervalSeconds).isEqualTo(300)
         assertThat(options.ddiSpecialEventTypes).isEqualTo(DDISpecialEventType.BALANCED)
@@ -65,6 +74,8 @@ class BingoOptionsDDITest {
         assertThat(BingoOptions(enableDDI = true, ddiMaxHearts = 21).isValid()).isFalse()
         assertThat(BingoOptions(enableDDI = true, ddiWordTimerSeconds = 9).isValid()).isFalse()
         assertThat(BingoOptions(enableDDI = true, ddiWordTimerSeconds = 601).isValid()).isFalse()
+        assertThat(BingoOptions(enableDDI = true, ddiWordsPerObjective = 0).isValid()).isFalse()
+        assertThat(BingoOptions(enableDDI = true, ddiWordsPerObjective = 6).isValid()).isFalse()
     }
 
     @Test
@@ -135,6 +146,23 @@ class BingoOptionsDDITest {
     }
 
     @Test
+    fun `word catalog selection contributes to DDI hash independently of ordering`() {
+        val options = BingoOptions(
+            enableDDI = true,
+            ddiDisabledWordCategories = setOf("voice", "craft"),
+            ddiDisabledWordIds = setOf("craft_table_01", "voice_diamond"),
+        )
+        val reordered = options.copy(
+            ddiDisabledWordCategories = setOf("craft", "voice"),
+            ddiDisabledWordIds = setOf("voice_diamond", "craft_table_01"),
+        )
+
+        assertThat(reordered.getShaHash()).isEqualTo(options.getShaHash())
+        assertThat(options.copy(ddiDisabledWordIds = setOf("voice_diamond")).getShaHash())
+            .isNotEqualTo(options.getShaHash())
+    }
+
+    @Test
     fun `enabled special events require a valid interval and nonempty pool`() {
         val options = BingoOptions(enableDDI = true, ddiSpecialEventsEnabled = true)
 
@@ -146,15 +174,19 @@ class BingoOptionsDDITest {
     }
 
     @Test
-    fun `enabled voice keywords reject invalid duplicate and oversized persisted lists`() {
+    fun `enabled voice keywords reject invalid duplicate and over-budget persisted lists`() {
         val options = BingoOptions(enableDDI = true, ddiVoiceKeywordsEnabled = true)
 
         assertThat(options.copy(ddiVoiceCustomKeywords = listOf(" x ")).isValid()).isFalse()
         assertThat(options.copy(ddiVoiceCustomKeywords = listOf("Diamond", "diamond")).isValid()).isFalse()
         assertThat(
             options.copy(
-                ddiVoiceCustomKeywords = (1..DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS + 1)
-                    .map { "keyword $it" }
+                ddiVoiceCustomKeywords = customKeywords(256)
+            ).isValid()
+        ).isTrue()
+        assertThat(
+            options.copy(
+                ddiVoiceCustomKeywords = customKeywords(257)
             ).isValid()
         ).isFalse()
         assertThat(options.copy(ddiVoiceCustomKeywords = listOf("钻石", "nether portal")).isValid()).isTrue()
@@ -169,6 +201,10 @@ class BingoOptionsDDITest {
         assertThat(normalized).isEqualTo(listOf("Nether Portal", "下界传送门"))
     }
 
+    private fun customKeywords(count: Int): List<String> = (0 until count).map { index ->
+        "word${index.toString().padStart(28, 'x')}"
+    }
+
     @Test
     fun `new DDI settings survive JSON serialization`() {
         val options = BingoOptions(
@@ -181,6 +217,10 @@ class BingoOptionsDDITest {
             ),
             ddiVoiceKeywordsEnabled = true,
             ddiVoiceCustomKeywords = listOf("钻石", "nether portal"),
+            ddiWordsPerObjective = 3,
+            ddiMultiHitPolicy = DDIMultiHitPolicy.FIRST_MATCHED,
+            ddiDisabledWordCategories = setOf("voice"),
+            ddiDisabledWordIds = setOf("craft_table_01"),
         )
 
         val restored = json.decodeFromString<BingoOptions>(json.encodeToString(options))
@@ -190,5 +230,9 @@ class BingoOptionsDDITest {
         assertThat(restored.ddiSpecialEventTypes).isEqualTo(options.ddiSpecialEventTypes)
         assertThat(restored.ddiVoiceKeywordsEnabled).isEqualTo(options.ddiVoiceKeywordsEnabled)
         assertThat(restored.ddiVoiceCustomKeywords).isEqualTo(options.ddiVoiceCustomKeywords)
+        assertThat(restored.ddiWordsPerObjective).isEqualTo(options.ddiWordsPerObjective)
+        assertThat(restored.ddiMultiHitPolicy).isEqualTo(options.ddiMultiHitPolicy)
+        assertThat(restored.ddiDisabledWordCategories).isEqualTo(options.ddiDisabledWordCategories)
+        assertThat(restored.ddiDisabledWordIds).isEqualTo(options.ddiDisabledWordIds)
     }
 }

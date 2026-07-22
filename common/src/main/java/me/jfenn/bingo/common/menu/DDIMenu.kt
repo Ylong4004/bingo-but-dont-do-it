@@ -20,6 +20,8 @@ internal const val MENU_DDI_ENABLE_WIDTH = 2.0
 internal const val MENU_DDI_MODE_WIDTH = 3.1
 internal const val MENU_DDI_HEARTS_WIDTH = 3.0
 internal const val MENU_DDI_TIMER_WIDTH = 3.3
+internal const val MENU_DDI_WORD_SLOTS_WIDTH = 3.0
+internal const val MENU_DDI_MULTI_HIT_WIDTH = 3.5
 internal const val MENU_DDI_EVENT_ENABLE_WIDTH = 2.0
 internal const val MENU_DDI_EVENT_INTERVAL_WIDTH = 2.7
 internal const val MENU_DDI_EVENT_PRESET_WIDTH = 2.7
@@ -37,8 +39,15 @@ private const val PRESET_HEIGHT = 0.55
 private const val PRESET_MARGIN = 0.1
 private const val EVENT_SELECTOR_PAGE_SIZE = 10
 private const val EVENT_SELECTOR_ROWS = 5
+private const val WORD_CATALOG_PAGE_SIZE = 10
+private const val WORD_CATALOG_ROWS = 5
 
 private class DDIEventSelectorState(var page: Int = 0)
+internal class DDIWordCatalogMenuState(
+    var categoryPage: Int = 0,
+    var wordPage: Int = 0,
+    var selectedCategoryId: String? = null,
+)
 
 private fun <T> readOnlyMutableProperty(getter: () -> T): MutableProperty<T> =
     DelegatedProperty(getter = getter, setter = {})
@@ -406,10 +415,326 @@ internal fun MenuComponent.registerDDISpecialEventSelector(
     }
 }
 
+internal fun MenuComponent.registerDDIWordSlots(
+    position: Vector3d,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    registerTitlePanel(
+        position = position + Vector3d(0.0, -0.5, 0.0),
+        width = MENU_DDI_WORD_SLOTS_WIDTH,
+        title = text.literal("同时词条数"),
+    )
+    registerNumberInput(
+        position = position + Vector3d(0.0, NUMBER_INPUT_Y, 0.0),
+        width = MENU_DDI_WORD_SLOTS_WIDTH,
+        height = NUMBER_INPUT_HEIGHT,
+        valueProp = readOnlyMutableProperty { options.ddiWordsPerObjective },
+        minValueProp = ConstantProperty(DDIRoundSettings.MIN_WORD_SLOTS),
+        maxValueProp = ConstantProperty(DDIRoundSettings.MAX_WORD_SLOTS),
+        format = { text.literal("$it 条") },
+        tooltip = listOf(text.literal("每个玩家或共享队伍同时持有的禁做词数量。")),
+    ) { player, count ->
+        optionsService.setDDIWordsPerObjective(OptionsService.Context(player), count)
+    }
+    registerDDIPresets(
+        position = position + Vector3d(0.0, PRESET_Y, 0.0),
+        width = MENU_DDI_WORD_SLOTS_WIDTH,
+        values = listOf(1, 2, 3, 5),
+        selected = { options.ddiWordsPerObjective },
+        format = { text.literal("$it") },
+    ) { player, count ->
+        optionsService.setDDIWordsPerObjective(OptionsService.Context(player), count)
+    }
+}
+
+internal fun MenuComponent.registerDDIMultiHitPolicy(
+    position: Vector3d,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    val policies = DDIMultiHitPolicy.entries
+    registerRadioMenu(
+        position = position,
+        width = MENU_DDI_MULTI_HIT_WIDTH,
+        height = 2.4,
+        title = text.literal("同次命中"),
+        options = listOf(text.literal("全部扣血"), text.literal("仅第一条")),
+        tooltips = listOf(
+            listOf(text.literal("一次动作命中几条词，就扣几颗心并分别换词。")),
+            listOf(text.literal("一次动作只结算槽位顺序最靠前的一条词。")),
+        ),
+        optionsPerPage = 2,
+        selectedIndexProp = readOnlyMutableProperty { policies.indexOf(options.ddiMultiHitPolicy) },
+    ) { player, index ->
+        optionsService.setDDIMultiHitPolicy(OptionsService.Context(player), policies[index])
+    }
+}
+
+private fun MenuComponent.ddiWordCatalogSnapshot(): DDIWordCatalogSnapshot? =
+    runCatching { koinScope.get<DDIWordCatalog>().snapshot() }.getOrNull()
+
+private fun MenuComponent.ddiWordCategoryText(category: DDIWordCatalogCategory): IText =
+    text.translatable(category.translationKey, null)
+
+internal fun MenuComponent.registerDDIWordCategorySelector(
+    position: Vector3d,
+    width: Double,
+    selectorState: DDIWordCatalogMenuState,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    fun catalog() = ddiWordCatalogSnapshot()
+    fun categories() = catalog()?.categories.orEmpty()
+    fun pageCount() = ceil(categories().size / WORD_CATALOG_PAGE_SIZE.toDouble()).toInt().coerceAtLeast(1)
+    fun categoryStats(categoryId: String): Pair<Int, Int> {
+        val entries = catalog()?.entries.orEmpty().filter { it.categoryId == categoryId }
+        val enabled = entries.count { it.id !in options.ddiDisabledWordIds }
+        return enabled to entries.size
+    }
+
+    registerTitlePanel(
+        position = position + Vector3d(0.0, -0.5, 0.0),
+        width = width,
+        titleProp = computedProperty {
+            val availableCategories = categories()
+            if (availableCategories.isEmpty()) {
+                text.literal("DDI 词条目录不可用")
+            } else {
+                text.string(
+                    StringKey.DdiMenuWordCategorySelectionTitle,
+                    selectorState.categoryPage + 1,
+                    pageCount(),
+                    availableCategories.count { it.id !in options.ddiDisabledWordCategories },
+                    availableCategories.size,
+                )
+            }
+        },
+    )
+
+    registerTileButton(
+        position = position + Vector3d(-width / 2 + 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal("<"),
+        isActiveProp = computedProperty { selectorState.categoryPage > 0 },
+        affectsOptions = false,
+    ) {
+        selectorState.categoryPage = (selectorState.categoryPage - 1).coerceAtLeast(0)
+        markDirty()
+    }
+    registerTileButton(
+        position = position + Vector3d(width / 2 - 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal(">"),
+        isActiveProp = computedProperty { selectorState.categoryPage < pageCount() - 1 },
+        affectsOptions = false,
+    ) {
+        selectorState.categoryPage = (selectorState.categoryPage + 1).coerceAtMost(pageCount() - 1)
+        markDirty()
+    }
+
+    val columnGap = 0.1
+    val itemWidth = (width - columnGap) / 2
+    val viewWidth = 0.85
+    val categoryWidth = itemWidth - viewWidth - columnGap
+    repeat(WORD_CATALOG_PAGE_SIZE) { slot ->
+        val itemIndex by computedProperty {
+            selectorState.categoryPage * WORD_CATALOG_PAGE_SIZE + slot
+        }
+        val column = slot / WORD_CATALOG_ROWS
+        val row = slot % WORD_CATALOG_ROWS
+        val centerX = if (column == 0) {
+            -itemWidth / 2 - columnGap / 2
+        } else {
+            itemWidth / 2 + columnGap / 2
+        }
+        val y = -0.95 - row * 0.4
+
+        registerTileButton(
+            position = position + Vector3d(
+                centerX - (viewWidth + columnGap) / 2,
+                y,
+                0.0,
+            ),
+            width = categoryWidth,
+            height = 0.32,
+            text = text.empty(),
+            textProp = computedProperty {
+                categories().getOrNull(itemIndex)
+                    ?.let(::ddiWordCategoryText)
+                    ?: text.empty()
+            },
+            tooltipProp = computedProperty {
+                categories().getOrNull(itemIndex)?.let { category ->
+                    val (enabled, total) = categoryStats(category.id)
+                    listOf(text.literal("已单独启用 $enabled/$total 条"))
+                }
+            },
+            isActiveProp = computedProperty {
+                categories().getOrNull(itemIndex)?.let { category ->
+                    category.id !in options.ddiDisabledWordCategories
+                } ?: false
+            },
+        ) { player ->
+            categories().getOrNull(itemIndex)?.let { category ->
+                optionsService.setDDIWordCategoryEnabled(
+                    ctx = OptionsService.Context(player),
+                    categoryId = category.id,
+                    enabled = category.id in options.ddiDisabledWordCategories,
+                )
+            }
+        }
+        registerTileButton(
+            position = position + Vector3d(
+                centerX + (categoryWidth + columnGap) / 2,
+                y,
+                0.0,
+            ),
+            width = viewWidth,
+            height = 0.32,
+            text = text.string(StringKey.DdiMenuWordCategoryView),
+            isActiveProp = computedProperty { categories().getOrNull(itemIndex) != null },
+            affectsOptions = false,
+        ) {
+            categories().getOrNull(itemIndex)?.let { category ->
+                selectorState.selectedCategoryId = category.id
+                selectorState.wordPage = 0
+                state.menu.page = MenuPage.DDI_WORD_ENTRIES
+            }
+        }
+    }
+}
+
+internal fun MenuComponent.registerDDIWordEntrySelector(
+    position: Vector3d,
+    width: Double,
+    selectorState: DDIWordCatalogMenuState,
+    state: BingoState = koinScope.get(),
+    optionsService: OptionsService = koinScope.get(),
+) {
+    val options = state.options
+    fun catalog() = ddiWordCatalogSnapshot()
+    fun selectedCategory(): DDIWordCatalogCategory? {
+        val categories = catalog()?.categories.orEmpty()
+        return categories.firstOrNull { it.id == selectorState.selectedCategoryId }
+            ?: categories.firstOrNull()
+    }
+    fun words(): List<DDIWordCatalogEntry> {
+        val category = selectedCategory() ?: return emptyList()
+        return catalog()?.entries
+            .orEmpty()
+            .filter { it.categoryId == category.id }
+            .sortedWith(compareBy(DDIWordCatalogEntry::displayText).thenBy(DDIWordCatalogEntry::id))
+    }
+    fun pageCount() = ceil(words().size / WORD_CATALOG_PAGE_SIZE.toDouble()).toInt().coerceAtLeast(1)
+
+    registerTitlePanel(
+        position = position + Vector3d(0.0, -0.5, 0.0),
+        width = width,
+        titleProp = computedProperty {
+            val category = selectedCategory()
+            if (category == null) {
+                text.literal("DDI 词条目录不可用")
+            } else {
+                val categoryWords = words()
+                val enabled = categoryWords.count { it.id !in options.ddiDisabledWordIds }
+                text.string(
+                    StringKey.DdiMenuWordEntrySelectionTitle,
+                    ddiWordCategoryText(category),
+                    selectorState.wordPage + 1,
+                    pageCount(),
+                    enabled,
+                    categoryWords.size,
+                )
+            }
+        },
+    )
+
+    registerTileButton(
+        position = position + Vector3d(-width / 2 + 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal("<"),
+        isActiveProp = computedProperty { selectorState.wordPage > 0 },
+        affectsOptions = false,
+    ) {
+        selectorState.wordPage = (selectorState.wordPage - 1).coerceAtLeast(0)
+        markDirty()
+    }
+    registerTileButton(
+        position = position + Vector3d(width / 2 - 0.25, -0.5, 0.0),
+        width = 0.5,
+        height = MENU_LINE_HEIGHT,
+        text = text.literal(">"),
+        isActiveProp = computedProperty { selectorState.wordPage < pageCount() - 1 },
+        affectsOptions = false,
+    ) {
+        selectorState.wordPage = (selectorState.wordPage + 1).coerceAtMost(pageCount() - 1)
+        markDirty()
+    }
+
+    val columnGap = 0.1
+    val itemWidth = (width - columnGap) / 2
+    repeat(WORD_CATALOG_PAGE_SIZE) { slot ->
+        val itemIndex by computedProperty {
+            selectorState.wordPage * WORD_CATALOG_PAGE_SIZE + slot
+        }
+        val column = slot / WORD_CATALOG_ROWS
+        val row = slot % WORD_CATALOG_ROWS
+        val x = if (column == 0) {
+            -itemWidth / 2 - columnGap / 2
+        } else {
+            itemWidth / 2 + columnGap / 2
+        }
+        val y = -0.95 - row * 0.4
+
+        registerTileButton(
+            position = position + Vector3d(x, y, 0.0),
+            width = itemWidth,
+            height = 0.32,
+            text = text.empty(),
+            textProp = computedProperty {
+                words().getOrNull(itemIndex)?.let { entry ->
+                    text.literal(entry.displayText)
+                } ?: text.empty()
+            },
+            tooltipProp = computedProperty {
+                words().getOrNull(itemIndex)?.let { entry ->
+                    buildList {
+                        add(text.literal(entry.id))
+                        if (selectedCategory()?.id in options.ddiDisabledWordCategories) {
+                            add(text.literal("该分类当前已停用"))
+                        }
+                    }
+                }
+            },
+            isActiveProp = computedProperty {
+                words().getOrNull(itemIndex)?.let { entry ->
+                    entry.id !in options.ddiDisabledWordIds
+                } ?: false
+            },
+        ) { player ->
+            words().getOrNull(itemIndex)?.let { entry ->
+                optionsService.setDDIWordEnabled(
+                    ctx = OptionsService.Context(player),
+                    wordId = entry.id,
+                    enabled = entry.id in options.ddiDisabledWordIds,
+                )
+            }
+        }
+    }
+}
+
 internal fun MenuComponent.registerDDIVoiceEnable(
     position: Vector3d,
     state: BingoState = koinScope.get(),
     optionsService: OptionsService = koinScope.get(),
+    dialogManager: IDialogManager = koinScope.get(),
 ) {
     val options = state.options
     registerTitlePanel(
@@ -418,9 +743,9 @@ internal fun MenuComponent.registerDDIVoiceEnable(
         title = text.string(StringKey.DdiMenuVoiceKeywords),
     )
     registerTileButton(
-        position = position + Vector3d(0.0, PANEL_BOTTOM, 0.0),
+        position = position + Vector3d(0.0, -1.35, 0.0),
         width = MENU_DDI_VOICE_ENABLE_WIDTH,
-        height = PANEL_HEIGHT,
+        height = 0.75,
         text = text.string(StringKey.DdiMenuEnabled),
         isActiveProp = computedProperty { options.ddiVoiceKeywordsEnabled },
         tooltip = buildTooltip(StringKey.DdiOptionVoiceKeywords),
@@ -429,6 +754,34 @@ internal fun MenuComponent.registerDDIVoiceEnable(
             OptionsService.Context(player),
             !options.ddiVoiceKeywordsEnabled,
         )
+    }
+    registerTileButton(
+        position = position + Vector3d(0.0, -2.3, 0.0),
+        width = MENU_DDI_VOICE_ENABLE_WIDTH,
+        height = 0.75,
+        text = text.literal("准备服务器模型"),
+        tooltip = buildTooltip(StringKey.DdiOptionVoiceKeywords),
+        affectsOptions = false,
+    ) { player ->
+        val command = "/bingo ddi voice model download"
+        val builder = dialogManager.confirmationBuilder()
+        if (builder == null) {
+            player.sendMessage(
+                text.literal("§e[不要做·语音] §f模型只会下载到房主/服务器。点击 §a[准备模型]§f 开始。")
+                    .apply { setClickEvent(TextAction.RunCommand(command)) }
+            )
+            return@registerTileButton
+        }
+        builder.title = text.literal("准备服务器语音模型")
+        builder.addText(
+            text.literal(
+                "将由房主/服务器下载约 43.9 MiB 的离线中文模型；其他玩家不会下载模型。" +
+                    "下载、校验、解压和加载状态可在游戏内查看。"
+            )
+        )
+        builder.setYes(text.literal("下载并准备"), IDialogAction.RunCommand(command))
+        builder.setNo(text.literal("暂不"), IDialogAction.None)
+        dialogManager.showDialog(player, builder.build())
     }
 }
 
@@ -453,7 +806,6 @@ internal fun MenuComponent.registerDDIVoiceKeywordEditor(
             text.string(
                 StringKey.DdiMenuVoiceKeywordAddWithCount,
                 options.ddiVoiceCustomKeywords.size,
-                DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
             )
         },
         tooltip = buildTooltip(StringKey.DdiMenuVoiceKeywordAdd),
@@ -499,6 +851,7 @@ internal fun MenuComponent.registerDDIVoiceKeywordEditor(
 
 internal fun MenuComponent.registerDDIVoiceConsentHelp(
     position: Vector3d,
+    dialogManager: IDialogManager = koinScope.get(),
 ) {
     registerTitlePanel(
         position = position + Vector3d(0.0, -0.5, 0.0),
@@ -516,11 +869,26 @@ internal fun MenuComponent.registerDDIVoiceConsentHelp(
         affectsOptions = false,
     ) { player ->
         val command = BingoPrefsCommand.getCommand(PlayerSettings::ddiVoiceConsent, true)
-        player.sendMessage(
-            text.string(StringKey.DdiMenuVoiceConsentMessage, command).apply {
-                setClickEvent(TextAction.SuggestCommand(command))
-            }
+        val builder = dialogManager.confirmationBuilder()
+        if (builder == null) {
+            player.sendMessage(
+                text.string(StringKey.DdiMenuVoiceConsentMessage, command).apply {
+                    setClickEvent(TextAction.RunCommand(command))
+                }
+            )
+            return@registerTileButton
+        }
+        builder.title = text.string(StringKey.DdiMenuVoiceConsent)
+        builder.addText(
+            text.literal(
+                "同意后，服务器仅在本局语音词条期间处理你的语音包进行离线识别。" +
+                    "不会上传或保存音频、转写文本；可随时在个人设置撤回。" +
+                    "如需排查识别，可自行使用 /bingo voice transcript enable 开启仅自己可看的短时内存转写。"
+            )
         )
+        builder.setYes(text.literal("同意并参加"), IDialogAction.RunCommand(command))
+        builder.setNo(text.literal("暂不参加"), IDialogAction.None)
+        dialogManager.showDialog(player, builder.build())
     }
 }
 

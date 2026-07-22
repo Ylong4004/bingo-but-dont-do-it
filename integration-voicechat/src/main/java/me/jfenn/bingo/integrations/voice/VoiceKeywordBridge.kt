@@ -16,6 +16,8 @@ enum class VoiceKeywordBackendState {
     MODEL_MISSING,
     MODEL_AVAILABLE,
     DOWNLOADING,
+    VERIFYING,
+    EXTRACTING,
     LOADING,
     READY,
     UNSUPPORTED_PLATFORM,
@@ -28,16 +30,37 @@ data class VoiceKeywordBackendStatus(
     val voiceChatAvailable: Boolean,
     /** 稳定且不含敏感信息的诊断码；绝不包含识别出的文本。 */
     val detail: String? = null,
+    /** 模型下载、校验、解压或加载进度；就绪和错误时为空。 */
+    val progress: VoiceKeywordModelProgress? = null,
 ) {
     val isReady: Boolean
         get() = state == VoiceKeywordBackendState.READY && voiceChatAvailable
 }
 
+/** 单个语音禁做槽位的不可变分配令牌。 */
+data class VoiceKeywordSlotTarget(
+    val slotIndex: Int,
+    val revision: Long,
+    val wordId: String,
+    val subjectIds: Set<String>,
+) {
+    init {
+        require(slotIndex >= 0) { "Voice slot index cannot be negative" }
+        require(revision >= 0L) { "Voice assignment revision cannot be negative" }
+        require(wordId.isNotBlank()) { "Voice word ID cannot be blank" }
+        require(subjectIds.isNotEmpty()) { "A voice slot requires at least one subject" }
+        require(subjectIds.all { it.startsWith(VoiceKeywordTarget.VOICE_SUBJECT_PREFIX) }) {
+            "Voice subjects must use the voice: namespace"
+        }
+    }
+}
+
 /**
- * 由服务端线程发布的不可变词条分配快照。
+ * 由服务端线程发布的不可变玩家语音目标快照。
  *
- * 目标 ID 特意采用可直接还原的 `voice:<词语>` 形式。它们是 DDI 内部字符串，
- * 并非 Minecraft 标识符，因此可以包含中文。每个异步结果都会携带这份完整快照。
+ * 一个语音目标可以聚合同一玩家的多个词条槽位，因此 ASR 只需构造一套语法；命中的
+ * subject 再由 [slotFor] 映射回服务端权威的独立槽位令牌。旧的一槽位调用仍可省略
+ * [slotTargets]，以便平滑兼容已有测试和调用方。
  */
 data class VoiceKeywordTarget(
     val gameId: UUID,
@@ -45,6 +68,7 @@ data class VoiceKeywordTarget(
     val revision: Long,
     val wordId: String,
     val subjectIds: Set<String>,
+    val slotTargets: List<VoiceKeywordSlotTarget> = emptyList(),
 ) {
     init {
         require(objectiveId.isNotBlank()) { "Voice objective ID cannot be blank" }
@@ -54,6 +78,29 @@ data class VoiceKeywordTarget(
         require(subjectIds.all { it.startsWith(VOICE_SUBJECT_PREFIX) }) {
             "Voice subjects must use the voice: namespace"
         }
+        if (slotTargets.isNotEmpty()) {
+            require(slotTargets.map(VoiceKeywordSlotTarget::slotIndex).distinct().size == slotTargets.size) {
+                "Voice target slot indices must be unique"
+            }
+            val mappedSubjects = slotTargets.flatMapTo(linkedSetOf(), VoiceKeywordSlotTarget::subjectIds)
+            require(mappedSubjects == subjectIds) {
+                "Voice target subjects must exactly match its slot targets"
+            }
+            require(slotTargets.flatMap(VoiceKeywordSlotTarget::subjectIds).size == mappedSubjects.size) {
+                "A voice subject may only belong to one active slot"
+            }
+        }
+    }
+
+    fun slotFor(subjectId: String): VoiceKeywordSlotTarget? {
+        if (subjectId !in subjectIds) return null
+        return slotTargets.firstOrNull { subjectId in it.subjectIds }
+            ?: VoiceKeywordSlotTarget(
+                slotIndex = 0,
+                revision = revision,
+                wordId = wordId,
+                subjectIds = subjectIds,
+            )
     }
 
     companion object {
@@ -96,6 +143,7 @@ object VoiceKeywordBridge {
     private val backend = AtomicReference<VoiceKeywordAudioBackend?>()
     private val connectedPlayers = ConcurrentHashMap.newKeySet<UUID>()
     private val modelManager = VoiceKeywordModelManager(defaultModelRoot())
+    private val transcriptDebug = VoiceKeywordTranscriptBuffer()
 
     @JvmStatic
     fun status(): VoiceKeywordBackendStatus {
@@ -110,6 +158,7 @@ object VoiceKeywordBridge {
             state = resolved,
             voiceChatAvailable = voiceAvailable,
             detail = modelStatus.detail,
+            progress = modelStatus.progress,
         )
     }
 
@@ -129,6 +178,21 @@ object VoiceKeywordBridge {
     fun resetDiagnostics() {
         VoiceKeywordDiagnostics.reset()
     }
+
+    /** 玩家主动开启的十分钟临时转写调试；会清空该玩家此前的临时结果。 */
+    @JvmStatic
+    fun enableTranscriptDebug(playerId: UUID): VoiceKeywordTranscriptSnapshot =
+        transcriptDebug.enable(playerId)
+
+    @JvmStatic
+    fun disableTranscriptDebug(playerId: UUID) {
+        transcriptDebug.disable(playerId)
+    }
+
+    /** 仅返回玩家自己的短时调试缓存，调用方负责保持访问控制。 */
+    @JvmStatic
+    fun transcriptDebugSnapshot(playerId: UUID): VoiceKeywordTranscriptSnapshot =
+        transcriptDebug.snapshot(playerId)
 
     /** 由 DDI 服务端线程补上异步检测后的最终结算阶段。 */
     @JvmStatic
@@ -181,6 +245,7 @@ object VoiceKeywordBridge {
         synchronized(lifecycleLock) {
             if (backend.compareAndSet(value, null)) {
                 connectedPlayers.clear()
+                transcriptDebug.clear()
                 value.close()
             }
         }
@@ -222,12 +287,22 @@ object VoiceKeywordBridge {
     internal fun onPlayerDisconnected(playerId: UUID) {
         connectedPlayers.remove(playerId)
         backend.get()?.disconnect(playerId)
+        transcriptDebug.disable(playerId)
         // 全局累计值仍会保留；移除明细可限制长期服务器的 UUID 映射大小。
         VoiceKeywordDiagnostics.removePlayer(playerId)
     }
 
     internal fun onPlayerConnected(playerId: UUID) {
         connectedPlayers += playerId
+    }
+
+    /** 仅由 ASR 工作线程在玩家显式开启调试时调用；绝不记录到日志。 */
+    internal fun recordTranscriptDebugResult(
+        playerId: UUID,
+        resultJson: String?,
+        evaluation: VoiceKeywordResultEvaluation,
+    ) {
+        transcriptDebug.capture(playerId, resultJson, evaluation)
     }
 
     @JvmStatic

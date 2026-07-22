@@ -10,8 +10,6 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import me.jfenn.bingo.platform.IModEnvironment
 import me.jfenn.bingo.common.options.DDIVoiceKeywordOptions
-import java.security.MessageDigest
-import java.util.HexFormat
 import kotlin.random.Random
 
 /**
@@ -43,6 +41,8 @@ class DDIWordPool(
 
     private val allWords = mutableListOf<WordEntry>()
     private var customVoiceWords: List<WordEntry> = emptyList()
+    private var disabledCategories: Set<String> = emptySet()
+    private var disabledWordIds: Set<String> = emptySet()
     private val random = Random.Default
 
     init {
@@ -120,8 +120,29 @@ class DDIWordPool(
 
     fun availableSize(): Int = availableWords().size
 
+    fun isEnabled(word: WordEntry): Boolean =
+        word.category !in disabledCategories && word.id !in disabledWordIds
+
+    /**
+     * 默认所有词条均可抽取；配置只记录被关闭的类别或词条，以便新词条自动加入默认池。
+     * 返回值用于避免无关设置变化触发一次不必要的重抽。
+     */
+    fun setWordSelection(
+        disabledCategories: Set<String>,
+        disabledWordIds: Set<String>,
+    ): Boolean {
+        val normalizedCategories = disabledCategories.toSet()
+        val normalizedWordIds = disabledWordIds.toSet()
+        if (this.disabledCategories == normalizedCategories && this.disabledWordIds == normalizedWordIds) {
+            return false
+        }
+        this.disabledCategories = normalizedCategories
+        this.disabledWordIds = normalizedWordIds
+        return true
+    }
+
     private fun availableWords(): List<WordEntry> = (allWords + customVoiceWords).filter { word ->
-        word.rule.isAvailable { modId -> environment?.isModLoaded(modId) == true }
+        isEnabled(word) && word.rule.isAvailable { modId -> environment?.isModLoaded(modId) == true }
     }
 
     /**
@@ -143,11 +164,12 @@ class DDIWordPool(
     }
 
     private fun customVoiceWord(keyword: String): WordEntry {
-        val digest = MessageDigest.getInstance("SHA-256")
-            .digest(DDIVoiceKeywordOptions.recognitionKey(keyword).toByteArray(Charsets.UTF_8))
-        val suffix = HexFormat.of().formatHex(digest).take(16)
+        val id = checkNotNull(DDIVoiceKeywordOptions.customWordId(keyword)) {
+            "Custom voice keyword must have been validated before creating a word entry"
+        }
+        val suffix = id.removePrefix("voice_custom_")
         return WordEntry(
-            id = "voice_custom_$suffix",
+            id = id,
             displayText = "说出“$keyword”",
             triggerType = DDITriggerType.SPEAK_KEYWORD,
             repeatKey = "voice:custom:$suffix",

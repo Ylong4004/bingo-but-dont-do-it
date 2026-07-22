@@ -12,6 +12,7 @@ import me.jfenn.bingo.integrations.ddi.DDITeamSyncPacket
 import me.jfenn.bingo.integrations.ddi.DDITeamTriggeredPacket
 import me.jfenn.bingo.integrations.ddi.DDITriggeredPacket
 import me.jfenn.bingo.integrations.ddi.DDIWordSyncPacket
+import me.jfenn.bingo.integrations.ddi.DDIWordSlotPacket
 import me.jfenn.bingo.platform.event.IEventBus
 import net.minecraft.client.gui.screen.ChatScreen
 
@@ -28,33 +29,31 @@ class DDIClientController(
     private val config: BingoConfig,
 ) {
 
-    private val wordSyncV1 = clientNetworking.registerS2C(DDIWordSyncPacket.V1)
+    private val wordSyncV2 = clientNetworking.registerS2C(DDIWordSyncPacket.V2)
     private val triggeredV1 = clientNetworking.registerS2C(DDITriggeredPacket.V1)
-    private val teamSyncV2 = clientNetworking.registerS2C(DDITeamSyncPacket.V2)
+    private val teamSyncV3 = clientNetworking.registerS2C(DDITeamSyncPacket.V3)
     private val teamTriggeredV1 = clientNetworking.registerS2C(DDITeamTriggeredPacket.V1)
     private val stateResetV1 = clientNetworking.registerS2C(DDIStateResetPacket.V1)
 
     init {
-        eventBus.register(wordSyncV1) { clientPacket ->
+        eventBus.register(wordSyncV2) { clientPacket ->
             val packet = clientPacket.packet
+            val slots = packet.slots.toHudSlots()
             if (packet.isSelf) {
-                // 即使旧版服务端意外在 V1 数据包中包含本地禁做词，也绝不能保留它。
+                // 即使版本不匹配的服务端意外包含本地禁做词，也绝不能保留它。
                 state.updateSelf(
                     hearts = packet.hearts,
                     maxHearts = packet.maxHearts,
-                    timerSeconds = packet.timerSeconds,
-                    maxTimerSeconds = packet.maxTimerSeconds,
+                    slots = slots,
                     isEliminated = packet.isEliminated,
                 )
             } else {
                 state.updateOther(
                     playerId = packet.playerId,
                     playerName = packet.playerName,
-                    wordText = packet.wordText,
+                    slots = slots,
                     hearts = packet.hearts,
                     maxHearts = packet.maxHearts,
-                    timerSeconds = packet.timerSeconds,
-                    maxTimerSeconds = packet.maxTimerSeconds,
                     isEliminated = packet.isEliminated,
                 )
             }
@@ -74,20 +73,18 @@ class DDIClientController(
             )
         }
 
-        eventBus.register(teamSyncV2) { clientPacket ->
+        eventBus.register(teamSyncV3) { clientPacket ->
             val packet = clientPacket.packet
             state.updateTeam(
                 teamId = packet.teamId,
                 teamName = packet.teamName,
                 teamColor = packet.teamColor,
                 memberNames = packet.memberNames,
-                // DDIHudState 会忽略本队的此字段；这里仍主动清空，使服务端和
-                // 客户端两端的隐私边界都清晰可见。
-                wordText = if (packet.isOwnTeam) "" else packet.wordText,
+                // DDIHudState 会清空本队每个槽位的词文本，使服务端和客户端两端的
+                // 隐私边界都清晰可见。
+                slots = packet.slots.toHudSlots(),
                 hearts = packet.hearts,
                 maxHearts = packet.maxHearts,
-                timerSeconds = packet.timerSeconds,
-                maxTimerSeconds = packet.maxTimerSeconds,
                 isEliminated = packet.isEliminated,
                 isOwnTeam = packet.isOwnTeam,
             )
@@ -137,5 +134,14 @@ class DDIClientController(
             if (config.client.hideOnChat && isChatOpen) return@register
             renderer.render(it.drawService)
         }
+    }
+
+    private fun List<DDIWordSlotPacket>.toHudSlots(): List<DDIHudState.WordSlotInfo> = map { slot ->
+        DDIHudState.WordSlotInfo(
+            index = slot.index,
+            wordText = slot.wordText,
+            timerSeconds = slot.timerSeconds,
+            maxTimerSeconds = slot.maxTimerSeconds,
+        )
     }
 }

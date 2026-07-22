@@ -9,6 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import me.jfenn.bingo.common.options.BingoOptions
 import me.jfenn.bingo.common.team.BingoTeamKey
 import org.junit.jupiter.api.Test
 import java.security.MessageDigest
@@ -85,6 +86,19 @@ class DDIWordPoolTest {
     }
 
     @Test
+    fun `disabled categories and word ids are excluded from draws`() {
+        val voiceWord = pool.findById("voice_diamond")!!
+        val craftWord = pool.findById("craft_table_01")!!
+
+        assertThat(pool.isEnabled(voiceWord)).isEqualTo(true)
+        assertThat(pool.isEnabled(craftWord)).isEqualTo(true)
+        assertThat(pool.setWordSelection(setOf("voice"), setOf(craftWord.id))).isEqualTo(true)
+        assertThat(pool.isEnabled(voiceWord)).isEqualTo(false)
+        assertThat(pool.isEnabled(craftWord)).isEqualTo(false)
+        assertThat(pool.setWordSelection(setOf("voice"), setOf(craftWord.id))).isEqualTo(false)
+    }
+
+    @Test
     fun `custom voice words are normalized stable and do not duplicate built-ins`() {
         val first = pool.setCustomVoiceKeywords(listOf("  远古残骸  ", "远古残骸", "钻石"))
         val firstId = first.single().id
@@ -96,6 +110,23 @@ class DDIWordPoolTest {
         assertThat(first.single().rule.subjectIds).isEqualTo(setOf("voice:远古残骸"))
         assertThat(second.single().id).isEqualTo(firstId)
         assertThat(pool.findById(firstId)).isEqualTo(second.single())
+    }
+
+    @Test
+    fun `catalog provider exposes ordered categories and custom voice words`() {
+        val snapshot = DDIWordCatalogProvider(
+            wordPool = pool,
+            options = BingoOptions(ddiVoiceCustomKeywords = listOf("远古残骸")),
+        ).snapshot()
+
+        assertThat(snapshot.categories.map { it.id }).isEqualTo(
+            listOf(
+                "legacy", "movement", "bingo", "player_interaction", "craft", "pickup",
+                "hold", "place", "break", "drop", "stand", "voice",
+            )
+        )
+        assertThat(snapshot.entries.find { it.displayText == "说出“远古残骸”" }?.categoryId)
+            .isEqualTo("voice")
     }
 
     @Test

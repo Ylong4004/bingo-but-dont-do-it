@@ -54,11 +54,17 @@ data class BingoOptions(
     var ddiObjectiveMode: DDIObjectiveMode = DDIObjectiveMode.INDIVIDUAL,
     var ddiMaxHearts: Int = 3,
     var ddiWordTimerSeconds: Int = 60,
+    /** 每个个人或共享队伍目标同时持有的禁做词数量。 */
+    var ddiWordsPerObjective: Int = 1,
+    var ddiMultiHitPolicy: DDIMultiHitPolicy = DDIMultiHitPolicy.ALL_MATCHED,
     var ddiSpecialEventsEnabled: Boolean = false,
     var ddiSpecialEventIntervalSeconds: Int = 300,
     var ddiSpecialEventTypes: Set<DDISpecialEventType> = DDISpecialEventType.BALANCED,
     var ddiVoiceKeywordsEnabled: Boolean = false,
     var ddiVoiceCustomKeywords: List<String> = emptyList(),
+    /** 默认全选；保存被主持人关闭的分类和单条 DDI 词条。 */
+    var ddiDisabledWordCategories: Set<String> = emptySet(),
+    var ddiDisabledWordIds: Set<String> = emptySet(),
 ) {
 
     fun isValid(): Boolean {
@@ -67,7 +73,9 @@ data class BingoOptions(
 
     fun hasValidDDIOptions(): Boolean {
         if (!enableDDI) return true
-        if (ddiMaxHearts !in 1..20 || ddiWordTimerSeconds !in 10..600) return false
+        if (ddiMaxHearts !in 1..20 || ddiWordTimerSeconds !in 10..600 ||
+            ddiWordsPerObjective !in DDIRoundSettings.MIN_WORD_SLOTS..DDIRoundSettings.MAX_WORD_SLOTS
+        ) return false
 
         if (ddiSpecialEventsEnabled && (
                 ddiSpecialEventIntervalSeconds !in DDI_SPECIAL_EVENT_INTERVAL_RANGE ||
@@ -76,7 +84,7 @@ data class BingoOptions(
         ) return false
 
         if (ddiVoiceKeywordsEnabled) {
-            if (ddiVoiceCustomKeywords.size > DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS) return false
+            if (!DDIVoiceKeywordOptions.isWithinTotalBudget(ddiVoiceCustomKeywords)) return false
             if (ddiVoiceCustomKeywords.any { DDIVoiceKeywordOptions.validate(it) != it }) return false
             if (ddiVoiceCustomKeywords
                     .map(DDIVoiceKeywordOptions::recognitionKey)
@@ -178,7 +186,10 @@ data class BingoOptions(
                 // 保持现有非 DDI 预设的哈希稳定，同时让 DDI 对局使用独立的
                 // 难度/统计分类。带分隔符的单段内容还能避免连续写入摘要时
                 // (1,160) 与 (11,60) 发生冲突。
-                yield("ddi:${ddiObjectiveMode.name}:$ddiMaxHearts:$ddiWordTimerSeconds")
+                yield(
+                    "ddi:${ddiObjectiveMode.name}:$ddiMaxHearts:$ddiWordTimerSeconds:" +
+                        "$ddiWordsPerObjective:${ddiMultiHitPolicy.name}",
+                )
                 if (ddiSpecialEventsEnabled) {
                     val eventIds = ddiSpecialEventTypes
                         .map(DDISpecialEventType::id)
@@ -192,6 +203,11 @@ data class BingoOptions(
                         .sorted()
                         .joinToString(",")
                     yield("ddi-voice:$keywordIds")
+                }
+                if (ddiDisabledWordCategories.isNotEmpty() || ddiDisabledWordIds.isNotEmpty()) {
+                    val categoryIds = ddiDisabledWordCategories.sorted().joinToString(",")
+                    val wordIds = ddiDisabledWordIds.sorted().joinToString(",")
+                    yield("ddi-word-filter:$categoryIds:$wordIds")
                 }
             }
             // spawning

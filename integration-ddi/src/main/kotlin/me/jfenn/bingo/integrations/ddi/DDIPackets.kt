@@ -19,37 +19,59 @@ import java.util.*
  * 将处理器保存在 Koin 单例中，可让服务端重启及连续多局游戏复用同一组注册。
  */
 class DDIServerPackets(serverNetworking: IServerNetworking) {
-    val wordSync = serverNetworking.registerS2C(DDIWordSyncPacket.V1)
+    val wordSync = serverNetworking.registerS2C(DDIWordSyncPacket.V2)
     val triggered = serverNetworking.registerS2C(DDITriggeredPacket.V1)
-    val teamSync = serverNetworking.registerS2C(DDITeamSyncPacket.V2)
+    val teamSync = serverNetworking.registerS2C(DDITeamSyncPacket.V3)
     val teamTriggered = serverNetworking.registerS2C(DDITeamTriggeredPacket.V1)
     val stateReset = serverNetworking.registerS2C(DDIStateResetPacket.V1)
 }
 
-/** S2C：同步单个玩家的 DDI 词条和心数。 */
+/** 单条公开词条或私密倒计时的网络投影。 */
+data class DDIWordSlotPacket(
+    val index: Int,
+    val wordText: String,
+    val timerSeconds: Int,
+    val maxTimerSeconds: Int,
+)
+
+private fun IPacketBuf.readDDIWordSlots(): List<DDIWordSlotPacket> = readList {
+    DDIWordSlotPacket(
+        index = readInt(),
+        wordText = readString(),
+        timerSeconds = readInt(),
+        maxTimerSeconds = readInt(),
+    )
+}
+
+private fun IPacketBuf.writeDDIWordSlots(slots: List<DDIWordSlotPacket>) {
+    writeList(slots) { slot ->
+        writeInt(slot.index)
+        writeString(slot.wordText)
+        writeInt(slot.timerSeconds)
+        writeInt(slot.maxTimerSeconds)
+    }
+}
+
+/** S2C：同步单个玩家的 DDI 词条槽位和共享生命。 */
 class DDIWordSyncPacket(
     val playerId: UUID,
     val playerName: String,
-    val wordText: String,
+    val slots: List<DDIWordSlotPacket>,
     val hearts: Int,
     val maxHearts: Int,
-    val timerSeconds: Int,
-    val maxTimerSeconds: Int,
     val isEliminated: Boolean,
     val isSelf: Boolean,
 ) {
-    object V1 : PacketConverter<DDIWordSyncPacket> {
-        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_word_sync")!!
+    object V2 : PacketConverter<DDIWordSyncPacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_word_sync_v2")!!
 
         override fun fromPacketBuf(buf: IPacketBuf): DDIWordSyncPacket {
             return DDIWordSyncPacket(
                 playerId = UUID(buf.readLong(), buf.readLong()),
                 playerName = buf.readString(),
-                wordText = buf.readString(),
+                slots = buf.readDDIWordSlots(),
                 hearts = buf.readInt(),
                 maxHearts = buf.readInt(),
-                timerSeconds = buf.readInt(),
-                maxTimerSeconds = buf.readInt(),
                 isEliminated = buf.readBoolean(),
                 isSelf = buf.readBoolean(),
             )
@@ -59,11 +81,9 @@ class DDIWordSyncPacket(
             dest.writeLong(source.playerId.mostSignificantBits)
             dest.writeLong(source.playerId.leastSignificantBits)
             dest.writeString(source.playerName)
-            dest.writeString(source.wordText)
+            dest.writeDDIWordSlots(source.slots)
             dest.writeInt(source.hearts)
             dest.writeInt(source.maxHearts)
-            dest.writeInt(source.timerSeconds)
-            dest.writeInt(source.maxTimerSeconds)
             dest.writeBoolean(source.isEliminated)
             dest.writeBoolean(source.isSelf)
         }
@@ -105,22 +125,20 @@ class DDITriggeredPacket(
     }
 }
 
-/** S2C：每个 Bingo 队伍对应一份权威的共享词条、生命和计时器投影。 */
+/** S2C：每个 Bingo 队伍对应一份权威的共享词条槽位和生命投影。 */
 class DDITeamSyncPacket(
     val teamId: String,
     val teamName: String,
     val teamColor: Formatting,
     val memberNames: List<String>,
-    val wordText: String,
+    val slots: List<DDIWordSlotPacket>,
     val hearts: Int,
     val maxHearts: Int,
-    val timerSeconds: Int,
-    val maxTimerSeconds: Int,
     val isEliminated: Boolean,
     val isOwnTeam: Boolean,
 ) {
-    object V2 : PacketConverter<DDITeamSyncPacket> {
-        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_team_sync_v2")!!
+    object V3 : PacketConverter<DDITeamSyncPacket> {
+        override val id: Identifier = Identifier.of(MOD_ID_BINGO, "ddi_team_sync_v3")!!
 
         override fun fromPacketBuf(buf: IPacketBuf): DDITeamSyncPacket {
             return DDITeamSyncPacket(
@@ -129,11 +147,9 @@ class DDITeamSyncPacket(
                 teamColor = runCatching { Formatting.valueOf(buf.readString()) }
                     .getOrDefault(Formatting.WHITE),
                 memberNames = buf.readList(buf::readString),
-                wordText = buf.readString(),
+                slots = buf.readDDIWordSlots(),
                 hearts = buf.readInt(),
                 maxHearts = buf.readInt(),
-                timerSeconds = buf.readInt(),
-                maxTimerSeconds = buf.readInt(),
                 isEliminated = buf.readBoolean(),
                 isOwnTeam = buf.readBoolean(),
             )
@@ -144,11 +160,9 @@ class DDITeamSyncPacket(
             dest.writeString(source.teamName)
             dest.writeString(source.teamColor.name)
             dest.writeList(source.memberNames, dest::writeString)
-            dest.writeString(source.wordText)
+            dest.writeDDIWordSlots(source.slots)
             dest.writeInt(source.hearts)
             dest.writeInt(source.maxHearts)
-            dest.writeInt(source.timerSeconds)
-            dest.writeInt(source.maxTimerSeconds)
             dest.writeBoolean(source.isEliminated)
             dest.writeBoolean(source.isOwnTeam)
         }

@@ -16,6 +16,7 @@ import me.jfenn.bingo.integrations.voice.VoiceKeywordDiagnosticsSnapshot
 import me.jfenn.bingo.platform.commands.ICommandManager
 import me.jfenn.bingo.platform.commands.IExecutionContext
 import me.jfenn.bingo.platform.text.IText
+import me.jfenn.bingo.platform.text.TextAction
 import net.minecraft.util.Formatting
 import java.util.Locale
 import java.util.UUID
@@ -180,19 +181,37 @@ class DDICommands(
 
     private fun IExecutionContext.showVoiceStatus() {
         val status = scope.get<DDIVoiceKeywordController>().status()
+        val progress = status.progress?.let { current ->
+            val transferred = current.totalBytes?.let { total ->
+                "${formatModelBytes(current.completedBytes)}/${formatModelBytes(total)}（${current.percent ?: 0}%）"
+            } ?: formatModelBytes(current.completedBytes)
+            "${current.phase.name.lowercase()}：$transferred"
+        } ?: "无"
         sendMessage(
             text.literal(
                 "§6[DDI 语音] §f状态=${status.state.name.lowercase()}，" +
                     "Simple Voice Chat=${status.voiceChatAvailable}，" +
+                    "进度=$progress，" +
                     "详情=${status.detail ?: "无"}"
             )
         )
     }
 
+    private fun formatModelBytes(bytes: Long): String =
+        String.format(Locale.ROOT, "%.1f MiB", bytes.coerceAtLeast(0L) / (1024.0 * 1024.0))
+
     private fun IExecutionContext.sendDebugResult(result: DDIDebugActionResult) {
         sendFeedback(
             text.literal(
                 (if (result.success) "§a[DDI 调试] " else "§c[DDI 调试] ") + result.message
+            )
+        )
+    }
+
+    private fun IExecutionContext.sendAccusationResult(result: DDIVoiceAccusationActionResult) {
+        sendMessage(
+            text.literal(
+                (if (result.success) "§a[不要做·投票] " else "§c[不要做·投票] ") + result.message,
             )
         )
     }
@@ -364,6 +383,43 @@ class DDICommands(
                 "§8建议测试前执行 /bingo ddi voice debug reset，单人说一次后松开按键再查询。"
             )
         )
+    }
+
+    /** 只展示执行者本人主动开启的临时转写缓冲，避免管理员命令意外暴露语音内容。 */
+    private fun IExecutionContext.showOwnVoiceTranscript(playerId: UUID) {
+        val snapshot = VoiceKeywordBridge.transcriptDebugSnapshot(playerId)
+        if (!snapshot.enabled) {
+            sendMessage(
+                text.literal(
+                    "§e[DDI 语音转写] §f未开启。使用 /bingo voice transcript enable " +
+                        "开启 10 分钟临时调试。"
+                )
+            )
+            return
+        }
+        sendMessage(
+            text.literal(
+                "§6[DDI 语音转写] §f剩余 ${snapshot.secondsRemaining}s，" +
+                    "仅内存保存最近 ${snapshot.entries.size} 条最终结果。"
+            )
+        )
+        if (snapshot.entries.isEmpty()) {
+            sendMessage(text.literal("§7尚无最终识别结果；说完后停顿或松开 PTT。"))
+            return
+        }
+        snapshot.entries.forEachIndexed { index, entry ->
+            val confidence = entry.averageConfidence?.let {
+                val minimum = entry.minimumWordConfidence
+                    ?.let { value -> "/${String.format(Locale.ROOT, "%.2f", value)}" }
+                    .orEmpty()
+                "，置信=${String.format(Locale.ROOT, "%.2f", it)}$minimum"
+            }.orEmpty()
+            sendMessage(
+                text.literal(
+                    "§7${index + 1}. §f「${entry.transcript}」 §8${entry.outcome.name}$confidence"
+                )
+            )
+        }
     }
 
     private fun IExecutionContext.showDebugWordInfo(id: String) {
@@ -555,14 +611,127 @@ class DDICommands(
                     literal("model") {
                         literal("download") {
                             executes {
-                                scope.get<DDIVoiceKeywordController>().requestModelDownload()
+                                val requester = player
+                                scope.get<DDIVoiceKeywordController>()
+                                    .requestModelDownload()
+                                    .whenComplete { status, failure ->
+                                        server.execute {
+                                            val target = requester ?: return@execute
+                                            val message = when {
+                                                failure != null ->
+                                                    "§c[不要做·语音] §f模型准备请求失败；请重试或查看状态。"
+                                                status?.isReady == true ->
+                                                    "§a[不要做·语音] §f本地识别模型已准备完成。"
+                                                else ->
+                                                    "§e[不要做·语音] §f模型准备结束，当前状态=" +
+                                                        "${status?.state?.name?.lowercase() ?: "未知"}。"
+                                            }
+                                            target.sendMessage(text.literal(message))
+                                        }
+                                    }
                                 sendFeedback(
-                                    text.literal(
-                                        "§a已异步检查/下载校验后的本地中文语音模型；" +
-                                            "使用 /bingo ddi voice status 查看进度。"
-                                    )
+                                    text.literal("§a已开始检查/下载服务器本地中文语音模型；")
+                                        .append(
+                                            text.literal("[查看进度]").apply {
+                                                setClickEvent(
+                                                    TextAction.RunCommand("/bingo ddi voice status"),
+                                                )
+                                            }
+                                        )
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 与管理员诊断命令分开注册：这是所有 DDI 语音参与者的游戏内交互入口。
+        commandManager.register("bingo") {
+            literal("accuse") {
+                requires { !isConsole }
+                executes {
+                    scope.get<DDIVoiceAccusationService>()
+                        .showAccusationTargetPicker(playerOrThrow.player)
+                }
+                player("player") { accusedArg ->
+                    executes {
+                        val result = scope.get<DDIVoiceAccusationService>().accuse(
+                            accuser = playerOrThrow.player,
+                            accused = getArgument(accusedArg).player,
+                        )
+                        sendAccusationResult(result)
+                    }
+                    string("slot") { slotArg ->
+                        executes {
+                            val displaySlot = getArgument(slotArg).toIntOrNull()
+                            if (displaySlot == null || displaySlot !in 1..DDIRoundConfig.MAX_WORD_SLOTS) {
+                                sendAccusationResult(
+                                    DDIVoiceAccusationActionResult(
+                                        success = false,
+                                        message = "槽位必须是 1 到 ${DDIRoundConfig.MAX_WORD_SLOTS} 的整数。",
+                                    ),
+                                )
+                                return@executes
+                            }
+                            val result = scope.get<DDIVoiceAccusationService>().accuse(
+                                accuser = playerOrThrow.player,
+                                accused = getArgument(accusedArg).player,
+                                slotIndex = displaySlot - 1,
+                            )
+                            sendAccusationResult(result)
+                        }
+                    }
+                }
+                literal("vote") {
+                    string("vote_id") { voteIdArg ->
+                        boolean("approve") { approveArg ->
+                            executes {
+                                val voteId = runCatching {
+                                    UUID.fromString(getArgument(voteIdArg))
+                                }.getOrNull()
+                                if (voteId == null) {
+                                    sendAccusationResult(
+                                        DDIVoiceAccusationActionResult(
+                                            success = false,
+                                            message = "投票编号无效。",
+                                        ),
+                                    )
+                                    return@executes
+                                }
+                                sendAccusationResult(
+                                    scope.get<DDIVoiceAccusationService>().vote(
+                                        voter = playerOrThrow.player,
+                                        voteId = voteId,
+                                        approve = getArgument(approveArg),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            literal("voice") {
+                requires { !isConsole }
+                literal("transcript") {
+                    executes {
+                        showOwnVoiceTranscript(playerOrThrow.player.uuid)
+                    }
+                    literal("enable") {
+                        executes {
+                            VoiceKeywordBridge.enableTranscriptDebug(playerOrThrow.player.uuid)
+                            sendMessage(
+                                text.literal(
+                                    "§a[DDI 语音转写] §f已开启 10 分钟临时调试；" +
+                                        "仅保存最近 12 条最终结果，不写入日志或磁盘。"
+                                )
+                            )
+                        }
+                    }
+                    literal("disable") {
+                        executes {
+                            VoiceKeywordBridge.disableTranscriptDebug(playerOrThrow.player.uuid)
+                            sendMessage(text.literal("§a[DDI 语音转写] §f已关闭并清除临时结果。"))
                         }
                     }
                 }

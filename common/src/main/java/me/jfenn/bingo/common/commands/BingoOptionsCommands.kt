@@ -93,7 +93,6 @@ class BingoOptionsCommands(
             StringKey.DdiCommandVoiceKeywordsSummary,
             text.boolean(options.ddiVoiceKeywordsEnabled),
             options.ddiVoiceCustomKeywords.size,
-            DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
         )
     )
 
@@ -140,7 +139,6 @@ class BingoOptionsCommands(
             text.string(
                 StringKey.DdiCommandVoiceKeywordListHeader,
                 options.ddiVoiceCustomKeywords.size,
-                DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
             )
         )
         if (options.ddiVoiceCustomKeywords.isEmpty()) {
@@ -148,8 +146,27 @@ class BingoOptionsCommands(
             return
         }
         options.ddiVoiceCustomKeywords.forEach { keyword ->
-            sendMessage(text.literal("- $keyword"))
+            val disabled = DDIVoiceKeywordOptions.customWordId(keyword) in options.ddiDisabledWordIds
+            sendMessage(
+                text.literal("- $keyword")
+                    .append(text.literal(if (disabled) "（已停用）" else "（已启用）").formatted(
+                        if (disabled) Formatting.DARK_GRAY else Formatting.GREEN,
+                    ))
+            )
         }
+    }
+
+    private fun IExecutionContext.sendDDIVoiceKeywordMatches(
+        options: BingoOptions,
+        rawQuery: String,
+    ) {
+        val query = DDIVoiceKeywordOptions.recognitionKey(rawQuery)
+        val matches = options.ddiVoiceCustomKeywords.filter { keyword ->
+            query.isNotBlank() && DDIVoiceKeywordOptions.recognitionKey(keyword).contains(query)
+        }
+        sendMessage(text.literal("§6[DDI 自定义语音词] §f“$rawQuery”匹配 ${matches.size} 条。"))
+        matches.take(20).forEach { keyword -> sendMessage(text.literal("- $keyword")) }
+        if (matches.size > 20) sendMessage(text.literal("§7仅显示前 20 条；请缩小关键词。"))
     }
 
     private fun CommandBuilder.executesToggle(callback: IExecutionContext.(Boolean?) -> Unit) {
@@ -456,7 +473,6 @@ class BingoOptionsCommands(
                                     StringKey.DdiCommandVoiceKeywordsSummary,
                                     text.boolean(options.ddiVoiceKeywordsEnabled),
                                     options.ddiVoiceCustomKeywords.size,
-                                    DDIVoiceKeywordOptions.MAX_CUSTOM_KEYWORDS,
                                 )
                             )
                         }
@@ -491,6 +507,83 @@ class BingoOptionsCommands(
                                         updateDDIOptions { service, ctx ->
                                             service.removeDDIVoiceKeyword(ctx, getArgument(keywordArg))
                                         }
+                                    }
+                                }
+                            }
+                            literal("rename") {
+                                string(
+                                    "old_keyword",
+                                    suggestions = {
+                                        scope.get<BingoState>().options.ddiVoiceCustomKeywords
+                                    },
+                                ) { oldArg ->
+                                    string("new_keyword", greedy = true) { newArg ->
+                                        executes {
+                                            updateDDIOptions { service, ctx ->
+                                                service.renameDDIVoiceKeyword(
+                                                    ctx,
+                                                    getArgument(oldArg),
+                                                    getArgument(newArg),
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            literal("import") {
+                                string("keywords", greedy = true) { keywordsArg ->
+                                    executes {
+                                        updateDDIOptions { service, ctx ->
+                                            service.importDDIVoiceKeywords(ctx, getArgument(keywordsArg))
+                                        }
+                                    }
+                                }
+                            }
+                            literal("enable") {
+                                string(
+                                    "keyword",
+                                    suggestions = {
+                                        scope.get<BingoState>().options.ddiVoiceCustomKeywords
+                                    },
+                                    greedy = true,
+                                ) { keywordArg ->
+                                    executes {
+                                        updateDDIOptions { service, ctx ->
+                                            service.setDDIVoiceKeywordEnabled(
+                                                ctx,
+                                                getArgument(keywordArg),
+                                                enabled = true,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            literal("disable") {
+                                string(
+                                    "keyword",
+                                    suggestions = {
+                                        scope.get<BingoState>().options.ddiVoiceCustomKeywords
+                                    },
+                                    greedy = true,
+                                ) { keywordArg ->
+                                    executes {
+                                        updateDDIOptions { service, ctx ->
+                                            service.setDDIVoiceKeywordEnabled(
+                                                ctx,
+                                                getArgument(keywordArg),
+                                                enabled = false,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            literal("find") {
+                                string("query", greedy = true) { queryArg ->
+                                    executes {
+                                        sendDDIVoiceKeywordMatches(
+                                            scope.get<BingoState>().options,
+                                            getArgument(queryArg),
+                                        )
                                     }
                                 }
                             }

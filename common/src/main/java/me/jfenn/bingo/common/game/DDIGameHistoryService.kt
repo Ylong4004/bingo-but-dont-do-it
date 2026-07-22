@@ -18,6 +18,9 @@ data class DDITeamDamageHistory(
     val teamKey: BingoTeamKey,
     val teamName: String,
     val entries: List<DDIDamageHistoryEntry> = emptyList(),
+    /** 结算时的 DDI 剩余生命；零表示已经淘汰。 */
+    val heartsRemaining: Int = 0,
+    val maxHearts: Int = 0,
 )
 
 /**
@@ -29,6 +32,8 @@ class DDIGameHistoryService {
         val teamKey: BingoTeamKey,
         var teamName: String,
         val entries: MutableList<DDIDamageHistoryEntry> = mutableListOf(),
+        var heartsRemaining: Int = 0,
+        var maxHearts: Int = 0,
     )
 
     private val teams = linkedMapOf<BingoTeamKey, MutableTeamHistory>()
@@ -37,10 +42,29 @@ class DDIGameHistoryService {
         teams.clear()
     }
 
-    fun registerTeam(teamKey: BingoTeamKey, teamName: String) {
-        teams.getOrPut(teamKey) {
+    fun registerTeam(
+        teamKey: BingoTeamKey,
+        teamName: String,
+        heartsRemaining: Int = 0,
+        maxHearts: Int = 0,
+    ) {
+        val team = teams.getOrPut(teamKey) {
             MutableTeamHistory(teamKey, teamName.ifBlank { teamKey.label })
-        }.teamName = teamName.ifBlank { teamKey.label }
+        }
+        team.teamName = teamName.ifBlank { teamKey.label }
+        if (maxHearts > 0) {
+            team.maxHearts = maxHearts
+            team.heartsRemaining = heartsRemaining.coerceIn(0, maxHearts)
+        }
+    }
+
+    fun updateHearts(
+        teamKey: BingoTeamKey,
+        teamName: String,
+        heartsRemaining: Int,
+        maxHearts: Int,
+    ) {
+        registerTeam(teamKey, teamName, heartsRemaining, maxHearts)
     }
 
     fun recordDamage(
@@ -51,8 +75,9 @@ class DDIGameHistoryService {
         heartsRemaining: Int,
         maxHearts: Int,
     ) {
-        registerTeam(teamKey, teamName)
-        teams.getValue(teamKey).entries += DDIDamageHistoryEntry(
+        registerTeam(teamKey, teamName, heartsRemaining, maxHearts)
+        val team = teams.getValue(teamKey)
+        team.entries += DDIDamageHistoryEntry(
             wordText = wordText,
             actorName = actorName,
             heartsRemaining = heartsRemaining.coerceAtLeast(0),
@@ -65,6 +90,8 @@ class DDIGameHistoryService {
             teamKey = team.teamKey,
             teamName = team.teamName,
             entries = team.entries.toList(),
+            heartsRemaining = team.heartsRemaining,
+            maxHearts = team.maxHearts,
         )
     }
 }

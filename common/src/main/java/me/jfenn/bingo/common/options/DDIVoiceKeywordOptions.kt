@@ -1,12 +1,18 @@
 package me.jfenn.bingo.common.options
 
 import java.text.Normalizer
+import java.security.MessageDigest
+import java.util.HexFormat
 import java.util.Locale
 
 /** 设置墙输入、命令和运行时词条共用的校验规则。 */
 object DDIVoiceKeywordOptions {
-    const val MAX_CUSTOM_KEYWORDS = 32
     const val MAX_KEYWORD_CODE_POINTS = 32
+    /**
+     * 这是持久化配置的防护预算，不是面向玩家的“词条数量上限”。
+     * 以 Unicode code point 计算，避免大量自定义文本撑大选项同步或存档。
+     */
+    const val MAX_TOTAL_CUSTOM_KEYWORD_CODE_POINTS = 8_192
 
     private val whitespace = Regex("\\s+")
     private val latinKeyword = Regex("[a-z][a-z0-9 _'-]{2,31}")
@@ -21,6 +27,13 @@ object DDIVoiceKeywordOptions {
         .lowercase(Locale.ROOT)
         .filter { it.isLetterOrDigit() }
 
+    /** 与运行时词池共享的稳定自定义词 ID，用于启停和重命名状态迁移。 */
+    fun customWordId(raw: String): String? = validate(raw)?.let { keyword ->
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(recognitionKey(keyword).toByteArray(Charsets.UTF_8))
+        "voice_custom_${HexFormat.of().formatHex(digest).take(16)}"
+    }
+
     fun validate(raw: String): String? {
         val normalized = normalize(raw)
         val codePoints = normalized.codePointCount(0, normalized.length)
@@ -32,8 +45,14 @@ object DDIVoiceKeywordOptions {
         return normalized
     }
 
+    fun totalCodePointCount(values: Iterable<String>): Long = values.sumOf { value ->
+        value.codePointCount(0, value.length).toLong()
+    }
+
+    fun isWithinTotalBudget(values: Iterable<String>): Boolean =
+        totalCodePointCount(values) <= MAX_TOTAL_CUSTOM_KEYWORD_CODE_POINTS
+
     fun normalizeList(values: Iterable<String>): List<String> = values
         .mapNotNull(::validate)
         .distinctBy(::recognitionKey)
-        .take(MAX_CUSTOM_KEYWORDS)
 }

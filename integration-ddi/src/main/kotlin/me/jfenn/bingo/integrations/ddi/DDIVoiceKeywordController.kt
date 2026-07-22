@@ -26,7 +26,6 @@ class DDIVoiceKeywordController(
     private var generation = 0L
     private var lastKeywords: List<String> = emptyList()
     private var lastStatus: VoiceKeywordBackendState? = null
-    private var automaticModelPreparationRequested = false
 
     val isRunning: Boolean get() = session != null
 
@@ -62,7 +61,6 @@ class DDIVoiceKeywordController(
             announceStatusIfNeeded(force = true)
             return
         }
-        requestAutomaticModelPreparation(myGeneration, nextSession)
     }
 
     /** DDI 会话处于活动状态时，每个服务端游戏刻调用一次。 */
@@ -80,7 +78,6 @@ class DDIVoiceKeywordController(
         }
         manager.refreshVoiceAvailability()
         if (session == null || !manager.hasRound) return
-        requestAutomaticModelPreparation(generation, session ?: return)
         announceStatusIfNeeded(force = false)
         refreshTargets()
     }
@@ -94,7 +91,6 @@ class DDIVoiceKeywordController(
         sessionHandle = null
         lastKeywords = emptyList()
         lastStatus = null
-        automaticModelPreparationRequested = false
     }
 
     fun status(): VoiceKeywordBackendStatus = VoiceKeywordBridge.status()
@@ -107,37 +103,10 @@ class DDIVoiceKeywordController(
         if (activeSession.targets.get() != targets) activeSession.targets.set(targets)
     }
 
-    /**
-     * 管理员启用大厅选项即表示同意下载经过校验的本地模型。
-     * 每刻重试此检查，也能处理恢复已保存的 PLAYING 对局后语音服务才变为可用的情况。
-     */
-    private fun requestAutomaticModelPreparation(
-        requestedGeneration: Long,
-        requestedSession: VoiceKeywordSession,
-    ) {
-        if (automaticModelPreparationRequested || !VoiceKeywordBridge.status().voiceChatAvailable) {
-            return
-        }
-        automaticModelPreparationRequested = true
-        VoiceKeywordBridge.requestModelDownload().whenComplete { _, failure ->
-            server.execute {
-                if (generation != requestedGeneration || session !== requestedSession) return@execute
-                if (failure != null) {
-                    log.warn(
-                        "[DDI Voice] Failed to prepare the local recognition model: {}",
-                        failure.javaClass.simpleName,
-                    )
-                }
-                announceStatusIfNeeded(force = true)
-                refreshTargets()
-            }
-        }
-    }
-
     private fun sendPrivacyNotice() {
         val message = Text.literal(
-            "§e[不要做·语音] §f语音关键词已开启：仅在本机离线识别，不上传、保存音频或记录识别文本。" +
-                "每位玩家需自行输入 §b/bingoprefs ddi_voice_consent true §f同意后，语音词条才会对其目标生效。"
+            "§e[不要做·语音] §f语音关键词由房主/服务器离线识别，不上传、保存音频或记录识别文本。" +
+                "请在菜单点击同意后参与语音词条；可随时在个人设置撤回。"
         )
         manager.activePlayers().forEach { it.sendMessage(message, false) }
     }
@@ -154,6 +123,11 @@ class DDIVoiceKeywordController(
                 "§e[不要做·语音] 未检测到可用的 Simple Voice Chat 服务，本局不会抽取语音词条。"
             VoiceKeywordBackendState.UNSUPPORTED_PLATFORM ->
                 "§c[不要做·语音] 当前系统或 CPU 架构不受本地识别器支持，本局不会抽取语音词条。"
+            VoiceKeywordBackendState.DOWNLOADING,
+            VoiceKeywordBackendState.VERIFYING,
+            VoiceKeywordBackendState.EXTRACTING,
+            VoiceKeywordBackendState.LOADING ->
+                "§e[不要做·语音] 服务端正在准备本地识别模型；完成前不会抽取语音词条。"
             VoiceKeywordBackendState.MODEL_INVALID,
             VoiceKeywordBackendState.ERROR ->
                 "§c[不要做·语音] 本地识别模型准备失败，本局不会抽取语音词条；管理员可用 /bingo ddi voice status 检查。"

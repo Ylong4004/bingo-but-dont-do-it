@@ -12,47 +12,28 @@ data class DDIPlayerState(
 )
 
 /**
- * 由单个玩家或一支 Bingo 队伍持有的服务端权威状态。
+ * 一个目标内独立结算的一条禁做词。
  *
- * 队伍共享模式会为每支 Bingo 队伍仅创建一个目标，因此队员之间的词条、
- * 计时器和生命池始终保持一致。
+ * 词条、倒计时、规则进度和异步识别版本号都属于槽位；生命和淘汰状态则属于
+ * [DDIObjectiveState]。这个拆分确保同一次动作可以命中多个槽位，却不会让一个
+ * 槽位的换词使另一个槽位的异步结果或倒计时失效。
  */
-data class DDIObjectiveState(
-    val objectiveId: String,
-    val objectiveName: String,
-    val teamKey: BingoTeamKey,
-    val teamName: String,
-    val teamColor: Formatting,
-    val memberIds: Set<UUID>,
-    val memberNames: List<String>,
-    val isTeamShared: Boolean,
+data class DDIWordSlotState(
+    val index: Int,
     var currentWord: DDIWordPool.WordEntry? = null,
-    var hearts: Int = 3,
-    var maxHearts: Int = 3,
-    var wordTimerSeconds: Int = 60,
-    var maxWordTimerSeconds: Int = 60,
-    var isEliminated: Boolean = false,
-    /** 当前所分配参数化规则的共享进度。 */
+    var wordTimerSeconds: Int = 0,
+    var maxWordTimerSeconds: Int = 0,
+    /** 当前所分配参数化规则的进度。 */
     var ruleProgress: Int = 0,
-    /** 本次分配的 ON_DEADLINE_MISSED 规则一旦满足即为 true。 */
+    /** 本次 ON_DEADLINE_MISSED 规则一旦满足即为 true。 */
     var deadlineSatisfied: Boolean = false,
-    /** 在词条更换时保留，用于拒绝同一服务端游戏刻内的第二次回调。 */
+    /** 拒绝同一服务端游戏刻内同一槽位的重复回调。 */
     var lastAcceptedTriggerTick: Long = Long.MIN_VALUE,
-    /**
-     * 供异步检测器使用的单调递增令牌。每次发放和清除时都会变化，
-     * 即使未来词池再次抽到相同的词条 ID 也不例外。
-     */
+    /** 每次发放和清除都会递增，供异步语音结果验证。 */
     var assignmentRevision: Long = 0,
 ) {
-    val isAlive: Boolean get() = !isEliminated && hearts > 0
-
-    fun loseHeart(): Boolean {
-        hearts = (hearts - 1).coerceAtLeast(0)
-        return hearts <= 0
-    }
-
-    fun addHeart() {
-        hearts = (hearts + 1).coerceAtMost(maxHearts)
+    init {
+        require(index >= 0) { "DDI slot index cannot be negative" }
     }
 
     fun assignWord(word: DDIWordPool.WordEntry, timerSeconds: Int) {
@@ -68,7 +49,51 @@ data class DDIObjectiveState(
         assignmentRevision++
         currentWord = null
         wordTimerSeconds = 0
+        maxWordTimerSeconds = 0
         ruleProgress = 0
         deadlineSatisfied = false
     }
+}
+
+/**
+ * 由单个玩家或一支 Bingo 队伍持有的服务端权威状态。
+ *
+ * 队伍共享模式会为每支 Bingo 队伍仅创建一个目标，因此队员之间的词条槽位和
+ * 生命池始终保持一致。
+ */
+data class DDIObjectiveState(
+    val objectiveId: String,
+    val objectiveName: String,
+    val teamKey: BingoTeamKey,
+    val teamName: String,
+    val teamColor: Formatting,
+    val memberIds: Set<UUID>,
+    val memberNames: List<String>,
+    val isTeamShared: Boolean,
+    var hearts: Int = 3,
+    var maxHearts: Int = 3,
+    var isEliminated: Boolean = false,
+    val slots: MutableList<DDIWordSlotState> = mutableListOf(DDIWordSlotState(index = 0)),
+) {
+    val isAlive: Boolean get() = !isEliminated && hearts > 0
+
+    init {
+        require(slots.isNotEmpty()) { "A DDI objective requires at least one word slot" }
+        require(slots.map(DDIWordSlotState::index).distinct().size == slots.size) {
+            "DDI objective slot indices must be unique"
+        }
+    }
+
+    fun loseHeart(): Boolean {
+        hearts = (hearts - 1).coerceAtLeast(0)
+        return hearts <= 0
+    }
+
+    fun addHeart() {
+        hearts = (hearts + 1).coerceAtMost(maxHearts)
+    }
+
+    fun slot(index: Int): DDIWordSlotState? = slots.firstOrNull { it.index == index }
+
+    fun activeSlots(): List<DDIWordSlotState> = slots.filter { it.currentWord != null }
 }

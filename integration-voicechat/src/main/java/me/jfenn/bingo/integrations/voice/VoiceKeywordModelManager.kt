@@ -50,12 +50,20 @@ internal class VoiceKeywordModelManager(
             "graph/HCLr.fst",
             "graph/Gr.fst",
         )
+        private const val PROGRESS_REPORT_BYTES = 256L * 1024L
+        private val PREPARING_STATES = setOf(
+            VoiceKeywordBackendState.DOWNLOADING,
+            VoiceKeywordBackendState.VERIFYING,
+            VoiceKeywordBackendState.EXTRACTING,
+            VoiceKeywordBackendState.LOADING,
+        )
     }
 
     private val executor: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "bingo-voice-model").apply { isDaemon = true }
     }
     private val state = AtomicReference(initialStatus())
+    private val progress = AtomicReference<VoiceKeywordModelProgress?>(null)
     private val loadRequested = AtomicBoolean(false)
     private val operationLock = Any()
 
@@ -64,7 +72,7 @@ internal class VoiceKeywordModelManager(
     private var downloadFuture: CompletableFuture<VoiceKeywordBackendStatus>? = null
     private var loadFuture: CompletableFuture<VoiceKeywordBackendStatus>? = null
 
-    fun status(): VoiceKeywordBackendStatus = state.get()
+    fun status(): VoiceKeywordBackendStatus = state.get().copy(progress = progress.get())
 
     fun loadedModel(): Model? = model
 
@@ -130,11 +138,13 @@ internal class VoiceKeywordModelManager(
         }
 
         update(VoiceKeywordBackendState.LOADING)
+        updateProgress(VoiceKeywordModelProgressPhase.LOADING, completedBytes = 0L, totalBytes = 1L)
         return try {
             // 识别器输出可能包含当前 Vosk 语法；原生日志只保留警告级别，且本模块绝不
             // 主动记录识别结果。
             VoskNativeEncoding.initialize()
             model = Model(directory.toString())
+            updateProgress(VoiceKeywordModelProgressPhase.LOADING, completedBytes = 1L, totalBytes = 1L)
             update(VoiceKeywordBackendState.READY)
         } catch (error: Throwable) {
             model = null
@@ -158,17 +168,27 @@ internal class VoiceKeywordModelManager(
         }
 
         update(VoiceKeywordBackendState.DOWNLOADING)
+        updateProgress(
+            VoiceKeywordModelProgressPhase.DOWNLOADING,
+            completedBytes = 0L,
+            totalBytes = MODEL_ZIP_LENGTH,
+        )
         val archive = root.resolve(".$MODEL_DIRECTORY_NAME-${UUID.randomUUID()}.zip.part")
         val staging = root.resolve(".extract-${UUID.randomUUID()}")
         return try {
             Files.createDirectories(root)
             downloadVerifiedArchive(archive)
+            update(VoiceKeywordBackendState.EXTRACTING)
+            updateProgress(VoiceKeywordModelProgressPhase.EXTRACTING)
             VoiceKeywordModelArchive.extract(
                 archive = archive,
                 stagingRoot = staging,
                 expectedTopDirectory = MODEL_DIRECTORY_NAME,
                 maxEntries = MAX_ARCHIVE_ENTRIES,
                 maxUncompressedBytes = MAX_UNCOMPRESSED_BYTES,
+                onProgress = { extractedBytes ->
+                    updateProgress(VoiceKeywordModelProgressPhase.EXTRACTING, extractedBytes)
+                },
             )
             val extracted = staging.resolve(MODEL_DIRECTORY_NAME)
             if (!isValidModelDirectory(extracted)) {
@@ -223,10 +243,25 @@ internal class VoiceKeywordModelManager(
                         throw IOException("Model archive exceeds expected length")
                     }
                     output.write(buffer, 0, read)
+                    if (copied == MODEL_ZIP_LENGTH ||
+                        copied % PROGRESS_REPORT_BYTES < read.toLong()
+                    ) {
+                        updateProgress(
+                            VoiceKeywordModelProgressPhase.DOWNLOADING,
+                            completedBytes = copied,
+                            totalBytes = MODEL_ZIP_LENGTH,
+                        )
+                    }
                 }
             }
         }
         if (copied != MODEL_ZIP_LENGTH) throw IOException("Incomplete model archive")
+        update(VoiceKeywordBackendState.VERIFYING)
+        updateProgress(
+            VoiceKeywordModelProgressPhase.VERIFYING,
+            completedBytes = copied,
+            totalBytes = MODEL_ZIP_LENGTH,
+        )
         val actualHash = HexFormat.of().withUpperCase().formatHex(digest.digest())
         if (actualHash != MODEL_ZIP_SHA256) throw IOException("Model checksum mismatch")
     }
@@ -276,7 +311,24 @@ internal class VoiceKeywordModelManager(
     private fun update(
         newState: VoiceKeywordBackendState,
         detail: String? = null,
-    ): VoiceKeywordBackendStatus = modelStatus(newState, detail).also(state::set)
+    ): VoiceKeywordBackendStatus {
+        if (newState !in PREPARING_STATES) progress.set(null)
+        return modelStatus(newState, detail).also(state::set)
+    }
+
+    private fun updateProgress(
+        phase: VoiceKeywordModelProgressPhase,
+        completedBytes: Long = 0L,
+        totalBytes: Long? = null,
+    ) {
+        progress.set(
+            VoiceKeywordModelProgress(
+                phase = phase,
+                completedBytes = completedBytes.coerceAtLeast(0L),
+                totalBytes = totalBytes,
+            ),
+        )
+    }
 
     private fun modelStatus(
         newState: VoiceKeywordBackendState,
@@ -296,6 +348,7 @@ internal class VoiceKeywordModelManager(
             stream.sorted(Comparator.reverseOrder()).forEach { Files.deleteIfExists(it) }
         }
     }
+
 }
 
 /** 独立实现可防 Zip Slip 的模型解压逻辑，便于进行针对性测试。 */
@@ -306,6 +359,7 @@ internal object VoiceKeywordModelArchive {
         expectedTopDirectory: String,
         maxEntries: Int,
         maxUncompressedBytes: Long,
+        onProgress: (Long) -> Unit = {},
     ) {
         Files.createDirectory(stagingRoot)
         val normalizedRoot = stagingRoot.toAbsolutePath().normalize()
@@ -346,6 +400,7 @@ internal object VoiceKeywordModelArchive {
                                 throw IOException("Model archive is too large")
                             }
                             file.write(buffer, 0, read)
+                            onProgress(totalBytes)
                         }
                     }
                 }

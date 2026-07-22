@@ -23,9 +23,14 @@ class DDIHudState {
         private set
     var myMaxHearts: Int = 0
         private set
-    var myTimerSeconds: Int = 0
-        private set
-    var myMaxTimerSeconds: Int = 0
+    data class WordSlotInfo(
+        val index: Int,
+        val wordText: String,
+        val timerSeconds: Int,
+        val maxTimerSeconds: Int,
+    )
+
+    var mySlots: List<WordSlotInfo> = emptyList()
         private set
     var isMyEliminated: Boolean = false
         private set
@@ -34,10 +39,9 @@ class DDIHudState {
 
     data class PlayerDDIInfo(
         val playerName: String,
-        val wordText: String,
+        val slots: List<WordSlotInfo>,
         val hearts: Int,
         val maxHearts: Int,
-        val timerSeconds: Int,
         val isEliminated: Boolean,
     )
 
@@ -58,10 +62,9 @@ class DDIHudState {
         val teamName: String,
         val teamColor: Formatting,
         val memberNames: List<String>,
-        val wordText: String,
+        val slots: List<WordSlotInfo>,
         val hearts: Int,
         val maxHearts: Int,
-        val timerSeconds: Int,
         val isEliminated: Boolean,
     )
 
@@ -89,34 +92,29 @@ class DDIHudState {
     fun updateSelf(
         hearts: Int,
         maxHearts: Int,
-        timerSeconds: Int,
-        maxTimerSeconds: Int,
+        slots: List<WordSlotInfo>,
         isEliminated: Boolean,
     ) {
         ensureMode(ProjectionMode.PLAYER)
         hasOwnObjective = true
-        updateOwnStatus(hearts, maxHearts, timerSeconds, maxTimerSeconds, isEliminated)
+        updateOwnStatus(hearts, maxHearts, slots, isEliminated)
     }
 
     fun updateOther(
         playerId: UUID,
         playerName: String,
-        wordText: String,
+        slots: List<WordSlotInfo>,
         hearts: Int,
         maxHearts: Int,
-        timerSeconds: Int,
-        maxTimerSeconds: Int,
         isEliminated: Boolean,
     ) {
         ensureMode(ProjectionMode.PLAYER)
         val safeMaxHearts = maxHearts.coerceAtLeast(0)
-        val safeMaxTimer = maxTimerSeconds.coerceAtLeast(0)
         otherPlayers[playerId] = PlayerDDIInfo(
             playerName = playerName,
-            wordText = wordText,
+            slots = normalizeSlots(slots),
             hearts = hearts.coerceIn(0, safeMaxHearts),
             maxHearts = safeMaxHearts,
-            timerSeconds = timerSeconds.coerceIn(0, safeMaxTimer),
             isEliminated = isEliminated,
         )
         isVisible = true
@@ -127,11 +125,9 @@ class DDIHudState {
         teamName: String,
         teamColor: Formatting,
         memberNames: List<String>,
-        wordText: String,
+        slots: List<WordSlotInfo>,
         hearts: Int,
         maxHearts: Int,
-        timerSeconds: Int,
-        maxTimerSeconds: Int,
         isEliminated: Boolean,
         isOwnTeam: Boolean,
     ) {
@@ -145,20 +141,18 @@ class DDIHudState {
             otherTeams.remove(teamId)
             // 服务端会有意把本队词条留空；即使版本不匹配的服务端填入该字段，
             // 客户端也不能接受或保留它。
-            updateOwnStatus(hearts, maxHearts, timerSeconds, maxTimerSeconds, isEliminated)
+            updateOwnStatus(hearts, maxHearts, slots, isEliminated)
             return
         }
 
         val safeMaxHearts = maxHearts.coerceAtLeast(0)
-        val safeMaxTimer = maxTimerSeconds.coerceAtLeast(0)
         otherTeams[teamId] = TeamDDIInfo(
             teamName = teamName,
             teamColor = teamColor,
             memberNames = memberNames.toList(),
-            wordText = wordText,
+            slots = normalizeSlots(slots),
             hearts = hearts.coerceIn(0, safeMaxHearts),
             maxHearts = safeMaxHearts,
-            timerSeconds = timerSeconds.coerceIn(0, safeMaxTimer),
             isEliminated = isEliminated,
         )
         isVisible = true
@@ -167,18 +161,27 @@ class DDIHudState {
     private fun updateOwnStatus(
         hearts: Int,
         maxHearts: Int,
-        timerSeconds: Int,
-        maxTimerSeconds: Int,
+        slots: List<WordSlotInfo>,
         isEliminated: Boolean,
     ) {
         myMaxHearts = maxHearts.coerceAtLeast(0)
         myHearts = hearts.coerceIn(0, myMaxHearts)
-        myMaxTimerSeconds = maxTimerSeconds.coerceAtLeast(0)
-        myTimerSeconds = timerSeconds.coerceIn(0, myMaxTimerSeconds)
+        mySlots = normalizeSlots(slots).map { it.copy(wordText = "") }
         isMyEliminated = isEliminated
         isVisible = true
         timerTicks = 0
     }
+
+    private fun normalizeSlots(slots: List<WordSlotInfo>): List<WordSlotInfo> = slots
+        .asSequence()
+        .filter { it.index >= 0 }
+        .distinctBy(WordSlotInfo::index)
+        .sortedBy(WordSlotInfo::index)
+        .map { slot ->
+            val maxTimer = slot.maxTimerSeconds.coerceAtLeast(0)
+            slot.copy(timerSeconds = slot.timerSeconds.coerceIn(0, maxTimer), maxTimerSeconds = maxTimer)
+        }
+        .toList()
 
     fun addTrigger(notification: TriggerNotification) {
         recentTriggers.add(notification)
@@ -197,21 +200,33 @@ class DDIHudState {
 
         when (projectionMode) {
             ProjectionMode.PLAYER -> {
-                if (!isMyEliminated && myTimerSeconds > 0) myTimerSeconds--
+                if (!isMyEliminated) {
+                    mySlots = mySlots.map { slot ->
+                        if (slot.timerSeconds > 0) slot.copy(timerSeconds = slot.timerSeconds - 1) else slot
+                    }
+                }
                 otherPlayers.entries.forEach { entry ->
                     val info = entry.value
-                    if (!info.isEliminated && info.timerSeconds > 0) {
-                        entry.setValue(info.copy(timerSeconds = info.timerSeconds - 1))
+                    if (!info.isEliminated) {
+                        entry.setValue(info.copy(slots = info.slots.map { slot ->
+                            if (slot.timerSeconds > 0) slot.copy(timerSeconds = slot.timerSeconds - 1) else slot
+                        }))
                     }
                 }
             }
 
             ProjectionMode.TEAM -> {
-                if (hasOwnTeam && !isMyEliminated && myTimerSeconds > 0) myTimerSeconds--
+                if (hasOwnTeam && !isMyEliminated) {
+                    mySlots = mySlots.map { slot ->
+                        if (slot.timerSeconds > 0) slot.copy(timerSeconds = slot.timerSeconds - 1) else slot
+                    }
+                }
                 otherTeams.entries.forEach { entry ->
                     val info = entry.value
-                    if (!info.isEliminated && info.timerSeconds > 0) {
-                        entry.setValue(info.copy(timerSeconds = info.timerSeconds - 1))
+                    if (!info.isEliminated) {
+                        entry.setValue(info.copy(slots = info.slots.map { slot ->
+                            if (slot.timerSeconds > 0) slot.copy(timerSeconds = slot.timerSeconds - 1) else slot
+                        }))
                     }
                 }
             }
@@ -233,8 +248,7 @@ class DDIHudState {
         projectionMode = null
         myHearts = 0
         myMaxHearts = 0
-        myTimerSeconds = 0
-        myMaxTimerSeconds = 0
+        mySlots = emptyList()
         isMyEliminated = false
         hasOwnObjective = false
         otherPlayers.clear()

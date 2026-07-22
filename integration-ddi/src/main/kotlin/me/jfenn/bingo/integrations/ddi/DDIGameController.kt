@@ -25,6 +25,7 @@ class DDIGameController(
     private val ddiManager: DDIObjectiveManager,
     private val specialEvents: DDISpecialEventService,
     private val voiceKeywords: DDIVoiceKeywordController,
+    private val voiceAccusations: DDIVoiceAccusationService,
     private val gameEndService: DDIGameEndService,
     events: ScopedEvents,
     private val log: Logger,
@@ -51,6 +52,14 @@ class DDIGameController(
         }
 
         events.onStateChange { event -> reconcile(event.to) }
+        events.onChangeOptions {
+            if (!isShutdown) {
+                ddiManager.updateWordSelection(
+                    disabledCategories = options.ddiDisabledWordCategories,
+                    disabledWordIds = options.ddiDisabledWordIds,
+                )
+            }
+        }
         events.onGameTick { event ->
             if (isShutdown) return@onGameTick
             // 只获取本次回调开始前已经存在的结果。由下方计时器产生的结果
@@ -60,6 +69,9 @@ class DDIGameController(
                 server.ticks.toLong() > pendingResultTick
             }
             ddiManager.enforceEliminatedSpectators()
+            if (sessionState is DDISessionState.Active) {
+                voiceAccusations.tick()
+            }
             if (sessionState is DDISessionState.Active) {
                 specialEvents.tickServerTick()
                 voiceKeywords.tick()
@@ -171,6 +183,8 @@ class DDIGameController(
             maxHearts = options.ddiMaxHearts,
             wordTimerSeconds = options.ddiWordTimerSeconds,
             objectiveMode = options.ddiObjectiveMode,
+            wordsPerObjective = options.ddiWordsPerObjective,
+            multiHitPolicy = options.ddiMultiHitPolicy,
         )
 
         // 必须在 start() 前设为 Active，因为解析初始即时词条时，
@@ -193,6 +207,10 @@ class DDIGameController(
             )
             runCatching(voiceKeywords::start)
                 .onFailure { log.error("[DDI Voice] Could not start the voice session", it) }
+            if (options.ddiVoiceKeywordsEnabled) {
+                runCatching(voiceAccusations::announceRoundQuickActions)
+                    .onFailure { log.error("[DDI Voice] Could not announce quick actions", it) }
+            }
         }
     }
 
@@ -230,6 +248,8 @@ class DDIGameController(
             .onFailure { log.error("[DDI Events] Failed to stop auxiliary event state", it) }
         runCatching(voiceKeywords::stop)
             .onFailure { log.error("[DDI Voice] Failed to stop the recognition session", it) }
+        runCatching(voiceAccusations::stop)
+            .onFailure { log.error("[DDI Vote] Failed to stop accusation vote state", it) }
     }
 
     private companion object {
